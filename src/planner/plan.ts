@@ -11,7 +11,7 @@ import { taskSchema } from './task';
  * a Rule's own lookback. Nothing here enforces that a Rule stays inside the
  * window — the fix for a Rule that reaches past it is to widen the window.
  */
-export const OBSERVATION_WINDOW_DAYS = 30;
+export const PLAN_WINDOW_DAYS = 30;
 
 /**
  * One local calendar day of one variable at one depth, reduced from many
@@ -40,7 +40,7 @@ export type DailyAggregate = z.infer<typeof dailyAggregateSchema>;
 
 /**
  * What the Planner returns for one date: every Task it derived (including
- * the deferred ones — see ADR 0002) and the Observation window the Rules
+ * the deferred ones — see ADR 0002) and the window of DailyAggregates the Rules
  * evaluated to produce them. The window travels with the Plan rather than
  * being reassembled downstream, because only the Planner run that produced
  * this Plan knows which days those were.

@@ -137,6 +137,28 @@ describe('parseStatusRecord', () => {
 // assertions below are structural so that they hold for every field added later: an open object or
 // a field that drops out of `required` fails here, on the commit that introduces it, rather than
 // downstream in whatever trusted the schema and got a shape it did not expect.
+describe('artifact keys on the way in', () => {
+	// `.default(null)` makes a key omissible on input while leaving the parsed type
+	// unchanged, and `z.toJSONSchema` defaults to output mode, where that is
+	// invisible. Hand-authored records (Plant, Rule, Occurrence) carry defaults on
+	// purpose; the Artifact must not, because it is machine-written and has to
+	// round-trip through a committed file without a key quietly going missing.
+	// Comparing the two modes is the only thing that sees the difference.
+	it('requires the same keys in input mode as in output mode', () => {
+		const requiredLists = (io: 'input' | 'output'): string[][] => {
+			const found: string[][] = [];
+			walkSchema(z.toJSONSchema(artifactSchema, { io }) as JsonSchema, (node) => {
+				if (Array.isArray(node.required)) {
+					found.push([...node.required].sort());
+				}
+			});
+			return found;
+		};
+
+		expect(requiredLists('input')).toEqual(requiredLists('output'));
+	});
+});
+
 describe('artifact json schema', () => {
 	const schema = z.toJSONSchema(artifactSchema);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyAggregateSchema, OBSERVATION_WINDOW_DAYS, planSchema } from './plan';
+import { dailyAggregateSchema, PLAN_WINDOW_DAYS, planSchema } from './plan';
 import { taskId } from './task';
 
 const dailyAggregateFixture = {
@@ -29,10 +29,10 @@ function taskFixture(ruleId: string, plantId: string | null) {
 	};
 }
 
-describe('oBSERVATION_WINDOW_DAYS', () => {
+describe('the plan window constant', () => {
 	it('is a positive integer', () => {
-		expect(Number.isInteger(OBSERVATION_WINDOW_DAYS)).toBe(true);
-		expect(OBSERVATION_WINDOW_DAYS).toBeGreaterThan(0);
+		expect(Number.isInteger(PLAN_WINDOW_DAYS)).toBe(true);
+		expect(PLAN_WINDOW_DAYS).toBeGreaterThan(0);
 	});
 });
 

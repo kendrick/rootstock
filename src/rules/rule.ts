@@ -60,6 +60,17 @@ export type AppliesTo = z.infer<typeof appliesToSchema>;
  * own `delegable` field is set, and nothing here can widen a rule that already
  * said no.
  */
+/**
+ * The tag that marks work involving a pesticide, herbicide, or fertiliser.
+ *
+ * It is a constant rather than a loose string because two separate mechanisms
+ * read it and they must agree: the authoring refine below, which requires such
+ * a rule to cite a product label, and a TagPolicy's `neverDelegableTags`, which
+ * keeps that work off the Away Card. TagPolicy chooses which tags carry which
+ * consequence; it does not get to invent the tag's spelling.
+ */
+export const CHEMICAL_TAG = 'chemical';
+
 export const tagPolicySchema = z.strictObject({
 	neverDelegableTags: z.array(z.string()),
 	safetyTags: z.array(z.string()),
@@ -96,7 +107,7 @@ const ruleBaseShape = {
 // Applied to all five rule objects rather than once to `ruleSchema`, so each
 // exported kind enforces the rule alone, however the parse reached it.
 function citesProductLabelWhenChemical(rule: { tags: string[]; productLabel: ProductLabel | null }): boolean {
-	return !rule.tags.includes('chemical') || rule.productLabel !== null;
+	return !rule.tags.includes(CHEMICAL_TAG) || rule.productLabel !== null;
 }
 
 const chemicalNeedsProductLabel = {

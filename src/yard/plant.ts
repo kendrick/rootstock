@@ -76,9 +76,12 @@ export const plantSchema = z.strictObject({
 export type Plant = z.infer<typeof plantSchema>;
 
 /**
- * `zones` is reserved for a future planting-zone overlay on the yard photo;
- * it stays typed as `never[]` and empty because nothing renders zones yet,
- * and an empty array is easier to widen later than to retrofit.
+ * `overlays` is reserved for shapes drawn on the yard photo later — bed
+ * outlines, irrigation coverage. It stays typed as `never[]` and empty
+ * because nothing renders them yet, and an empty array is easier to widen
+ * than to retrofit. It is not called `zones`: CONTEXT.md's Plant entry lists
+ * `zone` as a word to avoid, and a field of that name sitting in the module
+ * that owns Plant is exactly the confusion the glossary is guarding.
  */
 export const yardSchema = z.strictObject({
 	id: idSchema,
@@ -88,7 +91,7 @@ export const yardSchema = z.strictObject({
 		width: z.number().int().positive(),
 		height: z.number().int().positive(),
 	}).nullable().default(null),
-	zones: z.array(z.never()).default([]),
+	overlays: z.array(z.never()).default([]),
 });
 
 export type Yard = z.infer<typeof yardSchema>;

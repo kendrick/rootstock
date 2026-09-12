@@ -1,6 +1,6 @@
 import type { Artifact } from './artifact';
 import type { DailyAggregate } from '@/planner/plan';
-import { OBSERVATION_WINDOW_DAYS } from '@/planner/plan';
+import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { taskId } from '@/planner/task';
 
 /*
@@ -45,9 +45,9 @@ function soilTemperature(date: string, value: number, basis: 'observed' | 'forec
 // entries because ADR 0003 makes its length part of what the Artifact
 // promises, and a fixture that shipped three days would hide a renderer that
 // cannot cope with thirty.
-const observationWindow: DailyAggregate[] = [
-	...Array.from({ length: OBSERVATION_WINDOW_DAYS }, (_unused, index) => {
-		const offset = index - (OBSERVATION_WINDOW_DAYS - 1);
+const windowFixture: DailyAggregate[] = [
+	...Array.from({ length: PLAN_WINDOW_DAYS }, (_unused, index) => {
+		const offset = index - (PLAN_WINDOW_DAYS - 1);
 		return soilTemperature(shiftDate(ASOF, offset), Number((78 - index * 0.4).toFixed(1)), 'observed');
 	}),
 	soilTemperature(shiftDate(ASOF, 1), 65.4, 'forecast'),
@@ -90,7 +90,7 @@ export const narratedArtifact: Artifact = {
 				title: 'Deep water the fig',
 			},
 		],
-		window: observationWindow,
+		window: windowFixture,
 	},
 	narration: {
 		summary: 'Soil temperature has been falling for a fortnight and crossed into pre-emergent range this week. Rain is coming Sunday, so the watering can wait.',

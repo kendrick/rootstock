@@ -117,14 +117,14 @@ describe('plantSchema', () => {
 });
 
 describe('yardSchema', () => {
-	it('parses a yard with region only, defaulting photo and zones', () => {
+	it('parses a yard with region only, defaulting photo and overlays', () => {
 		const yard = yardSchema.parse({
 			id: 'home-yard',
 			region: { name: 'Austin, TX', hardinessZone: '8b' },
 		});
 
 		expect(yard.photo).toBeNull();
-		expect(yard.zones).toEqual([]);
+		expect(yard.overlays).toEqual([]);
 	});
 
 	it('parses a yard with a photo', () => {
@@ -137,12 +137,12 @@ describe('yardSchema', () => {
 		expect(yard.photo).toEqual({ path: 'yard.jpg', width: 4032, height: 3024 });
 	});
 
-	it('rejects a non-empty zones array', () => {
+	it('rejects a non-empty overlays array', () => {
 		expect(() =>
 			yardSchema.parse({
 				id: 'home-yard',
 				region: { name: 'Austin, TX', hardinessZone: '8b' },
-				zones: [{}],
+				overlays: [{}],
 			}),
 		).toThrow();
 	});

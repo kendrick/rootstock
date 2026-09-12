@@ -18,8 +18,8 @@ export type Unit = z.infer<typeof unitSchema>;
 
 /**
  * How the Planner collapses a run of hourly Observations into one daily
- * figure. Lives here because it is a small closed vocabulary shared across the
- * wave, but the daily figure itself — the aggregate value — is the Planner's
+ * figure. Lives here because it is a small closed vocabulary the
+ * rules and the Planner both read, but the daily figure itself — the aggregate value — is the Planner's
  * type, not this module's.
  */
 export const aggregateSchema = z.enum(['mean', 'min', 'max', 'sum']);
@@ -45,10 +45,14 @@ export type Aggregate = z.infer<typeof aggregateSchema>;
  * manual probe reading over a modeled one by comparing a fixed set of values,
  * not by string-matching an open-ended provider name.
  *
- * `depthCm` and `station` are `.nullable()`, not `.optional()`, per this
- * project's Zod discipline: a soil reading has both, a precipitation reading
- * has neither, and the parsed type must say so rather than letting the key
- * vanish.
+ * `depthCm` and `station` are `.nullable()`, not `.optional()`: a soil
+ * reading has both, a precipitation reading has neither, and the parsed type
+ * has to say which.
+ *
+ * No `.default(null)` here, unlike Plant, Rule and Occurrence. Those are
+ * hand-authored JSON where letting a seed file omit a key is worth the
+ * asymmetry between what is written and what is parsed. An Observation is
+ * machine-produced, so every key is present on the way in as well as out.
  */
 export const observationSchema = z.strictObject({
 	observedAt: z.iso.datetime(),

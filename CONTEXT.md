@@ -40,6 +40,10 @@ _Avoid_: Todo, item, action, chore, job
 A Task a Guard held back. It stays in the Plan and stays on screen, carrying the Guard that deferred it and the condition that would release it. A Task that disappears is indistinguishable from one nobody thought of, so holding one back sets a status and keeps it in the Plan.
 _Avoid_: Skipped, suppressed, hidden, cancelled, blocked
 
+**Approaching Task**:
+A Task whose Threshold Rule has not been satisfied yet and is forecast to be. It carries a projection Citation naming the day the threshold is expected to be met, and renders apart from fired work. The separation is the whole point: forecasts get revised, and a Task that has fired must never un-fire because the weather changed its mind.
+_Avoid_: Upcoming, pending, predicted, imminent, soon
+
 **Advisory**:
 Something the model observed that no Rule produced. An Advisory carries no Citation, renders apart from Tasks, and never reaches the Away Card.
 _Avoid_: Suggestion, tip, insight, recommendation, note
@@ -57,8 +61,8 @@ An append-only record that work happened on a date. Cadence Rules read the most 
 _Avoid_: Completion, checkbox, done flag, log entry
 
 **Citation**:
-The pairing of the Rule that fired with the date or Observation that fired it. A Citation is checked by membership against the real Rule set, so a Citation naming a Rule nobody wrote fails validation.
-_Avoid_: Reason, explanation, justification, source (Source is a field on a Rule)
+The pairing of a Rule with the dated evidence behind its Task: the days a Threshold Rule was satisfied, the window a date fell inside, the Occurrence a Cadence Rule counted from. A Citation on an Approaching Task names a forecast day instead, and its own kind says so, so evidence that has happened is never confused with evidence that is expected. A Citation is checked by membership against the real Rule set, so one naming a Rule nobody wrote fails validation.
+_Avoid_: Reason, explanation, justification, trigger, source (Source is a field on a Rule)
 
 **Delegable**:
 Whether a Task may appear on the Away Card. Delegability is decided on the Rule at authoring time and narrowed by tag policy, never widened by it: a Rule tagged chemical stays undelegable however its own field is set.

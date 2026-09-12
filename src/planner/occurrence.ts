@@ -17,7 +17,6 @@ export const occurrenceSchema = z.strictObject({
 	id: kebabIdSchema,
 	ruleId: kebabIdSchema,
 	plantId: kebabIdSchema.nullable().default(null),
-	// When the work was actually done.
 	completedAt: z.iso.datetime(),
 	// When the record was written; differs from completedAt when backfilling.
 	recordedAt: z.iso.datetime(),
