@@ -15,7 +15,7 @@ type FetchObservations = typeof fetchObservations;
  * touching the network or re-deriving the Open-Meteo mapping (ticket #9).
  *
  * `location` and `now` are accepted, to match `FetchObservations`, and then
- * ignored — on purpose. A test using this fake builds the Observations it
+ * ignored, on purpose. A test using this fake builds the Observations it
  * wants and asserts on what the pipeline did with them; honoring `now` here
  * would force every caller to construct a consistent clock just to get its
  * own data back unchanged.

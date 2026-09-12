@@ -3,18 +3,10 @@
  * environment and nowhere else. ADR 0004
  * (docs/adr/0004-coordinates-never-enter-the-repository.md) is why: the
  * repository is public, so a committed lat/long is a published one. The
- * three env vars below are the entire surface the ADR asks for — no file in
+ * three env vars below are the entire surface the ADR asks for—no file in
  * this repo may carry a coordinate, and this module exists to make sure the
  * only way in is that boundary.
- *
- * `env` defaults to `process.env` so the spec can hand in a plain object
- * instead of mutating the real environment. Reading `process.env` anywhere
- * but that default would defeat the point of the parameter. Typed as
- * `Record<string, string | undefined>` rather than `NodeJS.ProcessEnv`
- * because Next's ambient typing requires `NODE_ENV` on that interface — a
- * requirement this module has no business imposing on a plain test fixture.
  */
-
 export interface Location {
 	latitude: number;
 	longitude: number;
@@ -33,13 +25,17 @@ function isBlank(raw: string | undefined): raw is undefined {
 /**
  * Range-checks the parsed number, not just its shape. ADR 0004's whole
  * argument is that a wrong coordinate produces "a confidently wrong Plan"
- * silently — a typo that still parses as a number (95 instead of 35) is
+ * silently—a typo that still parses as a number (95 instead of 35) is
  * exactly that failure mode, and only a range check catches it.
  */
+function notSetMessage(name: string): string {
+	return `${name} is not set. The generation environment is the only place it exists (see docs/adr/0004-coordinates-never-enter-the-repository.md); set it before running.`;
+}
+
 function readCoordinate(env: Record<string, string | undefined>, name: string, min: number, max: number): number {
 	const raw = env[name];
 	if (isBlank(raw)) {
-		throw new Error(`${name} is not set. Coordinates live only in the generation environment (see docs/adr/0004-coordinates-never-enter-the-repository.md) — set it before running.`);
+		throw new Error(notSetMessage(name));
 	}
 
 	const value = Number(raw);
@@ -47,7 +43,7 @@ function readCoordinate(env: Record<string, string | undefined>, name: string, m
 		throw new TypeError(`${name} is set to '${raw}', which is not a number.`);
 	}
 	if (value < min || value > max) {
-		throw new RangeError(`${name} is set to ${value}, which is outside the valid range of ${min} to ${max} — check for a typo before trusting the Plan this produces.`);
+		throw new RangeError(`${name} is set to ${value}, which is outside the valid range of ${min} to ${max}; check for a typo before trusting the Plan this produces.`);
 	}
 
 	return value;
@@ -60,7 +56,7 @@ function readCoordinate(env: Record<string, string | undefined>, name: string, m
  * to validate a string. `Intl.DateTimeFormat` itself is not used for this
  * check: it also accepts legacy fixed-offset abbreviations like `CST` that
  * are not IANA identifiers and do not observe daylight saving, which is
- * exactly the kind of confidently-wrong value ADR 0004 warns about — a
+ * exactly the kind of confidently-wrong value ADR 0004 warns about—a
  * silent off-by-an-hour bucketing of the Planner's local days rather than a
  * loud failure. `UTC` is carved out because some ICU builds omit it from
  * `supportedValuesOf` despite `Intl.DateTimeFormat` accepting it correctly.
@@ -69,17 +65,34 @@ function isIanaTimeZone(candidate: string): boolean {
 	return candidate === 'UTC' || Intl.supportedValuesOf('timeZone').includes(candidate);
 }
 
+function readTimeZone(env: Record<string, string | undefined>, name: string): string {
+	const raw = env[name];
+	if (isBlank(raw)) {
+		throw new Error(notSetMessage(name));
+	}
+	if (!isIanaTimeZone(raw)) {
+		throw new Error(`${name} is set to '${raw}', which is not a recognized IANA time zone (e.g. America/Chicago).`);
+	}
+
+	return raw;
+}
+
+/**
+ * `env` is a parameter so the spec can hand in a plain object instead of
+ * mutating the real environment; reading `process.env` anywhere but its
+ * default would defeat that. It is typed `Record<string, string | undefined>`
+ * rather than `NodeJS.ProcessEnv` because Next's ambient typing requires
+ * `NODE_ENV` on that interface, which this module has no business imposing on
+ * a test fixture.
+ *
+ * The three reads run in order and the first failure throws, so the message
+ * names one variable. A message listing all three would leave the reader
+ * guessing which one the shell actually dropped.
+ */
 export function readLocationFromEnv(env: Record<string, string | undefined> = process.env): Location {
-	const latitude = readCoordinate(env, 'ROOTSTOCK_LATITUDE', -90, 90);
-	const longitude = readCoordinate(env, 'ROOTSTOCK_LONGITUDE', -180, 180);
-
-	const rawTimeZone = env.ROOTSTOCK_TIME_ZONE;
-	if (isBlank(rawTimeZone)) {
-		throw new Error('ROOTSTOCK_TIME_ZONE is not set. Coordinates live only in the generation environment (see docs/adr/0004-coordinates-never-enter-the-repository.md) — set it before running.');
-	}
-	if (!isIanaTimeZone(rawTimeZone)) {
-		throw new Error(`ROOTSTOCK_TIME_ZONE is set to '${rawTimeZone}', which is not a recognized IANA time zone (e.g. America/Chicago).`);
-	}
-
-	return { latitude, longitude, timeZone: rawTimeZone };
+	return {
+		latitude: readCoordinate(env, 'ROOTSTOCK_LATITUDE', -90, 90),
+		longitude: readCoordinate(env, 'ROOTSTOCK_LONGITUDE', -180, 180),
+		timeZone: readTimeZone(env, 'ROOTSTOCK_TIME_ZONE'),
+	};
 }

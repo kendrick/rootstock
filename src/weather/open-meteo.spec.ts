@@ -136,7 +136,7 @@ describe('the Observations fetchObservations returns', () => {
 		expect(chance.every(observation => observation.depthCm === null && observation.unit === 'percent')).toBe(true);
 	});
 
-	it('labels every reading modeled and sourced to open-meteo with no station', async () => {
+	it('labels every Observation modeled and sourced to open-meteo with no station', async () => {
 		const observations = await fetchFortWorth();
 
 		// Issue #9: the 6cm value is modeled bare soil for a coarse grid cell, so
@@ -160,7 +160,7 @@ describe('the observed/forecast split', () => {
 
 		// The boundary is strict: the hour `now` sits inside has not finished
 		// happening, and a Threshold Rule that counted it would fire on a partial
-		// reading it can never un-fire on.
+		// hour it can never un-fire on.
 		expect(soil[HOURS_BEFORE_NOW - 1]?.observedAt).toBe('2026-07-23T20:00:00.000Z');
 		expect(soil[HOURS_BEFORE_NOW - 1]?.basis).toBe('observed');
 		expect(soil[HOURS_BEFORE_NOW]?.observedAt).toBe('2026-07-23T21:00:00.000Z');
@@ -182,6 +182,24 @@ describe('rejections', () => {
 
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/soil_temperature_6cm/);
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow('2026-06-12T17:00:00.000Z');
+	});
+
+	it('rejects a whole column of nulls, which is the shape the wrong endpoint returns', async () => {
+		// The hand-derived fixture carries a six-hour gap. The archive-endpoint
+		// trap looks different: every value in the column is null under an HTTP
+		// 200, and the first null is hour zero. Both must fail the same way, so
+		// the rejection cannot come to depend on there being good hours first.
+		const emptyColumn = {
+			...fortWorth,
+			hourly: {
+				...fortWorth.hourly,
+				soil_temperature_6cm: fortWorth.hourly.soil_temperature_6cm.map(() => null),
+			},
+		};
+		const { fetch } = recordingFetch(emptyColumn);
+
+		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/soil_temperature_6cm/);
+		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow('2026-06-12T05:00:00.000Z');
 	});
 
 	it('rejects a response whose units are not the ones requested', async () => {

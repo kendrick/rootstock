@@ -39,8 +39,13 @@ interface Series {
 
 /**
  * Where the API's names meet ours. The `hourly=` parameter is built from this
- * list, so a requested series and a mapped series cannot drift apart: adding a
- * fourth means editing one array.
+ * list, so what is requested and what is mapped cannot drift apart.
+ *
+ * A fourth series is two edits, not one: this array and `responseSchema`
+ * below, which names the same keys so the parse can stay statically typed.
+ * Forgetting the second is a compile error rather than a silent gap, because
+ * indexing `payload.hourly` by an apiName the schema does not carry fails
+ * typecheck.
  */
 const SERIES = [
 	{ apiName: 'soil_temperature_6cm', variable: 'soil-temperature', depthCm: 6, unit: 'F', reportedUnit: '°F' },
@@ -146,6 +151,13 @@ function buildUrl(location: Location): string {
  * precipitation_probability, which both run a clean 16. The shortest series
  * sets the horizon because any null is a hard failure. Widening either number
  * without re-measuring those retention windows puts the nulls straight back.
+ *
+ * That contradicts ADR 0003, which describes the daily run as pulling "a
+ * fortnight of forecast". Seven days is what the soil series actually carries,
+ * so the ADR's number is unreachable rather than merely unambitious. Saying so
+ * here rather than quietly shipping the smaller number is what AGENTS.md asks
+ * for; the ADR's decision, that the Artifact ships the window the Rules
+ * evaluated, is untouched.
  */
 export async function fetchObservations({
 	location,
@@ -174,7 +186,7 @@ export async function fetchObservations({
 
 		const values = payload.hourly[series.apiName];
 		if (values.length !== time.length) {
-			throw new OpenMeteoError(`Open-Meteo returned ${values.length} values for ${series.apiName} against ${time.length} timestamps. A misaligned series would date every reading after the gap wrongly.`);
+			throw new OpenMeteoError(`Open-Meteo returned ${values.length} values for ${series.apiName} against ${time.length} timestamps. A misaligned series would date every Observation after the gap wrongly.`);
 		}
 
 		for (const [index, seconds] of time.entries()) {
