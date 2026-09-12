@@ -124,14 +124,33 @@ const COORDINATE_KEY = /lat|lon|lng|coord/i;
  * ADR 0004 keeps exact coordinates out of the repository entirely; the seed
  * data records a city and a hardiness zone instead. `no-coordinates.spec.ts`
  * already walks the generated JSON Schema for a field shaped like a
- * coordinate, but a schema walk cannot see a value — a `notes` field typed
- * `string` could still hold "32.7357, -97.1081" and pass every schema check
- * there is. Reading the committed file as text, rather than the values Zod
- * parsed out of it, is what makes this catch what the schema walk cannot: a
- * decimal precise enough to be a coordinate, wherever in the file it landed.
+ * coordinate, but a schema walk cannot see a value, so reading the committed
+ * file as text is what catches a number the schema was happy to accept.
+ *
+ * This covers bare JSON numbers only. A decimal inside a quoted string is out
+ * of its reach by design, because a product-label URL or a version string
+ * would otherwise trip it on every run. {@link findCoordinatePairs} covers
+ * the string case, and the two together are what the ADR actually needs.
  */
 export function findLongDecimals(json: string): string[] {
 	return json.match(LONG_DECIMAL) ?? [];
+}
+
+// Two signed decimals of three or more places, separated by a comma, anywhere
+// in the text. Deliberately narrower than LONG_DECIMAL: this one does read
+// inside quoted strings, so it has to match a shape a URL or a version number
+// cannot accidentally take.
+const COORDINATE_PAIR = /-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}/g;
+
+/**
+ * The case {@link findLongDecimals} cannot see: a coordinate pasted into a
+ * free-text field. `site` and `notes` are plain strings, so "32.7357,
+ * -97.1081" sitting in one would satisfy every schema in the repo and ship.
+ * The seed data is hand-authored and a person copying a pin out of a maps app
+ * is the likeliest way this ADR gets broken.
+ */
+export function findCoordinatePairs(json: string): string[] {
+	return json.match(COORDINATE_PAIR) ?? [];
 }
 
 /** Same reasoning as {@link findLongDecimals}, for a key name instead of a value. */

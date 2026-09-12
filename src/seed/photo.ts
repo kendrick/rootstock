@@ -1,8 +1,12 @@
 /**
  * A JPEG segment, as found by walking the file rather than trusting whatever
- * a tool reported. `offset` and `length` point at the segment's own length
- * word, not the marker bytes before it, so a caller that wants to read the
- * payload knows exactly where it starts.
+ * a tool reported.
+ *
+ * For a segment that carries a payload, `offset` points at its length word,
+ * so a caller reading the payload knows where it starts. A marker with no
+ * payload has no length word to point at, so `offset` is the marker byte
+ * itself and `length` is 0. Callers that read a payload must therefore check
+ * `length` first rather than assuming every segment has one.
  */
 export interface JpegSegment {
 	marker: number;
@@ -14,19 +18,20 @@ const SOI = 0xD8;
 const EOI = 0xD9;
 const SOS = 0xDA;
 
-// The eleven Start Of Frame markers, minus 0xC4/0xC8/0xCC: those three numbers
-// fall inside the C0-CF span but name DHT, a reserved marker, and DAC, none of
-// which carry a frame header, so treating the whole span as SOF would read
-// dimensions out of the wrong segment.
+// The thirteen Start Of Frame markers: the C0-CF span minus 0xC4, 0xC8 and
+// 0xCC, which name DHT, a reserved marker, and DAC. None of those three carry
+// a frame header, so treating the whole span as SOF would read dimensions out
+// of the wrong segment.
 const SOF_MARKERS = new Set([0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF]);
 
 export function isStartOfFrame(marker: number): boolean {
 	return SOF_MARKERS.has(marker);
 }
 
-// A marker with no length word: the two RST bytes bracket entropy-coded data
-// that a length-prefixed walk cannot skip over, so these must be recognized
-// by number rather than measured.
+// The markers that carry no length word, so a length-prefixed walk has
+// nothing to measure and must recognize them by number: TEM (0x01), and the
+// eight restart markers RST0 through RST7 (0xD0-0xD7) that punctuate
+// entropy-coded scan data.
 function hasNoPayload(marker: number): boolean {
 	return marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7);
 }
@@ -44,8 +49,10 @@ function byteAt(bytes: Uint8Array, index: number): number {
 }
 
 /**
- * Walks a JPEG buffer marker by marker and returns every segment found. This
- * exists so ADR 0004 (coordinates never enter the repository) has evidence
+ * Walks a JPEG buffer marker by marker and returns the header segments, up to
+ * and including SOS. Everything past SOS is entropy-coded scan data with no
+ * length words to walk, and everything worth asserting about a stripped file
+ * (APP1, SOF) sits before it. This exists so ADR 0004 (coordinates never enter the repository) has evidence
  * independent of the tool that stripped the file: ImageMagick reporting
  * `-strip` ran is not proof the output is clean, only a real walk of the
  * resulting bytes is. Takes no dependency for the same reason — a library's
@@ -107,9 +114,9 @@ export interface FrameDimensions {
 /**
  * Reads width and height out of a SOF segment found by `jpegSegments`. Split
  * out from the walk itself because the walk's job is finding segments, not
- * interpreting one — wave 1 cross-checks these against the committed seed
- * data, and it should be reading the same decode this spec asserts against
- * rather than a second, possibly-diverging one.
+ * interpreting one. `index.spec.ts` checks these dimensions against
+ * `yard.json`, and it reads them through here so both sides of that check
+ * share one decode rather than two that can diverge.
  */
 export function readFrameDimensions(bytes: Uint8Array, segment: JpegSegment): FrameDimensions {
 	if (!isStartOfFrame(segment.marker)) {

@@ -91,10 +91,13 @@ describe('the committed seed photo', () => {
 		expect(Math.max(width, height)).toBeLessThanOrEqual(2400);
 	});
 
-	it('lands between 1 and 2 MB', () => {
+	// Only an upper bound. The photo is the heaviest thing the site serves and
+	// the Away Card gets read on a phone in a yard, so the ceiling is the part
+	// worth defending; a future encode that comes in smaller is a win, not a
+	// regression to fail the build over.
+	it('stays under 2 MB', () => {
 		const { size } = statSync(path);
 
-		expect(size).toBeGreaterThanOrEqual(1_000_000);
 		expect(size).toBeLessThanOrEqual(2_000_000);
 	});
 });

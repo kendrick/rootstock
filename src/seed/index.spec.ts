@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import {
 	findCoordinateKeys,
+	findCoordinatePairs,
 	findDuplicateIds,
 	findLongDecimals,
 	findRulesPastWindow,
@@ -219,6 +220,10 @@ describe('value-level coordinate check (ADR 0004)', () => {
 		it(`${file} carries no key that reads like a coordinate`, () => {
 			expect(findCoordinateKeys(text)).toEqual([]);
 		});
+
+		it(`${file} carries no coordinate pair inside a string`, () => {
+			expect(findCoordinatePairs(text)).toEqual([]);
+		});
 	}
 
 	// A check that cannot fail is worse than no check: proves the detectors
@@ -235,6 +240,19 @@ describe('value-level coordinate check (ADR 0004)', () => {
 
 	it('reports a key that reads like a coordinate', () => {
 		expect(findCoordinateKeys('{"lat": 1, "longitude": 2, "name": "fine"}')).toEqual(['lat', 'longitude']);
+	});
+
+	// The leak a hand-authored seed file is likeliest to spring: someone pastes
+	// a pin out of a maps app into a free-text field, where no schema and no
+	// bare-number scan can see it.
+	it('reports a coordinate pair pasted into a free-text string', () => {
+		expect(findCoordinatePairs('{"notes": "32.7357, -97.1081"}')).toEqual(['32.7357, -97.1081']);
+	});
+
+	it('does not mistake a product-label URL or a version string for a coordinate pair', () => {
+		const text = '{"url": "https://example.com/SCP%201139A-L10C%200121.pdf", "v": "1.2.3, 4.5.6"}';
+
+		expect(findCoordinatePairs(text)).toEqual([]);
 	});
 });
 
