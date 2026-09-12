@@ -1,1 +1,51 @@
 @import 'tailwindcss';
+
+/* Roles, not palette entries. components.json already commits this repo to
+   shadcn's token vocabulary, so the shell names what a color is for and lets
+   the value live in one place. `@theme inline` is what lets these resolve
+   against another custom property rather than being frozen at build time.
+   Single dark palette, no `.dark` class: the shell has one theme, built from
+   the zinc scale components.json already names as the base color. */
+:root {
+	--background: var(--color-zinc-950);
+	--foreground: var(--color-zinc-50);
+	--card: var(--color-zinc-950);
+	--card-foreground: var(--color-zinc-50);
+	--popover: var(--color-zinc-950);
+	--popover-foreground: var(--color-zinc-50);
+	--primary: var(--color-zinc-50);
+	--primary-foreground: var(--color-zinc-900);
+	--secondary: var(--color-zinc-800);
+	--secondary-foreground: var(--color-zinc-50);
+	--muted: var(--color-zinc-800);
+	--muted-foreground: var(--color-zinc-400);
+	--accent: var(--color-zinc-800);
+	--accent-foreground: var(--color-zinc-50);
+	--destructive: var(--color-red-900);
+	--destructive-foreground: var(--color-zinc-50);
+	--border: var(--color-zinc-800);
+	--input: var(--color-zinc-800);
+	--ring: var(--color-zinc-300);
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+}

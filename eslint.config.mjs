@@ -60,6 +60,10 @@ export default antfu(
 			// Generated output from scripts/generate-schema.ts. Linting it would report
 			// problems that can only be fixed by editing the generator, not this file.
 			'schemas',
+			// Generated output: the committed Artifact and status record a generation run
+			// writes. lint-staged runs `eslint --fix` over *.json, which would reformat
+			// these away from the writer's own tab-indented shape.
+			'data',
 		],
 	},
 	{

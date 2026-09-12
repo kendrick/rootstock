@@ -1,0 +1,430 @@
+{
+	"version": 1,
+	"generatedAt": "2026-09-11T11:04:09Z",
+	"plan": {
+		"asOf": "2026-09-11",
+		"tasks": [
+			{
+				"id": "fall-pre-emergent@front-lawn",
+				"ruleId": "fall-pre-emergent",
+				"plantId": "front-lawn",
+				"status": "fired",
+				"citation": {
+					"kind": "window",
+					"date": "2026-09-11"
+				},
+				"deferrals": [],
+				"annotations": [
+					{
+						"guardId": "water-in-after-application",
+						"text": "Water in with a quarter inch within 48 hours."
+					}
+				],
+				"delegable": false,
+				"tags": [
+					"lawn",
+					"chemical"
+				],
+				"title": "Apply fall pre-emergent to the front lawn"
+			},
+			{
+				"id": "last-nitrogen@front-lawn",
+				"ruleId": "last-nitrogen",
+				"plantId": "front-lawn",
+				"status": "fired",
+				"citation": {
+					"kind": "window",
+					"date": "2026-09-11"
+				},
+				"deferrals": [],
+				"annotations": [],
+				"delegable": true,
+				"tags": [
+					"lawn",
+					"fertilizer",
+					"nitrogen"
+				],
+				"title": "Put down the last nitrogen of the year on the front lawn"
+			},
+			{
+				"id": "deep-water-fig@fig-1",
+				"ruleId": "deep-water-fig",
+				"plantId": "fig-1",
+				"status": "deferred",
+				"citation": {
+					"kind": "cadence",
+					"lastOccurrenceId": "deep-water-fig-2026-08-24",
+					"elapsedDays": 18
+				},
+				"deferrals": [
+					{
+						"guardId": "rain-expected",
+						"releaseWhen": "No day above a 50% chance of rain in the next two days"
+					}
+				],
+				"annotations": [],
+				"delegable": true,
+				"tags": [
+					"watering"
+				],
+				"title": "Deep water the fig"
+			}
+		],
+		"window": [
+			{
+				"date": "2026-08-13",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 78,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-14",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 77.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-15",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 77.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-16",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 76.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-17",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 76.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-18",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 76,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-19",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 75.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-20",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 75.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-21",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 74.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-22",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 74.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-23",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 74,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-24",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 73.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-25",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 73.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-26",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 72.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-27",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 72.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-28",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 72,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-29",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 71.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-30",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 71.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-08-31",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 70.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-01",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 70.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-02",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 70,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-03",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 69.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-04",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 69.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-05",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 68.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-06",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 68.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-07",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 68,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-08",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 67.6,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-09",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 67.2,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-10",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 66.8,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-11",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 66.4,
+				"unit": "F",
+				"basis": "observed",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-12",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 65.4,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-13",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 64.1,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			}
+		]
+	},
+	"narration": null,
+	"narrated": false
+}
