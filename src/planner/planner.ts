@@ -1,7 +1,7 @@
 import type { OrderableTask } from './order';
 import type { DailyAggregate, Plan } from './plan';
 import type { Citation, Task } from './task';
-import type { CadenceRule, Rule, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { CadenceRule, GuardCondition, Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
 import type { Aggregate, Variable } from '@/weather/observation';
 import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
@@ -11,6 +11,8 @@ import { plantSchema } from '@/yard/plant';
 import { toDailyAggregates } from './aggregate';
 import { evaluateCadenceRule } from './cadence-rule';
 import { daysBetween } from './dates';
+import { isDelegable } from './delegation';
+import { applyGuards } from './guards';
 import { occurrenceSchema } from './occurrence';
 import { orderTasks } from './order';
 import { PLAN_WINDOW_DAYS } from './plan';
@@ -117,23 +119,37 @@ type TaskCreatingRule = WindowRule | ThresholdRule | CadenceRule;
  * past the constant widens the window, and shortening the Rule to fit the days
  * on hand is the repair the ADR rules out.
  *
- * Guards widen the span too, though nothing here runs one yet, and it is worth
- * being exact about how far that gets #7. The span will be long enough for a
- * `no-rain-within` Guard, and that is all it is. `buildWindow` collects series
- * from Threshold Rules alone, so no precipitation reaches the window at any
- * span. Whoever writes the Guard pass has to widen that collection as well: a
- * Guard handed an empty series finds no rain, releases the work it exists to
- * hold, and says nothing about having done so.
+ * The Guard arm is worth reading twice, because the two runs of days it
+ * compares do not point the same way. `consecutiveDays` reaches backwards and
+ * this span bounds history, so a Threshold Rule widening it is the ADR's case
+ * exactly. `no-rain-within` reaches forwards, and `buildWindow` bounds the
+ * forecast by what was fetched rather than by this number, so widening the
+ * history on a Guard's horizon buys that Guard nothing. At the days the yard
+ * actually uses it changes nothing either: the rain Guard looks two days out
+ * against a thirty-day floor. It is left here because trimming a Rule's stated
+ * lookback is the repair ADR 0003 rules out, and no Rule has yet asked for a
+ * number that makes the difference visible.
  */
+/**
+ * Narrows a Rule to the one Guard shape that reads weather, so the two places
+ * that care about it ask the same question rather than each spelling out the
+ * pair of checks. A Guard on any other condition is settled by the date alone
+ * and asks the window for nothing.
+ */
+function rainForecastGuard(rule: Rule): Extract<GuardCondition, { kind: 'no-rain-within' }> | null {
+	return rule.kind === 'guard' && rule.condition.kind === 'no-rain-within' ? rule.condition : null;
+}
+
 function windowSpan(rules: Rule[]): number {
 	let days = PLAN_WINDOW_DAYS;
 
 	for (const rule of rules) {
+		const rain = rainForecastGuard(rule);
 		if (rule.kind === 'threshold') {
 			days = Math.max(days, rule.consecutiveDays);
 		}
-		else if (rule.kind === 'guard' && rule.condition.kind === 'no-rain-within') {
-			days = Math.max(days, rule.condition.days);
+		else if (rain !== null) {
+			days = Math.max(days, rain.days);
 		}
 	}
 
@@ -156,18 +172,30 @@ function seriesKey(variable: Variable, depthCm: number | null): string {
  * as a mean share a single pass over the hourly Observations; fanning out per
  * triple would re-reduce the same thirty days once per Rule, and the yard's
  * Rule set grows faster than its variable list does.
+ *
+ * A Threshold Rule names its own series. A `no-rain-within` Guard does not, so
+ * the one it reads is added on its behalf: chance of rain, at no depth,
+ * reduced to a daily maximum. `evaluateGuardCondition` refuses a mean row, so
+ * collecting the mean would hand the Guard a series it may not read, which
+ * lands on the same verdict as collecting nothing at all and is harder to spot
+ * from a window that looks full.
  */
 function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 	const wanted = new Map<Aggregate, Set<string>>();
 
-	for (const rule of rules) {
-		if (rule.kind !== 'threshold') {
-			continue;
-		}
+	function want(aggregate: Aggregate, key: string): void {
+		const keys = wanted.get(aggregate) ?? new Set<string>();
+		keys.add(key);
+		wanted.set(aggregate, keys);
+	}
 
-		const keys = wanted.get(rule.aggregate) ?? new Set<string>();
-		keys.add(seriesKey(rule.variable, rule.depthCm));
-		wanted.set(rule.aggregate, keys);
+	for (const rule of rules) {
+		if (rule.kind === 'threshold') {
+			want(rule.aggregate, seriesKey(rule.variable, rule.depthCm));
+		}
+		else if (rainForecastGuard(rule) !== null) {
+			want('max', seriesKey('precipitation-probability', null));
+		}
 	}
 
 	return wanted;
@@ -187,16 +215,18 @@ function compareDepth(left: number | null, right: number | null): number {
 }
 
 /**
- * The DailyAggregates the Threshold Rules actually read, which is what ADR
- * 0003 says travels with the Plan. Only the series some Rule consults are
- * carried: reducing every variable the weather layer happened to fetch would
- * put soil moisture nobody reads in the published file, and the window is a
- * budget somebody spends deliberately.
+ * The DailyAggregates the Rules actually read—the runs a Threshold Rule
+ * measures, and the rain a Guard checks for—which is what ADR 0003 says
+ * travels with the Plan. Only the series some Rule consults are carried:
+ * reducing every variable the weather layer happened to fetch would put soil
+ * moisture nobody reads in the published file, and the window is a budget
+ * somebody spends deliberately.
  *
  * The trailing span bounds the history alone. Every forecast day on hand is
  * carried however far out it sits, because a Threshold Rule's `approaching`
- * verdict is drawn from exactly those days, and a Citation naming a projected
- * date past the window's end is one the interface cannot draw.
+ * verdict is drawn from exactly those days, as is everything a
+ * `no-rain-within` Guard has to go on, and a Citation naming a projected date
+ * past the window's end is one the interface cannot draw.
  *
  * The assembled array gets its own sort even though `toDailyAggregates`
  * returns each call already sorted. The days arrive one reduction at a time,
@@ -302,15 +332,16 @@ function titleFor(rule: TaskCreatingRule, plant: Plant | null, titleSuffix: stri
  * facts the ordering needs and a Task does not carry.
  *
  * This is a named function and not a stretch of `plan()` because the Guard
- * pass slots in at exactly this seam: Guards run over finished Tasks, per ADR
+ * pass runs at exactly this seam: Guards run over finished Tasks, per ADR
  * 0002, so there has to be a moment where the Tasks exist and nothing has
  * ranked them yet.
  *
- * `delegable` is copied off the Rule verbatim. Narrowing it by the TagPolicy's
- * `neverDelegableTags` is the Guard pass's job and deliberately not done
- * twice: the policy only ever narrows, so a second place applying it would
- * pass every test right up until the day the two disagreed about which tags
- * count.
+ * `delegable` is copied off the Rule verbatim and narrowed afterwards, by
+ * `plan()`, against the TagPolicy's `neverDelegableTags`. One site applies the
+ * policy because the policy can only ever narrow: a second site would agree
+ * with the first through every test written today and diverge the day the two
+ * read the tag list differently. The Away Card is where that divergence would
+ * surface, and it is the wrong place to discover it.
  */
 function createTasks(input: PlanInput, window: DailyAggregate[]): OrderableTask[] {
 	const orderables: OrderableTask[] = [];
@@ -355,6 +386,52 @@ function createTasks(input: PlanInput, window: DailyAggregate[]): OrderableTask[
 }
 
 /**
+ * Settles what a Task's `delegable` finally says, once for each Task and in
+ * one place.
+ *
+ * The Rule is looked up by `ruleId` rather than carried down from
+ * `createTasks`, so the field the Away Card reads is computed from the Rule
+ * set the Plan was built out of rather than from something the authoring pass
+ * remembered on its way past. A Task citing a Rule nobody handed in means the
+ * Plan is already broken, so it throws instead of publishing a guess about who
+ * is allowed to do the work.
+ */
+function stampDelegability(tasks: Task[], rules: Rule[], tagPolicy: TagPolicy): Task[] {
+	return tasks.map((task) => {
+		const rule = rules.find(candidate => candidate.id === task.ruleId);
+		if (rule === undefined) {
+			throw new Error(`task '${task.id}' cites the rule '${task.ruleId}', which is not in the rule set the plan was built from`);
+		}
+
+		return { ...task, delegable: isDelegable(rule, tagPolicy) };
+	});
+}
+
+/**
+ * Puts each guarded Task back beside the specificity and priority its original
+ * arrived with, which `applyGuards` neither takes nor returns.
+ *
+ * Paired by id, never by position. `planSchema` refines Task ids unique within
+ * a Plan, so an id is a real key. An index is a standing bet that the Guard
+ * pass hands its Tasks back in the order it was given them, and the day that
+ * bet stops paying, a Task is ranked by another Task's priority and nothing in
+ * the Plan says so. A missing id throws for the same reason, rather than
+ * letting a `Map.get` miss become an `undefined` somewhere inside the Plan.
+ */
+function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableTask[] {
+	const byId = new Map(tasks.map(task => [task.id, task]));
+
+	return orderables.map((entry) => {
+		const task = byId.get(entry.task.id);
+		if (task === undefined) {
+			throw new Error(`the guard pass returned no task for '${entry.task.id}'`);
+		}
+
+		return { ...entry, task };
+	});
+}
+
+/**
  * Turns one day's inputs into the Plan for that date.
  *
  * Everything here is derived from the arguments. There is no clock read, no
@@ -370,6 +447,17 @@ function createTasks(input: PlanInput, window: DailyAggregate[]): OrderableTask[
  * history every other Rule then reads, instead of each Rule getting whatever
  * days its own lookback happened to reach.
  *
+ * The Guard pass sits between the authoring and the ordering, for reasons
+ * `applyGuards` sets out rather than repeats here. What that placement costs
+ * is local and visible: ordering needs a Rule's specificity and priority, a
+ * Task carries neither, and `applyGuards` has no use for either, so the Tasks
+ * come apart from their ranking facts and go back together around the pass.
+ *
+ * Delegability is stamped here, after the Guards and before the sort, and
+ * nowhere else. The tag policy narrows what a Rule already claimed, and a
+ * narrowing applied in two places is one that can eventually disagree with
+ * itself about which tags count. `isDelegable` owns the direction it reads in.
+ *
  * Nothing here calls `planSchema.parse`. This repo validates at its
  * boundaries—`parseWith` in src/validation/parse.ts, at the generation run
  * that writes the Artifact—and a function re-parsing what it just built would
@@ -380,9 +468,13 @@ export function plan(input: PlanInput): Plan {
 	const window = buildWindow(input, windowSpan(input.rules));
 	const orderables = createTasks(input, window);
 
+	const authored = orderables.map(entry => entry.task);
+	const guarded = applyGuards(authored, input.rules, input.plants, window, input.asOf);
+	const tasks = stampDelegability(guarded, input.rules, input.tagPolicy);
+
 	return {
 		asOf: input.asOf,
-		tasks: orderTasks(orderables, input.tagPolicy),
+		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
 		window,
 	};
 }

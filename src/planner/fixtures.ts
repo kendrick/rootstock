@@ -230,6 +230,134 @@ export const rules: Rule[] = parseWith(z.array(ruleSchema), 'planner fixtures: r
 ]);
 
 /**
+ * A Cadence Rule with no Occurrence behind it and no season fence, so it fires
+ * on the fixture `asOf` with nothing else in play. `figFertilizerGuard` below
+ * is what actually holds it back; on its own this Rule would put a Task for
+ * feeding the fig into every Plan a wave downstream builds from it.
+ */
+export const figFertilizerRule: Rule = parseWith(ruleSchema, 'planner fixtures: fig fertilizer rule')({
+	id: 'fig-fertilizer',
+	name: 'Feed the fig',
+	kind: 'cadence',
+	region,
+	source: ownerSource,
+	tags: ['fertilizer'],
+	delegable: true,
+	priority: 35,
+	appliesTo: { plantIds: ['fig-1'], plantTags: null, ruleTags: null },
+	productLabel: null,
+	everyDays: { min: 28, max: 42 },
+	season: null,
+	after: null,
+});
+
+/**
+ * Defers `fig-fertilizer` by naming it on both selectors at once.
+ * `appliesTo` reads as OR within one selector and AND across them, so
+ * `ruleTags: ['fertilizer']` alone would also catch some future lawn Rule
+ * tagged the same way, and `plantIds: ['fig-1']` alone would catch any future
+ * Rule that targets the fig regardless of what it does. Naming both is what
+ * keeps this Guard pointed at exactly the fig's feeding and nothing beside
+ * it.
+ */
+export const figFertilizerGuard: Rule = parseWith(ruleSchema, 'planner fixtures: fig fertilizer guard')({
+	id: 'fig-fertilizer-until-spring',
+	name: 'Hold fig feeding until spring',
+	kind: 'guard',
+	region,
+	source: ownerSource,
+	tags: ['fertilizer'],
+	delegable: false,
+	priority: 92,
+	appliesTo: { plantIds: ['fig-1'], plantTags: null, ruleTags: ['fertilizer'] },
+	productLabel: null,
+	condition: { kind: 'within-window', start: '03-01', end: '06-30', negate: true },
+	effect: 'defer',
+	release: 'Feeding resumes once the calendar reaches spring, March through June.',
+});
+
+/**
+ * Tagged `chemical` but authored with `delegable: true`, so nothing about the
+ * Rule itself keeps it off the Away Card. Every chemical Rule in `rules`
+ * already refuses delegation on its own field, which would let
+ * `neverDelegableTags` rot in the tag policy without a fixture ever asking it
+ * to do the narrowing it exists for.
+ */
+export const delegableChemicalRule: Rule = parseWith(ruleSchema, 'planner fixtures: delegable chemical rule')({
+	id: 'fungicide-preventive',
+	name: 'Preventive fungicide on the front lawn',
+	kind: 'window',
+	region,
+	source: extensionSource,
+	tags: ['lawn', 'chemical'],
+	delegable: true,
+	priority: 45,
+	appliesTo: { plantIds: ['front-lawn'], plantTags: null, ruleTags: null },
+	productLabel: { url: 'https://example.com/labels/fungicide-generic.pdf' },
+	start: '09-01',
+	end: '09-20',
+});
+
+/**
+ * A `priority` well below every other fixture Rule's, so sorting on priority
+ * alone would put this first in a Plan. `safetyGuard` below is the other half
+ * of the point: neither Rule proves anything on its own, only the pair does,
+ * by disagreeing about whether this Task should lead.
+ */
+export const highPriorityRule: Rule = parseWith(ruleSchema, 'planner fixtures: high priority rule')({
+	id: 'fig-prune-first',
+	name: 'Prune the fig before anything else',
+	kind: 'window',
+	region,
+	source: ownerSource,
+	tags: ['pruning'],
+	delegable: true,
+	priority: -50,
+	appliesTo: { plantIds: ['fig-1'], plantTags: null, ruleTags: null },
+	productLabel: null,
+	start: '09-01',
+	end: '09-20',
+});
+
+/**
+ * Tagged `ladder`, one of `tagPolicy.safetyTags`, and aimed at
+ * `highPriorityRule` through `ruleTags: ['pruning']` rather than at the fig by
+ * ID, the way a real ladder warning reaches any pruning job and not just this
+ * one. A Plan sorts safety ahead of priority, so this is the fixture that
+ * proves a Guard outranks a Rule that asked to go first, not merely one that
+ * asked to go last.
+ */
+export const safetyGuard: Rule = parseWith(ruleSchema, 'planner fixtures: safety guard')({
+	id: 'ladder-work-safety',
+	name: 'Hold ladder work for a spotter',
+	kind: 'guard',
+	region,
+	source: ownerSource,
+	tags: ['ladder'],
+	delegable: false,
+	priority: 95,
+	appliesTo: { plantIds: null, plantTags: null, ruleTags: ['pruning'] },
+	productLabel: null,
+	condition: { kind: 'always' },
+	effect: 'defer',
+	release: 'Release once someone is on the ground to spot the ladder.',
+});
+
+/**
+ * `rules` plus the five above, parsed once so a spec can pull in the whole
+ * guard-and-priority scenario with one import instead of spreading five names
+ * into an array at every call site that wants it.
+ */
+export const guardScenarioRules: Rule[] = parseWith(z.array(ruleSchema), 'planner fixtures: guard scenario rules')([
+	...rules,
+	figFertilizerRule,
+	figFertilizerGuard,
+	delegableChemicalRule,
+	highPriorityRule,
+	safetyGuard,
+]);
+
+/**
  * Two feedings behind `esperanza-feeding` and nothing at all behind
  * `fall-pre-emergent-split`. The pair is the point: a Cadence Rule counts from
  * the most recent matching Occurrence, and one with none still fires, so a
@@ -306,6 +434,16 @@ function soilTemperatureAt(daysBeforeAsOf: number, localHour: number): number {
 	return round(soilTemperatureMean(daysBeforeAsOf) + swing);
 }
 
+/*
+ * The front arrives one loop index ahead of the plateau: daysAfterAsOf 0 stays
+ * mostly dry, 1 spikes to a 70% afternoon chance, and 2 relaxes back toward
+ * the same low chance as everything else. Because `forecastRain` paints its
+ * loop index against `asOf + index + 1`, the spike lands on the day two
+ * calendar days after `asOf`, not one—which is exactly the day
+ * `rain-expected`'s `no-rain-within` needs above 50% inside its two-day
+ * lookahead. Moving the spike to index 0, or dropping it below 50, clears the
+ * Guard without touching the Guard's own condition.
+ */
 function rainChance(daysAfterAsOf: number, localHour: number): number {
 	let peak = 20;
 	if (daysAfterAsOf === 0) {
