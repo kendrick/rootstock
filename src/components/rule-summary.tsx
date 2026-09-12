@@ -1,0 +1,276 @@
+import type { ReactElement, ReactNode } from 'react';
+import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { Aggregate, Unit, Variable } from '@/weather/observation';
+import { ExternalLink, Shield, Users, UserX } from 'lucide-react';
+import { SourceBadge } from '@/components/source-badge';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { isDelegable } from '@/planner/delegation';
+import { seedTagPolicy } from '@/seed';
+
+/**
+ * The enum values are wire spellings, not prose. A household member reads this
+ * in the yard, and `soil-temperature` beside `gte` reads as a dump of the JSON
+ * rather than as a sentence about the lawn.
+ */
+const VARIABLE_TEXT: Record<Variable, string> = {
+	'soil-temperature': 'soil temperature',
+	'precipitation': 'rainfall',
+	'precipitation-probability': 'chance of rain',
+};
+
+const AGGREGATE_TEXT: Record<Aggregate, string> = {
+	mean: 'mean',
+	min: 'minimum',
+	max: 'maximum',
+	sum: 'total',
+};
+
+const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
+	gte: 'at or above',
+	lte: 'at or below',
+};
+
+function formatValue(value: number, unit: Unit): string {
+	switch (unit) {
+		case 'F':
+			return `${value}°F`;
+		case 'mm':
+			return `${value} mm`;
+		case 'percent':
+			return `${value}%`;
+	}
+}
+
+const MONTHS = [
+	'January',
+	'February',
+	'March',
+	'April',
+	'May',
+	'June',
+	'July',
+	'August',
+	'September',
+	'October',
+	'November',
+	'December',
+];
+
+/**
+ * MM-DD is deliberately yearless — rule.ts keeps the fall pre-emergent window
+ * attached to every September rather than to 2026 — so this splits the string
+ * instead of going through `Date`. A parsed Date would have to borrow a year,
+ * and a borrowed year plus the reader's timezone is how "August 20" renders as
+ * August 19 for somebody west of the yard.
+ */
+function formatMonthDay(monthDay: string): string {
+	const [month, day] = monthDay.split('-');
+	const name = month === undefined ? undefined : MONTHS[Number(month) - 1];
+
+	return name === undefined || day === undefined ? monthDay : `${name} ${Number(day)}`;
+}
+
+function Row({ term, children }: { term: string; children: ReactNode }): ReactElement {
+	return (
+		<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+			<dt className="shrink-0 text-muted-foreground">{term}</dt>
+			<dd className="flex flex-wrap items-center gap-x-2 gap-y-1 text-foreground">{children}</dd>
+		</div>
+	);
+}
+
+function WindowRows({ rule }: { rule: WindowRule }): ReactElement {
+	return (
+		<Row term="Window">
+			{`${formatMonthDay(rule.start)} through ${formatMonthDay(rule.end)}`}
+		</Row>
+	);
+}
+
+function thresholdSentence(rule: ThresholdRule): string {
+	const depth = rule.depthCm === null ? '' : ` at ${rule.depthCm} cm`;
+	const run = rule.consecutiveDays === 1
+		? 'for one day'
+		: `for ${rule.consecutiveDays} consecutive days`;
+
+	return `Daily ${AGGREGATE_TEXT[rule.aggregate]} ${VARIABLE_TEXT[rule.variable]}${depth}, `
+		+ `${COMPARISON_TEXT[rule.comparison]} ${formatValue(rule.value, rule.unit)} ${run}`;
+}
+
+function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
+	return (
+		<>
+			<Row term="Fires when">{thresholdSentence(rule)}</Row>
+			{/*
+			 * The published range sits beside the single number the yard acts on,
+			 * never in place of it. rule.ts makes the case: AgriLife printed 50 to
+			 * 55F and this yard picked 55, and that narrowing is a local judgment.
+			 * Showing only the acted-on number hides the judgment; showing only the
+			 * range hides what will actually happen. The range carries its own
+			 * SourceBadge because the extension sheet that printed it is frequently
+			 * not the same document as the Rule's own source.
+			 */}
+			{rule.published !== null && (
+				<Row term="Published range">
+					<span>{`${rule.published.low} to ${formatValue(rule.published.high, rule.unit)}`}</span>
+					<SourceBadge source={rule.published.source} />
+				</Row>
+			)}
+		</>
+	);
+}
+
+function CadenceRows({ rule }: { rule: Extract<Rule, { kind: 'cadence' }> }): ReactElement {
+	const interval = rule.everyDays.min === rule.everyDays.max
+		? `${rule.everyDays.min} days`
+		: `${rule.everyDays.min} to ${rule.everyDays.max} days`;
+
+	return (
+		<>
+			<Row term="Every">{interval}</Row>
+			{rule.season !== null && (
+				<Row term="Season">
+					{`${formatMonthDay(rule.season.start)} through ${formatMonthDay(rule.season.end)}`}
+				</Row>
+			)}
+			{/*
+			 * CONTEXT.md's Anchor: a follow-up measures its interval from the Rule it
+			 * follows, not from itself. The ID is rendered raw because this component
+			 * is handed one Rule and has no rule set to resolve a name against — and
+			 * accepting one just to prettify a string would put a second source of
+			 * Rules into a view that only describes the one it was given.
+			 */}
+			{rule.after !== null && (
+				<Row term="Measured from">
+					<code className="font-mono">{rule.after.ruleId}</code>
+				</Row>
+			)}
+		</>
+	);
+}
+
+/**
+ * ADR 0002 gives a Guard two effects and no third, so the words here are
+ * exhaustive on purpose: a reader who sees neither sentence is looking at an
+ * effect nobody decided the consequences of. Neither sentence carries the
+ * Guard's own `release` or `text` — those describe what happened to one Task,
+ * and this component describes the Rule in the abstract. The deferred section
+ * renders `releaseWhen` where a reader is actually looking at held work.
+ */
+const GUARD_EFFECT_TEXT: Record<Extract<Rule, { kind: 'guard' }>['effect'], string> = {
+	defer: 'Defers the Task until its release condition is met',
+	annotate: 'Annotates the Task, and holds no work back',
+};
+
+export interface RuleSummaryProps {
+	rule: Rule;
+	/**
+	 * The Planner's stamped answer, when a Task supplied one. Null or omitted and
+	 * the component falls back to isDelegable(rule, tagPolicy).
+	 */
+	delegable?: boolean | null;
+	tagPolicy?: TagPolicy;
+}
+
+/**
+ * What a Rule says, with no date on it. The dated evidence behind a particular
+ * Task is a Citation and lives in `citation.tsx`, which composes this; the
+ * split is what lets the Rules route render the same summary for a Rule that
+ * produced no Task this week — including a Guard, which never produces one at
+ * all.
+ *
+ * No heading element anywhere below. This renders inside a `<details>` on the
+ * This Week route and inside a list on the Rules route, so its depth is set by
+ * whoever composed it; a heading here would land at a level that is right in
+ * one place and wrong in the other. The route owns the page's only h1.
+ */
+export function RuleSummary({
+	rule,
+	delegable = null,
+	tagPolicy = seedTagPolicy,
+}: RuleSummaryProps): ReactElement {
+	// The stamped flag wins when there is one. `isDelegable` has already been
+	// applied to it by the Planner, and CONTEXT.md's Delegable entry says tag
+	// policy only ever narrows — so the stamp is the narrowed answer, and asking
+	// again here would be the same question with a second chance to answer it
+	// differently. The fallback exists for the Rules route, which renders Rules
+	// that produced no Task and so has no stamp to read.
+	const canDelegate = typeof delegable === 'boolean' ? delegable : isDelegable(rule, tagPolicy);
+	const DelegableIcon = canDelegate ? Users : UserX;
+
+	return (
+		<div className="space-y-2 text-sm">
+			<div className="flex flex-wrap items-center gap-2">
+				<span className="font-medium text-foreground">{rule.name}</span>
+				<SourceBadge source={rule.source} />
+			</div>
+
+			<dl className="space-y-1">
+				<Row term="Region">
+					{`${rule.region.name} · Zone ${rule.region.hardinessZone}`}
+				</Row>
+
+				{rule.kind === 'window' && <WindowRows rule={rule} />}
+				{rule.kind === 'threshold' && <ThresholdRows rule={rule} />}
+				{rule.kind === 'cadence' && <CadenceRows rule={rule} />}
+				{rule.kind === 'guard' && <Row term="Effect">{GUARD_EFFECT_TEXT[rule.effect]}</Row>}
+
+				{/*
+				 * Reached through `productLabel` and never through the chemical tag.
+				 * `ruleSchema` already refuses to parse a Rule tagged chemical without
+				 * one, so the field is the answer; a tag test here would be a second,
+				 * weaker copy of that policy living in a view, and ADR 0002 is blunt
+				 * about which way a view-layer string match fails.
+				 *
+				 * The link is the whole of it. rule.ts is explicit that this app never
+				 * restates a mixing rate or a re-entry interval: the label is the legal
+				 * instruction and a paraphrase of it goes stale the day the formulation
+				 * changes.
+				 */}
+				{rule.productLabel !== null && (
+					<Row term="Product label">
+						<a
+							href={rule.productLabel.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className={cn(
+								'inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 outline-none',
+								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+							)}
+						>
+							Read the manufacturer&rsquo;s label
+							<ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
+						</a>
+					</Row>
+				)}
+			</dl>
+
+			<div className="flex flex-wrap items-center gap-2">
+				{/*
+				 * A Guard reaching a reader outside a Task — on the Rules route, say —
+				 * looks exactly like a Rule that asks for work unless it says otherwise
+				 * on its face. CONTEXT.md's Guard entry is the sentence.
+				 */}
+				{rule.kind === 'guard' && (
+					<Badge variant="outline" className="gap-1.5">
+						<Shield aria-hidden="true" className="size-3.5 shrink-0" />
+						<span>Guard &middot; creates no work</span>
+					</Badge>
+				)}
+
+				{/*
+				 * Word and icon shape, not colour. A reader with a colour-vision
+				 * deficiency has to be able to tell delegable work from work that stays
+				 * with the owner, and this is the flag that decides whether a Task can
+				 * be handed to somebody else while the owner is away — see the docblock
+				 * in source-badge.tsx for the longer version of the argument.
+				 */}
+				<Badge variant={canDelegate ? 'secondary' : 'outline'} className="gap-1.5">
+					<DelegableIcon aria-hidden="true" className="size-3.5 shrink-0" />
+					<span>{canDelegate ? 'Delegable' : 'Not delegable'}</span>
+				</Badge>
+			</div>
+		</div>
+	);
+}
