@@ -8,7 +8,7 @@ import { daysBetween, isWithinMonthDayRange } from './dates';
  *
  * A Guard applies its effect when its condition is met, so 'unmet' is a claim
  * about the evidence rather than a gap in it: the Planner looked, and the yard
- * is clear. That claim releases work. `rain-expected` exists to hold watering
+ * is clear. That claim lets work go ahead. `rain-expected` exists to hold watering
  * and spraying back ahead of a storm, and an 'unmet' it never earned puts
  * pre-emergent down the afternoon before two inches of rain carry it into the
  * street.
@@ -17,7 +17,7 @@ import { daysBetween, isWithinMonthDayRange } from './dates';
  * was never collected, the forecast does not reach the day, the rows on hand
  * are the wrong reduction. A boolean makes all of those look like a clear sky.
  * What the Guard pass does with the third value is ADR 0002's business: it has
- * a Task it may annotate and no path to release one quietly. It cannot make
+ * a Task it may annotate and no path to let one through quietly. It cannot make
  * that choice unless this function hands it the difference.
  */
 export type GuardVerdict = 'met' | 'unmet' | 'unavailable';
@@ -33,8 +33,8 @@ type RainCondition = Extract<GuardCondition, { kind: 'no-rain-within' }>;
  * its daily maximum are different numbers off the same hours: a front that
  * sits over the yard for four hours of an otherwise dry day reads 70 as a max
  * and something near 15 as a mean. Taking a mean row for the maximum
- * understates the storm, and understating the storm is how the Guard releases
- * work it was written to hold.
+ * understates the storm, and understating the storm is how the Guard lets
+ * through work it was written to hold.
  *
  * `basis` is matched for the reverse reason. A forecast is the only thing
  * that can say anything about a day that has not happened, and the horizon is
@@ -79,7 +79,7 @@ function rainChanceDays(
  * around that case. `buildWindow` in planner.ts collects series from Threshold
  * Rules alone, so today a `no-rain-within` Guard is handed a window with no
  * precipitation in it at all. Answering 'unmet' there would be a lie the Plan
- * has no way to show: the Guard finds no rain, releases the watering, and the
+ * has no way to show: the Guard finds no rain, lets the watering go ahead, and the
  * published artifact looks exactly like a morning the forecast really was
  * clear. The verdict stays 'unavailable' after the collection widens, too,
  * because the forecast can still run out before the Guard's horizon does, and
@@ -94,7 +94,7 @@ function rainChanceDays(
  * through to some verdict nobody chose for it. `verdictFor` in planner.ts
  * refuses a default for the same reason, and the cost of getting it wrong is
  * worse here: an unhandled Rule kind authors no work, while an unhandled Guard
- * condition releases work that should have been held.
+ * condition lets through work that should have been held.
  */
 export function evaluateGuardCondition(
 	condition: GuardCondition,

@@ -114,7 +114,7 @@ const ladderGuard = asGuard(safetyGuard);
  * A `no-rain-within` Guard that annotates instead of deferring. The fixtures
  * carry no such pairing, and the branch under test needs one. An annotate
  * Guard holds nothing back, so a version of `applyGuards` that treated
- * 'unavailable' as "release what you were about to defer" would have nothing
+ * 'unavailable' as "undo the deferral you were about to add" would have nothing
  * to do here and would pass on every fixture Guard. It still owes the reader
  * the sentence saying nobody checked.
  */
@@ -322,7 +322,7 @@ describe('applyGuards', () => {
 	});
 
 	describe('an unavailable forecast', () => {
-		it('releases the work a defer Guard would have held, and says so', () => {
+		it('adds no deferral where a defer Guard would have held the work, and says so', () => {
 			const guarded = only(applyGuards([fallPreEmergent], [fixtureRule('fall-pre-emergent'), rainGuard], plants, forecastlessWindow, asOf));
 
 			expect(guarded.status).toBe('fired');
@@ -339,6 +339,36 @@ describe('applyGuards', () => {
 			expect(guarded.deferrals).toEqual([]);
 			expect(guarded.annotations).toEqual([
 				{ guardId: forecastNoteGuard.id, text: FORECAST_UNAVAILABLE_TEXT },
+			]);
+		});
+
+		/*
+		 * The case where an unavailable verdict has something to destroy. Every
+		 * other spec in this block runs one Guard over a Task carrying no
+		 * deferral, so a branch that cleared `deferrals` or reset `status`
+		 * would have nothing to clear and would pass all of them.
+		 *
+		 * Here the fig's seasonal Guard holds the Task first and the rain Guard
+		 * then comes back unchecked. The hold stands: one Guard failing to
+		 * reach its evidence says nothing about a different Guard that reached
+		 * its own, and a pass that let the second undo the first would hand the
+		 * household work the calendar still forbids.
+		 */
+		it('leaves an earlier deferral standing when a later Guard cannot check', () => {
+			const guarded = only(applyGuards(
+				[figFertilizer],
+				[figFertilizerRule, springGuard, rainGuard],
+				plants,
+				forecastlessWindow,
+				asOf,
+			));
+
+			expect(guarded.status).toBe('deferred');
+			expect(guarded.deferrals).toEqual([
+				{ guardId: springGuard.id, releaseWhen: releaseOf(springGuard) },
+			]);
+			expect(guarded.annotations).toEqual([
+				{ guardId: rainGuard.id, text: FORECAST_UNAVAILABLE_TEXT },
 			]);
 		});
 

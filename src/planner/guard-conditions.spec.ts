@@ -178,7 +178,7 @@ describe('evaluateGuardCondition', () => {
 		it('is unavailable on an empty window', () => {
 			// This is the live trap: `buildWindow` collects series from
 			// Threshold Rules alone, so an empty window is what a rain Guard is
-			// handed today. An 'unmet' here would release the watering on the
+			// handed today. An 'unmet' here would let the watering go ahead on the
 			// strength of a series nobody ever fetched.
 			expect(evaluateGuardCondition(noRainWithin(2, 50), [], asOf)).toBe('unavailable');
 		});

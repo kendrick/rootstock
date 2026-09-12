@@ -552,7 +552,7 @@ describe('plan under guards', () => {
 	 * because a Task carrying a deferral it does not act on would satisfy a
 	 * status check while telling the interface two different stories.
 	 */
-	it('releases work and annotates it when the forecast a guard needs was never collected', () => {
+	it('adds no deferral and annotates the task when the forecast a guard needs was never collected', () => {
 		const unforecast = inputWith({
 			observations: observations.filter(observation => observation.variable !== 'precipitation-probability'),
 		});

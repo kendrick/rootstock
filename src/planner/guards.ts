@@ -40,7 +40,7 @@ function copyTask(task: Task): Task {
  * Returning is what makes the switch exhaustive: every branch owes a Task, so
  * a fourth `GuardVerdict` added upstream fails to compile here. A version that
  * wrote to its argument would return nothing, and the same fourth verdict
- * would fall through the switch and release the work in silence.
+ * would fall through the switch and let the work through in silence.
  *
  * 'unavailable' annotates whichever effect the Guard carries. A defer Guard
  * has no evidence to hold work on, and an annotate Guard has nothing it knows
@@ -112,10 +112,17 @@ function guarded(task: Task, guard: GuardRule, verdict: GuardVerdict): Task {
  * 'unavailable' is the verdict the rest of this is built around. It means the
  * Planner could not check: the series was never collected, or the forecast
  * stops short of the Guard's horizon. Deferring on it holds work back on no
- * evidence, and doing nothing releases the work into a silence that reads
- * exactly like a clear sky. So the work is released and the Task carries the
- * annotation saying it was released unchecked, which is the only claim either
- * kind of Guard can honestly make there.
+ * evidence, and doing nothing lets the work through into a silence that reads
+ * exactly like a clear sky. So the Guard adds no deferral, the work goes ahead,
+ * and the Task carries the annotation saying nobody checked, which is the only
+ * claim either kind of Guard can honestly make there.
+ *
+ * Note what 'release' does not mean here. In this domain it names the
+ * condition that would end a deferral, which is what a defer Guard's `release`
+ * string carries. An unavailable verdict never ends one: a Guard that could
+ * not reach its own evidence has learned nothing about a hold some other Guard
+ * already placed, so this branch appends an annotation and leaves `status` and
+ * `deferrals` exactly as it found them.
  *
  * A Task that arrives `approaching` and gets deferred comes back `deferred`.
  * `taskSchema` allows one status and requires `deferred` wherever a deferral
