@@ -12,6 +12,10 @@ export default defineConfig({
 		// setupFiles: ['./tests/setup.ts'],
 	},
 	resolve: {
-		alias: { '@': path.resolve(__dirname, '.') },
+		// Must match tsconfig's `"@/*": ["./src/*"]` and components.json, or the same
+		// import specifier resolves to two different places in tests versus the app.
+		// The scaffold's default pointed at the repo root, which typechecks fine and
+		// fails only at test time, once something actually imports through the alias.
+		alias: { '@': path.resolve(import.meta.dirname, './src') },
 	},
 });
