@@ -32,6 +32,10 @@ _Avoid_: Recurring task, schedule, interval, repeat
 A Rule that creates no work. Guards run as a pass after the Rules that create Tasks, and may defer or annotate a Task. A Guard has no way to remove one.
 _Avoid_: Filter, blocker, veto, constraint, exclusion
 
+**RuleVerdict**:
+What one Rule concluded about one target: whether it fired, the evidence behind it, and any clause it adds to the Task's title. A Rule module returns a RuleVerdict rather than a Task. ADR 0001 gives the Planner sole authority to author a Task, and a module that returned a finished one would leave the Guard pass nothing to defer.
+_Avoid_: Result, outcome, decision, evaluation
+
 **Task**:
 One piece of work the Planner derived from exactly one Rule, carrying the Citation that produced it. A Task the model invented is not a Task, because the Planner is the only thing that makes them.
 _Avoid_: Todo, item, action, chore, job
@@ -50,7 +54,11 @@ _Avoid_: Suggestion, tip, insight, recommendation, note
 
 **Observation**:
 One reading at one moment, carrying its depth, its source, and the time it was taken. A modeled value and a probe reading are both Observations; the source field is what separates them, and it is never dropped.
-_Avoid_: Measurement (a modeled value is not one), data point, sample, reading
+_Avoid_: Measurement (a modeled value is not one), data point, sample, reading (as a name for the type; prose may still describe one as a reading)
+
+**Adapter**:
+The module that turns one provider's response into Observations, and the only place that provider's names, units, and failure modes are known. An Adapter reads no clock and computes no daily figure. It takes the current instant as an argument and returns hourly Observations for the Planner to reduce.
+_Avoid_: Client, service, provider, integration, fetcher
 
 **DailyAggregate**:
 One local calendar day of one variable at one depth, reduced from Observations by the Planner. It carries which reduction produced it—mean, min, max, or sum—and whether the day was observed or forecast. `Plan.window` is a run of these, and the soil-temperature sparkline is drawn off them.
@@ -60,6 +68,26 @@ _Avoid_: Reading, data point, daily value, sample
 An append-only record that work happened on a date. Cadence Rules read the most recent matching one. Marking a Task done writes a new Occurrence rather than changing an old one, so the yard accumulates a history nobody had to design.
 _Avoid_: Completion, checkbox, done flag, log entry
 
+**Anchor**:
+The most recent Occurrence a Cadence Rule counts its interval from. A Rule with `after` set anchors on the Rule it follows rather than on itself. That is how a split application measures from its first half, instead of carrying a second calendar date that drifts every year. Where the Rule it follows has no Occurrence, the follow-up stays silent, because recommending a second application when the first never happened would be wrong.
+_Avoid_: Last done, baseline, start, reference
+
+**Seed data**:
+The committed inventory, rule set, tag policy, and occurrence history the repository ships, parsed through the schemas at import. It is also the documented add-a-plant path for this release, so its JSON shape is the import format rather than an internal convenience.
+_Avoid_: Fixture (a fixture is test scaffolding, this is the real yard), sample, example data, defaults
+
+**Store**:
+The asynchronous interface the rest of the system reads and writes the yard through, and the implementations behind it. A Store holds records and derives nothing. Only the Planner may create a Task, and a Store never does.
+_Avoid_: Database, repository, cache, persistence layer, backend
+
+**Envelope**:
+What a Store wraps a domain record in to file it, carrying the ID it is stored under, when it was last written, and whether it came from the seed or the browser. An Envelope is the Store's bookkeeping and never part of the record's own schema.
+_Avoid_: Wrapper, row, entry, document
+
+**Dump**:
+Every collection written out under a version stamp and the moment it was taken. Export writes a Dump and import reads one. A Dump is a whole Store and never a fragment, so import rejects an unknown version outright instead of applying the part it understands.
+_Avoid_: Backup, export file, snapshot, payload
+
 **Citation**:
 The pairing of a Rule with the dated evidence behind its Task: the days a Threshold Rule was satisfied, the window a date fell inside, the Occurrence a Cadence Rule counted from. A Citation on an Approaching Task names a forecast day instead, and its own kind says so, so evidence that has happened is never confused with evidence that is expected. A Citation is checked by membership against the real Rule set, so one naming a Rule nobody wrote fails validation.
 _Avoid_: Reason, explanation, justification, trigger, source (Source is a field on a Rule)
@@ -67,6 +95,10 @@ _Avoid_: Reason, explanation, justification, trigger, source (Source is a field 
 **Delegable**:
 Whether a Task may appear on the Away Card. Delegability is decided on the Rule at authoring time and narrowed by tag policy, never widened by it: a Rule tagged chemical stays undelegable however its own field is set.
 _Avoid_: Safe, shareable, assignable, public
+
+**Specificity**:
+How narrowly a Rule reaches: 3 when it names plant IDs, 2 when it selects by tag alone, 1 for the whole yard. A Plan sorts by it directly after safety, so a Rule naming the fig outranks one sweeping everything tagged `fruit`.
+_Avoid_: Precedence, weight, rank, score
 
 **Plan**:
 What the Planner returns for one date: the Tasks, the Deferred Tasks, and the window of DailyAggregates the Rules evaluated. Only the Planner knows which days those were, so the window travels with the Plan rather than being reassembled downstream. An Advisory is not part of one, because the Planner cannot author an Advisory and a Plan holds only what the Planner authored.

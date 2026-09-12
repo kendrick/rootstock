@@ -61,7 +61,11 @@ export type AppliesTo = z.infer<typeof appliesToSchema>;
  * said no.
  */
 /**
- * The tag that marks work involving a pesticide, herbicide, or fertiliser.
+ * The tag that marks work involving a pesticide or herbicide.
+ *
+ * Fertilizer sits outside it deliberately. Seed data tags feeding work
+ * `fertilizer` and leaves it delegable, so the household can be asked to feed
+ * the Esperanza and never to spray anything.
  *
  * It is a constant rather than a loose string because two separate mechanisms
  * read it and they must agree: the authoring refine below, which requires such
