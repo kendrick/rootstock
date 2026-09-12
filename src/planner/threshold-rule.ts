@@ -144,7 +144,22 @@ export function evaluateThresholdRule(
 	 * only of observed days cannot reach this line, because it would already
 	 * have fired above.
 	 */
-	const projectedRun = firstRun(series, rule);
+	/*
+	 * A forecast day dated before `asOf` is a leftover from an earlier fetch
+	 * rather than a prediction, and counting one would date a crossing in the
+	 * past. `projectedDate` is a promise about a day that has not arrived, so
+	 * the stale rows come out here instead of the scan trusting the caller to
+	 * have handed it a tidy window. A forecast day dated exactly `asOf` stays:
+	 * a Rule crossing on today's own partly-predicted day is the ordinary case.
+	 *
+	 * Observed days are all kept, including any dated past `asOf`. Such a day
+	 * cannot fire the Rule, because the run above reaches no further than the
+	 * day being planned for, but it is a recorded reading rather than a guess
+	 * and it makes a better projection than a forecast would.
+	 */
+	const projection = series.filter(day => day.basis === 'observed' || day.date >= asOf);
+
+	const projectedRun = firstRun(projection, rule);
 	if (projectedRun !== null) {
 		return {
 			fires: true,

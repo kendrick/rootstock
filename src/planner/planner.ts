@@ -241,8 +241,8 @@ function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
  * they target, because neither one looks at the Plant. `plantId` reaches only
  * the Cadence Rule, which counts from Occurrences keyed by the pair. The
  * repeated evaluation is deliberate: the Rule still owes one Task per Plant it
- * named, and a Task is what a person checks off, so mulching three fruit trees
- * is three checkboxes however identical the reasoning behind them was.
+ * named, and each Task is marked done on its own, so mulching three fruit trees
+ * is three Tasks however identical the reasoning behind them was.
  *
  * The switch has no default branch, so a fifth Rule kind added to the schema
  * fails here at compile time. The alternative is a Rule kind that authors

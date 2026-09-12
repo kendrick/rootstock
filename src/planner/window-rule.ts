@@ -3,7 +3,7 @@ import type { WindowRule } from '@/rules/rule';
 import { isWithinMonthDayRange } from './dates';
 
 /**
- * A Window Rule reads only the calendar, never a Series, so there is no
+ * A Window Rule reads only the calendar, never a reading, so there is no
  * partial evidence for it to report on the way there — the range either
  * contains today or it doesn't. That is what rules out 'approaching' here
  * even though `RuleVerdict` allows it: the status exists for a Threshold

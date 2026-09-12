@@ -217,6 +217,39 @@ describe('evaluateThresholdRule', () => {
 		expect(citationOf(verdict)).toMatchObject({ projectedDate: '2026-09-12' });
 	});
 
+	/*
+	 * A window can carry a forecast row for a day that has already happened,
+	 * left behind by an earlier fetch. Counting one would date a crossing in
+	 * the past, and `projectedDate` is a promise about a day still to come, so
+	 * the stale rows drop out before the projection is scanned. Here the only
+	 * run available is made of them.
+	 */
+	it('never projects a crossing onto a day that has already passed', () => {
+		const window = [
+			forecast('2026-09-06', 68),
+			forecast('2026-09-07', 67),
+			forecast('2026-09-08', 66),
+			day('2026-09-09', 74),
+			day('2026-09-10', 75),
+			day('2026-09-11', 76),
+		];
+
+		expect(evaluateThresholdRule(rule(), window, '2026-09-11')).toEqual({ fires: false });
+	});
+
+	it('still projects a crossing that closes on the as-of day itself', () => {
+		const window = [
+			day('2026-09-09', 69),
+			day('2026-09-10', 68),
+			forecast('2026-09-11', 67),
+		];
+
+		const verdict = evaluateThresholdRule(rule(), window, '2026-09-11');
+
+		expect(verdict).toMatchObject({ fires: true, status: 'approaching' });
+		expect(citationOf(verdict)).toMatchObject({ projectedDate: '2026-09-11' });
+	});
+
 	it('does not fire a series shorter than the run the Rule asks for', () => {
 		// Four satisfying days against a Rule that wants five. ADR 0003 forbids
 		// shortening the Rule to fit the window, so the answer here is no

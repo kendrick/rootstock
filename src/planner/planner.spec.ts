@@ -3,9 +3,8 @@ import type { CadenceRule, GuardRule, ThresholdRule, WindowRule } from '@/rules/
 import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { cadenceRuleSchema, guardRuleSchema, ruleSchema, tagPolicySchema, thresholdRuleSchema, windowRuleSchema } from '@/rules/rule';
+import { cadenceRuleSchema, guardRuleSchema, thresholdRuleSchema, windowRuleSchema } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
-import { plantSchema } from '@/yard/plant';
 import { localDate } from './dates';
 import { asOf, observations, occurrences, plants, rules, tagPolicy, timeZone } from './fixtures';
 import { occurrenceSchema } from './occurrence';
@@ -13,14 +12,14 @@ import { dailyAggregateSchema, PLAN_WINDOW_DAYS, planSchema } from './plan';
 import { plan, planInputSchema } from './planner';
 
 /*
- * The fixtures are parsed where they are authored, so re-parsing them here
- * says nothing new about the parse. It holds the fixture file to the schemas
- * the rest of the system uses: later specs read these values as the real
- * thing, and the moment a fixture is patched with a cast to make a test go
- * green, this file fails.
+ * The assertions in the first block guard the fixture file rather than the
+ * Planner. Each one names a case some later spec leans on being there — a
+ * planned Plant, a window that wraps the year end, a Cadence Rule with no
+ * history behind it — and a tidy-up would delete any of them without noticing
+ * what went with it.
  *
- * The coverage assertions below do the other half of the job. Each one names a
- * case the Planner has to handle and a tidy-up would delete without noticing.
+ * The schema round-trip sits with `planInputSchema` below instead, because
+ * that schema already composes all five of the ones a fixture is built from.
  */
 
 const planInput = {
@@ -34,26 +33,6 @@ const planInput = {
 };
 
 describe('the planner fixtures', () => {
-	it('parse as plants', () => {
-		expect(() => z.array(plantSchema).parse(plants)).not.toThrow();
-	});
-
-	it('parse as rules', () => {
-		expect(() => z.array(ruleSchema).parse(rules)).not.toThrow();
-	});
-
-	it('parse as observations', () => {
-		expect(() => z.array(observationSchema).parse(observations)).not.toThrow();
-	});
-
-	it('parse as occurrences', () => {
-		expect(() => z.array(occurrenceSchema).parse(occurrences)).not.toThrow();
-	});
-
-	it('parse as a tag policy', () => {
-		expect(() => tagPolicySchema.parse(tagPolicy)).not.toThrow();
-	});
-
 	it('hold a plant that is only planned', () => {
 		expect(plants.some(plant => plant.status === 'planned')).toBe(true);
 	});
@@ -106,8 +85,18 @@ describe('the planner fixtures', () => {
 });
 
 describe('planInputSchema', () => {
-	it('accepts the assembled fixture input', () => {
-		expect(() => planInputSchema.parse(planInput)).not.toThrow();
+	/*
+	 * Equality rather than `not.toThrow`, and it is the difference between a
+	 * check and a decoration. `planInputSchema` composes the same Plant, Rule,
+	 * Observation, Occurrence and TagPolicy schemas the fixture file already
+	 * parses through, so a parse that merely succeeds here proves nothing that
+	 * importing the file did not already prove. Comparing the result catches
+	 * the two things that would slip past: a fixture patched with a cast to
+	 * make some other test go green, and a fixture the schema quietly rewrites
+	 * on the way through.
+	 */
+	it('accepts the assembled fixture input and returns it unchanged', () => {
+		expect(planInputSchema.parse(planInput)).toEqual(planInput);
 	});
 
 	it('rejects a time zone that is not a zone name', () => {
@@ -259,11 +248,27 @@ describe('plan', () => {
 		expect(fixturePlan.asOf).toBe(asOf);
 	});
 
-	// ADR 0001 rests on this: turning the model off has to leave the task list
-	// unchanged, and that is only checkable if the Planner answers the same way
-	// twice.
-	it('answers the same way twice on the same input', () => {
-		expect(plan(fixtureInput)).toEqual(plan(fixtureInput));
+	/*
+	 * ADR 0001 rests on this: turning the model off has to leave the task list
+	 * unchanged, and that is only checkable if the Planner answers the same way
+	 * twice.
+	 *
+	 * Comparing two calls alone would be a check that cannot fail, since a
+	 * function with no clock and no randomness repeats itself by construction.
+	 * What can actually go wrong is the Planner writing through one of its own
+	 * arguments — sorting `rules` in place would do it — and that shows up on
+	 * the second call or on whoever holds the array next. So the input is
+	 * compared against a copy taken before the first call, which is the half
+	 * of purity a repeat test cannot see.
+	 */
+	it('answers the same way twice and leaves its input untouched', () => {
+		const before = structuredClone(fixtureInput);
+
+		const first = plan(fixtureInput);
+		const second = plan(fixtureInput);
+
+		expect(first).toEqual(second);
+		expect(fixtureInput).toEqual(before);
 	});
 
 	/*
