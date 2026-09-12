@@ -24,6 +24,28 @@ export class OpenMeteoError extends Error {
 
 const HISTORICAL_FORECAST_ENDPOINT = 'https://historical-forecast-api.open-meteo.com/v1/forecast';
 
+/**
+ * Both counts were measured against the live API and are load-bearing.
+ *
+ * 92 past days go to the historical-forecast endpoint rather than
+ * `api.open-meteo.com/v1/forecast`, which keeps only about 57 past days of
+ * `soil_temperature_6cm` and answers a 92-day request with 838 leading nulls
+ * in soil and 641 in precipitation. Historical-forecast serves the full span
+ * under the same forecast variable names, in one request.
+ *
+ * 7 forecast days is set by soil, which forecasts 7.33 days, against
+ * precipitation and precipitation_probability, which both run a clean 16. The
+ * shortest series sets the horizon because any null is a hard failure.
+ *
+ * Widening either number without re-measuring those retention windows puts
+ * the nulls straight back.
+ *
+ * Seven days also contradicts ADR 0003, which describes the daily run as
+ * pulling "a fortnight of forecast". A fortnight is unreachable rather than
+ * merely unambitious, and AGENTS.md asks for saying so rather than quietly
+ * shipping the smaller number. That ADR's decision, that the Artifact ships
+ * the window the Rules evaluated, is untouched.
+ */
 const PAST_DAYS = 92;
 const FORECAST_DAYS = 7;
 
@@ -141,23 +163,9 @@ function buildUrl(location: Location): string {
  * `provenance: 'modeled'`, and that label has to survive all the way to the
  * screen: a watered lawn in a Texas July runs cooler than the model's bare dirt.
  *
- * The two day counts in the query were measured against the live API and are
- * load-bearing. `past_days=92` goes to the historical-forecast endpoint rather
- * than `api.open-meteo.com/v1/forecast`, which keeps only about 57 past days of
- * `soil_temperature_6cm` and answers a 92-day request with 838 leading nulls in
- * soil and 641 in precipitation; historical-forecast serves the full span under
- * the same forecast variable names, in one request. `forecast_days=7` is set by
- * soil, which forecasts 7.33 days, against precipitation and
- * precipitation_probability, which both run a clean 16. The shortest series
- * sets the horizon because any null is a hard failure. Widening either number
- * without re-measuring those retention windows puts the nulls straight back.
- *
- * That contradicts ADR 0003, which describes the daily run as pulling "a
- * fortnight of forecast". Seven days is what the soil series actually carries,
- * so the ADR's number is unreachable rather than merely unambitious. Saying so
- * here rather than quietly shipping the smaller number is what AGENTS.md asks
- * for; the ADR's decision, that the Artifact ships the window the Rules
- * evaluated, is untouched.
+ * The two day counts in the query are measured values with their own note at
+ * `PAST_DAYS` and `FORECAST_DAYS` above, including why seven forecast days
+ * rather than ADR 0003's fortnight.
  */
 export async function fetchObservations({
 	location,
@@ -180,6 +188,9 @@ export async function fetchObservations({
 		// means the request did something other than what it says, and its numbers
 		// would still look plausible for a Texas summer.
 		const reportedUnit = payload.hourly_units[series.apiName];
+		if (reportedUnit === undefined) {
+			throw new OpenMeteoError(`Open-Meteo returned no units at all for ${series.apiName}. That is the archive endpoint answering for a variable it does not know under this name, and the column below it will be entirely null.`);
+		}
 		if (reportedUnit !== series.reportedUnit) {
 			throw new OpenMeteoError(`Open-Meteo reported ${series.apiName} in '${reportedUnit}' when '${series.reportedUnit}' was requested. The query did not do what it says.`);
 		}

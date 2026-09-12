@@ -2,6 +2,9 @@ import type { Observation } from './observation';
 import type { OpenMeteoFetch } from './open-meteo';
 import { describe, expect, it } from 'vitest';
 import fortWorth from './fixtures/open-meteo-fort-worth.json';
+// Hand-derived, not recorded: a 48-hour slice of the real recording with six
+// soil values replaced by nulls. Open-Meteo will not produce a gap on demand,
+// and JSON carries no comment to say so, so it is said here.
 import nullSoil from './fixtures/open-meteo-null-soil.json';
 import { observationSchema } from './observation';
 import { fetchObservations, OPEN_METEO_ATTRIBUTION, OpenMeteoError } from './open-meteo';
@@ -184,11 +187,10 @@ describe('rejections', () => {
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow('2026-06-12T17:00:00.000Z');
 	});
 
-	it('rejects a whole column of nulls, which is the shape the wrong endpoint returns', async () => {
-		// The hand-derived fixture carries a six-hour gap. The archive-endpoint
-		// trap looks different: every value in the column is null under an HTTP
-		// 200, and the first null is hour zero. Both must fail the same way, so
-		// the rejection cannot come to depend on there being good hours first.
+	it('rejects a column that is null from its very first hour', async () => {
+		// The hand-derived fixture carries a six-hour gap with good hours ahead of
+		// it. This is the other end: the first null is hour zero, so the rejection
+		// cannot come to depend on there being real values first.
 		const emptyColumn = {
 			...fortWorth,
 			hourly: {
@@ -200,6 +202,29 @@ describe('rejections', () => {
 
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/soil_temperature_6cm/);
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow('2026-06-12T05:00:00.000Z');
+	});
+
+	it('rejects the archive endpoint shape, where the units go missing too', async () => {
+		// Asking the archive for a forecast-endpoint variable answers 200 with
+		// undefined units AND a null column. The unit guard runs first, so this
+		// never reaches the null loop — worth pinning, because the obvious reading
+		// of "a column of nulls" credits the wrong guard with catching it.
+		// The key is OMITTED, not set to undefined. Setting it makes `hourly_units`
+		// fail its own parse, and the test then passes on a ZodError while looking
+		// like it proved something about the unit guard.
+		const { soil_temperature_6cm: _dropped, ...unitsWithoutSoil } = fortWorth.hourly_units;
+		const archiveShape = {
+			...fortWorth,
+			hourly_units: unitsWithoutSoil,
+			hourly: {
+				...fortWorth.hourly,
+				soil_temperature_6cm: fortWorth.hourly.soil_temperature_6cm.map(() => null),
+			},
+		};
+		const { fetch } = recordingFetch(archiveShape);
+
+		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toBeInstanceOf(OpenMeteoError);
+		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/no units at all for soil_temperature_6cm/);
 	});
 
 	it('rejects a response whose units are not the ones requested', async () => {

@@ -3,9 +3,11 @@
  * environment and nowhere else. ADR 0004
  * (docs/adr/0004-coordinates-never-enter-the-repository.md) is why: the
  * repository is public, so a committed lat/long is a published one. The
- * three env vars below are the entire surface the ADR asks for—no file in
- * this repo may carry a coordinate, and this module exists to make sure the
- * only way in is that boundary.
+ * coordinates below are the entire surface the ADR asks for: no file in this
+ * repo may carry one, and this module exists to make sure the only way in is
+ * that boundary. `ROOTSTOCK_TIME_ZONE` rides along because the same generation
+ * run needs it and the same boundary is the honest place to read it, not
+ * because ADR 0004 asks for it.
  */
 export interface Location {
 	latitude: number;
@@ -14,12 +16,18 @@ export interface Location {
 }
 
 /**
- * A blank or absent env var reads as `undefined` or `''` depending on how a
- * shell quoted it; both mean "nobody supplied this" and get the same
- * "not set" wording rather than one of them confusingly parsing as `NaN`.
+ * An absent variable and a blank one are the same failure wearing different
+ * shells, so they share one message. Returning the validated string rather
+ * than reporting blankness keeps every caller from re-deriving the check, and
+ * avoids a type predicate that would have to claim `'   '` is `undefined`.
  */
-function isBlank(raw: string | undefined): raw is undefined {
-	return raw === undefined || raw.trim() === '';
+function requireVariable(env: Record<string, string | undefined>, name: string): string {
+	const raw = env[name];
+	if (raw === undefined || raw.trim() === '') {
+		throw new Error(`${name} is not set. The generation environment is the only place it exists (see docs/adr/0004-coordinates-never-enter-the-repository.md); set it before running.`);
+	}
+
+	return raw;
 }
 
 /**
@@ -28,15 +36,8 @@ function isBlank(raw: string | undefined): raw is undefined {
  * silently—a typo that still parses as a number (95 instead of 35) is
  * exactly that failure mode, and only a range check catches it.
  */
-function notSetMessage(name: string): string {
-	return `${name} is not set. The generation environment is the only place it exists (see docs/adr/0004-coordinates-never-enter-the-repository.md); set it before running.`;
-}
-
 function readCoordinate(env: Record<string, string | undefined>, name: string, min: number, max: number): number {
-	const raw = env[name];
-	if (isBlank(raw)) {
-		throw new Error(notSetMessage(name));
-	}
+	const raw = requireVariable(env, name);
 
 	const value = Number(raw);
 	if (Number.isNaN(value)) {
@@ -66,10 +67,7 @@ function isIanaTimeZone(candidate: string): boolean {
 }
 
 function readTimeZone(env: Record<string, string | undefined>, name: string): string {
-	const raw = env[name];
-	if (isBlank(raw)) {
-		throw new Error(notSetMessage(name));
-	}
+	const raw = requireVariable(env, name);
 	if (!isIanaTimeZone(raw)) {
 		throw new Error(`${name} is set to '${raw}', which is not a recognized IANA time zone (e.g. America/Chicago).`);
 	}
