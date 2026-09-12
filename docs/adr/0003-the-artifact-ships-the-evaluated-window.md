@@ -4,7 +4,7 @@ The published Artifact holds the window of DailyAggregates the Rules actually ev
 
 ## The two ends, and why the middle wins
 
-The daily run pulls about three months of trailing data and a fortnight of forecast from Open-Meteo, which returns both in one request. What lands in the committed JSON is a separate question.
+The daily run pulls about three months of trailing data and a week of forecast from Open-Meteo, which returns both in one request. What lands in the committed JSON is a separate question.
 
 Shipping only the triggers is the smallest thing that works. `soil temperature at 6cm averaged 56.2°F for three days ending March 4` is a complete Citation on its own, and the payload is a few dozen bytes.
 
@@ -25,6 +25,8 @@ That is the real return: a sparkline of soil temperature with the Rule's thresho
 This record predates `CONTEXT.md`, and originally called the window a run of Observations and placed it "alongside the Plan". The glossary written since separates Observation, one hourly reading, from DailyAggregate, one day reduced from many of them, and the window is the latter. It also lives on `Plan.window` rather than beside the Plan, because only the Planner run that produced a Plan knows which days it read.
 
 The decision is unchanged. Only the words are, and they are corrected above rather than left to contradict the glossary.
+
+The forecast span is a second correction of the same kind. This record said a fortnight because that is what the endpoint appeared to offer. Building the adapter established otherwise. `soil_temperature_6cm` forecasts about seven days, while precipitation runs a clean sixteen, so a fortnight of soil temperature was never available to ship. The run asks seven days of every series, because a response carrying nulls counts as a failure, and a per-variable horizon would weaken that rule to buy forecast days no Rule reads. The rain Guard looks two days out.
 
 ## Consequences
 
