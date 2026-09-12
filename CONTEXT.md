@@ -32,9 +32,17 @@ _Avoid_: Recurring task, schedule, interval, repeat
 A Rule that creates no work. Guards run as a pass after the Rules that create Tasks, and may defer or annotate a Task. A Guard has no way to remove one.
 _Avoid_: Filter, blocker, veto, constraint, exclusion
 
+**Guard pass**:
+The stage that runs every Guard over the Tasks the task-creating Rules authored, between authoring and ordering. It returns one Task for each Task it was handed and has no path to drop one. Several Guards may reach the same Task and each applies independently, so one Task can come back carrying two Deferrals, or a Deferral beside an Annotation.
+_Avoid_: Filter stage, post-processing, guard phase, validation
+
 **RuleVerdict**:
 What one Rule concluded about one target: whether it fired, the evidence behind it, and any clause it adds to the Task's title. A Rule module returns a RuleVerdict rather than a Task. ADR 0001 gives the Planner sole authority to author a Task, and a module that returned a finished one would leave the Guard pass nothing to defer.
 _Avoid_: Result, outcome, decision, evaluation
+
+**GuardVerdict**:
+What one Guard's condition concluded on the planned date: `met`, `unmet`, or `unavailable`. The third value exists because `unmet` is a claim about the evidence rather than a gap in it. `unmet` says the Planner looked and the yard is clear, which lets the work go ahead. `unavailable` says there was nothing to look at. Without that distinction, a Guard handed an empty series reads it as a clear sky.
+_Avoid_: Result, outcome, check, boolean
 
 **Task**:
 One piece of work the Planner derived from exactly one Rule, carrying the Citation that produced it. A Task the model invented is not a Task, because the Planner is the only thing that makes them.
@@ -43,6 +51,14 @@ _Avoid_: Todo, item, action, chore, job
 **Deferred Task**:
 A Task a Guard held back. It stays in the Plan and stays on screen, carrying the Guard that deferred it and the condition that would release it. A Task that disappears is indistinguishable from one nobody thought of, so holding one back sets a status and keeps it in the Plan.
 _Avoid_: Skipped, suppressed, hidden, cancelled, blocked
+
+**Deferral**:
+One Guard's record that it held a Task's work back, carrying the Guard's ID and the condition that would release it, verbatim from the Guard. A Task holds a list of them, because several Guards may hold the same work for different reasons, and the Task is deferred exactly when that list is not empty. Only the Guard that placed a Deferral has anything to say about it: a second Guard that cannot reach its own evidence leaves every existing Deferral standing.
+_Avoid_: Block, suppression, hold, veto
+
+**Annotation**:
+A note a Guard attached to a Task without holding the work back. It carries the Guard's ID and the text to show, and it leaves the Task's status and its Deferrals alone. A Guard whose condition came back `unavailable` annotates and defers nothing, which is how work that went ahead unchecked says so on its face.
+_Avoid_: Warning, flag, comment, tip
 
 **Approaching Task**:
 A Task whose Threshold Rule has not been satisfied yet and is forecast to be. It carries a projection Citation naming the day the threshold is expected to be met, and renders apart from fired work. The separation is the whole point: forecasts get revised, and a Task that has fired must never un-fire because the weather changed its mind.
@@ -112,9 +128,21 @@ _Avoid_: Generation, AI output, summary, write-up
 The committed JSON one generation run produces and the site reads: a Plan, the Observation window behind it, the time it was generated, and whether Narration ran. It never carries coordinates.
 _Avoid_: Payload, snapshot, feed, build output, data file
 
+**Artifact gate**:
+The client boundary that parses the committed Artifact and status record before anything below it renders. On a failure it renders the error state and nothing else, so no Task reaches a reader without the Citation behind it having been checked.
+_Avoid_: Guard (a Guard is a Rule that defers work), validator, boundary, wrapper
+
 **Staleness**:
 How old the Artifact is, computed in the browser on every render from the generation time it carries. Staleness is never baked into the Artifact, because a baked answer becomes a lie the moment the daily run stops.
 _Avoid_: Freshness, cache age, last updated
+
+**Staleness band**:
+Which of three ranges the Artifact's age falls in, computed on every render: fresh under thirty-six hours, stale out to seven days, expired past that. The band is derived and never stored, for the same reason Staleness is not.
+_Avoid_: Level, tier, state, status
+
+**Shell**:
+The header, nav, and footer every route renders inside. The Shell holds no Plan data of its own and renders the same on every route.
+_Avoid_: Layout, chrome, frame, wrapper
 
 **Away Card**:
 The read-only, printable view of Delegable Tasks for the rest of the household. It always exists and renders the same way whether or not anyone is travelling, so finding it tells a stranger nothing.
