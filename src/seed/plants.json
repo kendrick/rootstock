@@ -1,0 +1,109 @@
+[
+	{
+		"id": "front-lawn",
+		"name": "Front lawn",
+		"kind": "lawn",
+		"status": "planted",
+		"tags": ["lawn", "turf"],
+		"position": { "x": 0.27, "y": 0.61 },
+		"site": null,
+		"lawn": {
+			"grass": "TifTuf bermuda",
+			"areaSqFt": 4100,
+			"soil": "Clay",
+			"irrigation": {
+				"schedule": "Twice weekly, pre-dawn, cycle and soak",
+				"source": "asserted"
+			}
+		},
+		"notes": null
+	},
+	{
+		"id": "fig-1",
+		"name": "Brown Turkey fig",
+		"kind": "plant",
+		"status": "planted",
+		"tags": ["fig", "fruit", "tree"],
+		"position": { "x": 0.74, "y": 0.47 },
+		"site": "Sandy fill on a slope against a west-facing stone wall",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "esperanza-1",
+		"name": "Esperanza",
+		"kind": "container",
+		"status": "planted",
+		"tags": ["container", "flowering", "perennial"],
+		"position": { "x": 0.44, "y": 0.68 },
+		"site": "Back patio, full sun",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "hibiscus-watermelon-ruffles",
+		"name": "Watermelon Ruffles hardy hibiscus",
+		"kind": "container",
+		"status": "planted",
+		"tags": ["container", "flowering", "hibiscus"],
+		"position": { "x": 0.4, "y": 0.69 },
+		"site": "Back patio",
+		"lawn": null,
+		"notes": "Due for a repot in spring."
+	},
+	{
+		"id": "hibiscus-starry-night",
+		"name": "Starry Night hardy hibiscus",
+		"kind": "container",
+		"status": "planted",
+		"tags": ["container", "flowering", "hibiscus"],
+		"position": { "x": 0.43, "y": 0.7 },
+		"site": "Back patio",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "hibiscus-luna-white",
+		"name": "Luna White hardy hibiscus",
+		"kind": "container",
+		"status": "planted",
+		"tags": ["container", "flowering", "hibiscus"],
+		"position": { "x": 0.46, "y": 0.71 },
+		"site": "Back patio",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "crossvine-1",
+		"name": "Crossvine, porch trellis (west)",
+		"kind": "plant",
+		"status": "planned",
+		"tags": ["vine", "native", "planned"],
+		"position": null,
+		"site": "Porch trellis",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "crossvine-2",
+		"name": "Crossvine, porch trellis (east)",
+		"kind": "plant",
+		"status": "planned",
+		"tags": ["vine", "native", "planned"],
+		"position": null,
+		"site": "Porch trellis",
+		"lawn": null,
+		"notes": null
+	},
+	{
+		"id": "fig-understory-bed",
+		"name": "Native understory bed around the fig",
+		"kind": "bed",
+		"status": "planned",
+		"tags": ["bed", "native", "planned"],
+		"position": null,
+		"site": "Around the fig, west-facing",
+		"lawn": null,
+		"notes": null
+	}
+]

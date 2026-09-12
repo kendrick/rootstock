@@ -1,0 +1,280 @@
+[
+	{
+		"id": "fall-pre-emergent",
+		"kind": "window",
+		"name": "Fall pre-emergent",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"start": "08-20",
+		"end": "09-30",
+		"tags": ["lawn", "herbicide", "chemical"],
+		"productLabel": {
+			"url": "https://assets.greencastonline.com/pdf/labels/SCP%201139A-L10C%200121.pdf"
+		},
+		"source": {
+			"kind": "extension",
+			"label": "Texas A&M AgriLife Extension",
+			"url": "https://agrilifeextension.tamu.edu/wp-content/uploads/2023/08/ESC-042-bermudagrass-lawn-management-calendar.pdf"
+		},
+		"delegable": false,
+		"priority": 10,
+		"appliesTo": {
+			"plantIds": ["front-lawn"],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "last-nitrogen",
+		"kind": "window",
+		"name": "Last nitrogen of the year",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"start": "09-01",
+		"end": "10-01",
+		"tags": ["lawn", "fertilizer", "nitrogen"],
+		"productLabel": null,
+		"source": {
+			"kind": "extension",
+			"label": "Texas A&M AgriLife Extension",
+			"url": "https://agrilifeextension.tamu.edu/wp-content/uploads/2026/03/freqaskquesttxlawnfert.pdf"
+		},
+		"delegable": true,
+		"priority": 20,
+		"appliesTo": {
+			"plantIds": ["front-lawn"],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "spring-pre-emergent",
+		"kind": "threshold",
+		"name": "Spring pre-emergent",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"variable": "soil-temperature",
+		"depthCm": 6,
+		"aggregate": "mean",
+		"comparison": "gte",
+		"value": 55,
+		"unit": "F",
+		"consecutiveDays": 3,
+		"published": {
+			"low": 50,
+			"high": 55,
+			"source": {
+				"kind": "extension",
+				"label": "Texas A&M AgriLife Extension",
+				"url": "https://www.dcmga.com/wp-content/uploads/docs/agrilife/grasses/al-herbicide-selection-warm-searson-turfgrass.pdf"
+			}
+		},
+		"tags": ["lawn", "herbicide", "chemical"],
+		"productLabel": {
+			"url": "https://assets.greencastonline.com/pdf/labels/SCP%201139A-L10C%200121.pdf"
+		},
+		"source": {
+			"kind": "extension",
+			"label": "Texas A&M AgriLife Extension",
+			"url": "https://agrilifetoday.tamu.edu/2016/02/24/its-crabgrass-time-again/"
+		},
+		"delegable": false,
+		"priority": 10,
+		"appliesTo": {
+			"plantIds": ["front-lawn"],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "spring-pre-emergent-follow-up",
+		"kind": "cadence",
+		"name": "Second spring pre-emergent application",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"everyDays": {
+			"min": 42,
+			"max": 56
+		},
+		"season": {
+			"start": "03-01",
+			"end": "06-30"
+		},
+		"after": {
+			"ruleId": "spring-pre-emergent"
+		},
+		"tags": ["lawn", "herbicide", "chemical"],
+		"productLabel": {
+			"url": "https://assets.greencastonline.com/pdf/labels/SCP%201139A-L10C%200121.pdf"
+		},
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": false,
+		"priority": 11,
+		"appliesTo": {
+			"plantIds": ["front-lawn"],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "esperanza-feeding",
+		"kind": "cadence",
+		"name": "Feed the Esperanza",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"everyDays": {
+			"min": 28,
+			"max": 42
+		},
+		"season": {
+			"start": "03-15",
+			"end": "10-07"
+		},
+		"after": null,
+		"tags": ["container", "fertilizer"],
+		"productLabel": null,
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": true,
+		"priority": 30,
+		"appliesTo": {
+			"plantIds": ["esperanza-1"],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "fig-fertilizer-until-spring",
+		"kind": "guard",
+		"name": "No fig fertilizer until spring",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"condition": {
+			"kind": "within-window",
+			"start": "03-01",
+			"end": "06-15",
+			"negate": true
+		},
+		"effect": "defer",
+		"release": "Once the fig breaks bud in spring, from the first of March.",
+		"tags": ["fertilizer"],
+		"productLabel": null,
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": false,
+		"priority": -5,
+		"appliesTo": {
+			"plantIds": ["fig-1"],
+			"plantTags": null,
+			"ruleTags": ["fertilizer"]
+		}
+	},
+	{
+		"id": "rain-expected",
+		"kind": "guard",
+		"name": "Rain expected",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"condition": {
+			"kind": "no-rain-within",
+			"days": 2,
+			"probabilityAtLeast": 50
+		},
+		"effect": "defer",
+		"release": "Once no day in the next two days carries a 50% or greater chance of rain.",
+		"tags": ["weather"],
+		"productLabel": null,
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": false,
+		"priority": -10,
+		"appliesTo": {
+			"plantIds": null,
+			"plantTags": null,
+			"ruleTags": ["chemical"]
+		}
+	},
+	{
+		"id": "evening-application",
+		"kind": "guard",
+		"name": "Evening application",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"condition": {
+			"kind": "always"
+		},
+		"effect": "annotate",
+		"text": "Apply in the evening, once the day's heat has gone off.",
+		"tags": ["safety"],
+		"productLabel": null,
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": false,
+		"priority": -20,
+		"appliesTo": {
+			"plantIds": null,
+			"plantTags": null,
+			"ruleTags": ["pesticide"]
+		}
+	},
+	{
+		"id": "away-from-flowering",
+		"kind": "guard",
+		"name": "Away from flowering plants",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"condition": {
+			"kind": "always"
+		},
+		"effect": "annotate",
+		"text": "Treat structural voids only, and keep well clear of anything in flower.",
+		"tags": ["safety"],
+		"productLabel": null,
+		"source": {
+			"kind": "owner",
+			"label": "Owner's own practice",
+			"url": null
+		},
+		"delegable": false,
+		"priority": -20,
+		"appliesTo": {
+			"plantIds": null,
+			"plantTags": null,
+			"ruleTags": ["pesticide"]
+		}
+	}
+]

@@ -1,0 +1,13 @@
+{
+	"id": "home-yard",
+	"region": {
+		"name": "Southwest Fort Worth, Texas",
+		"hardinessZone": "8b"
+	},
+	"photo": {
+		"path": "/yard.jpg",
+		"width": 2400,
+		"height": 1800
+	},
+	"overlays": []
+}
