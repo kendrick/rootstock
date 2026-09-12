@@ -23,7 +23,7 @@ function readable(text: string | null | undefined): string {
 }
 
 describe('stalenessBanner', () => {
-	it('renders nothing at all while the data is fresh', () => {
+	it('renders nothing at all while the data is fresh and the runs are landing', () => {
 		const { container } = render(
 			<StalenessBanner generatedAt={GENERATED_AT} status={okStatus} now={hoursAfter(GENERATED_AT, 12)} />,
 		);
@@ -32,15 +32,20 @@ describe('stalenessBanner', () => {
 		expect(screen.queryByRole('status')).toBeNull();
 	});
 
-	// A run can fail overnight while yesterday's Artifact is still current. The
-	// reader has nothing to do about it in that window, so fresh stays silent
-	// even with three failures on the record.
-	it('stays silent on fresh data even when runs have been failing', () => {
-		const { container } = render(
+	// Age and runner health are separate signals. A run can fail overnight while
+	// yesterday's Artifact is still current, and that is the case the count on
+	// the status record exists to surface — waiting for the file to age out of
+	// the fresh band would hold the news back for most of a day.
+	it('names the failed runs on fresh data, without a word about the age', () => {
+		render(
 			<StalenessBanner generatedAt={GENERATED_AT} status={failingStatus} now={hoursAfter(GENERATED_AT, 12)} />,
 		);
 
-		expect(container.innerHTML).toBe('');
+		const banner = screen.getByRole('status');
+		expect(readable(banner.textContent)).toContain('The last 3 runs failed');
+		// The half that must stay quiet: nothing about when the plan was made.
+		expect(readable(banner.textContent)).not.toContain('This plan is from');
+		expect(banner.querySelector('time')).toBeNull();
 	});
 
 	it('names the generation time in words once the data is stale', () => {

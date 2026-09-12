@@ -53,12 +53,15 @@ export interface StalenessBannerProps {
 }
 
 /**
- * Says how old the Artifact is, in the two cases where a reader needs telling.
+ * Says how old the Artifact is, and whether the runner that produces it is
+ * still working. Those are two signals rather than one, and they are reported
+ * independently: current data can sit behind a runner that failed last night.
  *
- * Returns null when the data is fresh. Chrome announcing that today's numbers
- * are today's numbers is noise, and CONTEXT.md's Staleness entry is the reason
- * the question is asked on every render instead of baked into the file: "a
- * baked answer becomes a lie the moment the daily run stops."
+ * Renders nothing when the data is fresh AND every recent run succeeded. Chrome
+ * announcing that today's numbers are today's numbers is noise, and CONTEXT.md's
+ * Staleness entry is the reason the question is asked on every render instead of
+ * baked into the file: "a baked answer becomes a lie the moment the daily run
+ * stops."
  *
  * The band comes from `staleness()` and is never re-derived from `ageHours`
  * here. The 36-hour and 7-day boundaries live in exactly one file, and a second
@@ -84,16 +87,23 @@ export function StalenessBanner({
 }: StalenessBannerProps): ReactElement | null {
 	const { band, consecutiveFailures } = staleness(generatedAt, now, status);
 
-	// Fresh renders nothing at all, failing runs included. A run can fail
-	// tonight while yesterday's Artifact is still current, and in that window
-	// the reader has nothing to act on: the plan in front of them is good, and
-	// the broken runner is the household's problem tomorrow, not theirs now.
-	if (band === 'fresh') {
+	const isFresh = band === 'fresh';
+	const hasFailures = consecutiveFailures > 0;
+
+	// Silence needs both halves to be true. A run that failed last night leaves
+	// the Artifact current and the runner broken, and artifact.ts keeps the count
+	// precisely because that case is worth saying out loud: "the last four runs
+	// failed" sends a reader to the box, where "this data is old" does not.
+	// Waiting for the file to age out of the fresh band before mentioning it
+	// would sit on the news for the better part of a day.
+	if (isFresh && !hasFailures) {
 		return null;
 	}
 
 	const isExpired = band === 'expired';
-	const Icon = isExpired ? TriangleAlert : CalendarClock;
+	// A fresh Artifact here means the only news is the failed run, so the icon
+	// points at that rather than at a date nobody needs to worry about yet.
+	const Icon = isExpired || isFresh ? TriangleAlert : CalendarClock;
 	const when = GENERATION_TIME.format(Date.parse(generatedAt));
 
 	return (
@@ -113,17 +123,22 @@ export function StalenessBanner({
 		>
 			<Icon aria-hidden="true" className={cn('mt-0.5 shrink-0', prominent ? 'size-5' : 'size-4')} />
 			<div className="space-y-1">
-				<p>
-					{isExpired ? 'This plan was put together ' : 'This plan is from '}
-					{/* The machine-readable timestamp rides along on the element rather
-					    than replacing the words, so a reader gets a day of the week and a
-					    scraper still gets the instant. */}
-					<time dateTime={generatedAt} className="font-medium">{when}</time>
-					{isExpired
-						? ', more than a week ago. Enough weather has passed that your own look at the yard beats anything on this page.'
-						: '. Nothing newer has come in since.'}
-				</p>
-				{consecutiveFailures > 0 && <p>{failureSentence(consecutiveFailures)}</p>}
+				{/* The age paragraph is skipped entirely while the data is still fresh.
+				    Telling a reader their current plan is current, in order to reach the
+				    sentence about the runner, would bury the only part that matters. */}
+				{!isFresh && (
+					<p>
+						{isExpired ? 'This plan was put together ' : 'This plan is from '}
+						{/* The machine-readable timestamp rides along on the element rather
+						    than replacing the words, so a reader gets a day of the week and a
+						    scraper still gets the instant. */}
+						<time dateTime={generatedAt} className="font-medium">{when}</time>
+						{isExpired
+							? ', more than a week ago. Enough weather has passed that your own look at the yard beats anything on this page.'
+							: '. Nothing newer has come in since.'}
+					</p>
+				)}
+				{hasFailures && <p>{failureSentence(consecutiveFailures)}</p>}
 			</div>
 		</div>
 	);
