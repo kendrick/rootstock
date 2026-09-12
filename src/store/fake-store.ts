@@ -1,7 +1,7 @@
 import type { Dump } from './dump';
 import type { Collection, CollectionRecords, SeedData, Store, StoredRecord } from './store';
-import { dumpSchema, parseDump } from './dump';
-import { COLLECTIONS, occurrenceAlreadyStored, TAG_POLICY_ID } from './store';
+import { parseDump } from './dump';
+import { assertMirrorsRecordId, COLLECTIONS, occurrenceAlreadyStored, TAG_POLICY_ID } from './store';
 
 /**
  * Stamped on every envelope this factory seeds, in place of `new Date()`.
@@ -44,13 +44,17 @@ function seedTables(data: SeedData): Tables {
 }
 
 function toDump(tables: Tables): Dump {
-	// Round-tripped through `dumpSchema` rather than assembled as a bare object
+	// Round-tripped through the schema rather than assembled as a bare object
 	// literal typed `Dump`. A hand-typed literal would trust the compiler that
 	// every envelope sitting in `tables` still matches its schema, but nothing
 	// re-checks that after a `set`. This is the one place left where a bug
 	// upstream would otherwise surface as a silently wrong dump instead of a
 	// thrown error naming the field that drifted.
-	return dumpSchema.parse({
+	//
+	// `parseDump` and not `dumpSchema.parse`: the interface promises every
+	// rejection carries a full sentence, and a bare `.parse` throws a ZodError
+	// whose message is a JSON issue dump.
+	return parseDump({
 		version: 1,
 		exportedAt: new Date().toISOString(),
 		collections: {
@@ -78,7 +82,7 @@ function toDump(tables: Tables): Dump {
  *
  * A factory rather than a class: nothing here needs inheritance or a second
  * constructor path, and the rest of the codebase builds things this way (see
- * `dumpSchema`, `parseDump`). Each call opens a fresh closure over its own
+ * `parseDump`). Each call opens a fresh closure over its own
  * `Tables`, so two stores built from the same `SeedData` never share state.
  * `fake-store.spec.ts` pins that down, because it is exactly the kind of
  * thing a later refactor could break by hoisting the tables out of the
@@ -95,6 +99,8 @@ export function createFakeStore(data: SeedData): Store {
 			[...tables[collection].values()] as StoredRecord<CollectionRecords[C]>[],
 
 		set: async <C extends Collection>(collection: C, record: StoredRecord<CollectionRecords[C]>) => {
+			assertMirrorsRecordId(record);
+
 			// The one place the five collections are not uniform: an Occurrence is
 			// append-only (CONTEXT.md), so a `set` that would replace one instead
 			// rejects and leaves the record already filed untouched. See

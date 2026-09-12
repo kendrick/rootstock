@@ -3,7 +3,7 @@ import type { Dump } from './dump';
 import type { Collection, CollectionRecords, Store, StoredRecord } from './store';
 import { wrap } from 'idb';
 import { parseDump } from './dump';
-import { COLLECTIONS, occurrenceAlreadyStored } from './store';
+import { assertMirrorsRecordId, COLLECTIONS, occurrenceAlreadyStored } from './store';
 
 /**
  * Bump this and `upgradeneeded` runs again, which is where the object stores
@@ -75,6 +75,11 @@ export async function openStore(options: OpenStoreOptions): Promise<Store> {
 			}),
 
 		set: async <C extends Collection>(collection: C, record: StoredRecord<CollectionRecords[C]>) => {
+			// Before the transaction, so a mismatched envelope never opens one. This
+			// throws rather than rejecting a storage error: nothing went wrong with
+			// the database, the caller handed over a record it had built wrong.
+			assertMirrorsRecordId(record);
+
 			const wrote = await withStorageError(`'${record.id}' could not be written to the '${collection}' collection`, async () => {
 				const tx = db.transaction(collection, 'readwrite');
 				const objectStore = tx.objectStore(collection);

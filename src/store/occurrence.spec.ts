@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { occurrenceSchema } from '@/planner/occurrence';
+import { emptySeedData } from './conformance';
 import { createFakeStore } from './fake-store';
 import { recordOccurrence } from './occurrence';
-import { emptySeedData } from './store.spec';
 
 /**
  * Advances through a fixed list of instants, one per call. A test proving

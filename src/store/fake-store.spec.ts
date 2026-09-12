@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { describeStoreConformance, emptySeedData, seedFixture } from './conformance';
 import { createFakeStore } from './fake-store';
-import { describeStoreConformance, emptySeedData, seedFixture } from './store.spec';
 
 describeStoreConformance({
 	name: 'fake store',

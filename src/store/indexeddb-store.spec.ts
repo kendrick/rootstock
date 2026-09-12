@@ -1,9 +1,9 @@
 import type { SeedData, Store, StoredRecord } from './store';
 import { IDBFactory as FakeIDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
+import { describeStoreConformance, seedFixture } from './conformance';
 import { openStore } from './indexeddb-store';
 import { TAG_POLICY_ID } from './store';
-import { describeStoreConformance, seedFixture } from './store.spec';
 import 'fake-indexeddb/auto';
 
 /*

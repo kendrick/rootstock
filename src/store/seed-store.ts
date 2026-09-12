@@ -1,5 +1,5 @@
 import type { Collection, CollectionRecords, SeedData, Store, StoredRecord } from './store';
-import { dumpSchema } from './dump';
+import { parseDump } from './dump';
 import { TAG_POLICY_ID } from './store';
 
 /**
@@ -52,7 +52,10 @@ export function createSeedStore(data: SeedData): Store {
 			throw new Error('The seed store is read-only and cannot record a write; reach for the IndexedDB-backed store instead.');
 		},
 
-		dump: async () => dumpSchema.parse({
+		// `parseDump` and not `dumpSchema.parse`: the interface promises every
+		// rejection carries a full sentence, and a bare `.parse` throws a ZodError
+		// whose message is a JSON issue dump. All three stores fail the same way.
+		dump: async () => parseDump({
 			version: 1,
 			// The real moment, unlike the seeded `updatedAt` above. `exportedAt` says
 			// when the export was taken, and a read-only store still gets exported at

@@ -172,3 +172,22 @@ export interface Store {
 export function occurrenceAlreadyStored(id: string): Error {
 	return new Error(`An Occurrence is already stored under '${id}', and occurrences are append-only: marking work done writes a new Occurrence rather than replacing an old one.`);
 }
+
+/**
+ * Rejects an envelope filed under an id its own record disagrees with.
+ *
+ * `dumpSchema` already refuses a mismatched pair, but only on the way out. A
+ * `set` that accepted one would take the write, answer every later `get` and
+ * `list` quite happily, and then fail the next `dump` for a reason pointing at
+ * the export rather than at the write that caused it. Checking here turns a
+ * store that cannot be exported any more into one rejected call.
+ *
+ * A record with no `id` of its own passes, which is the TagPolicy singleton
+ * filed under {@link TAG_POLICY_ID}.
+ */
+export function assertMirrorsRecordId(envelope: StoredRecord<unknown>): void {
+	const recordId = (envelope.record as { id?: unknown } | null)?.id;
+	if (typeof recordId === 'string' && recordId !== envelope.id) {
+		throw new TypeError(`This envelope is filed under '${envelope.id}' but its record carries the id '${recordId}', and the two must match.`);
+	}
+}
