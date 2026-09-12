@@ -19,6 +19,9 @@
 		"src/**/*.tsx",
 		"tests/**/*.ts",
 		"tests/**/*.tsx",
+		// Build tooling is code too. Without this, `tsc --noEmit` silently skips
+		// scripts/ entirely and a broken generator only surfaces when it is run.
+		"scripts/**/*.ts",
 		"*.config.ts",
 		"*.config.mjs"
 	],
