@@ -23,12 +23,15 @@ export interface RuleTargets {
 /**
  * Resolves which Plants a Rule reaches, and how specifically it named them.
  *
- * `appliesTo.ruleTags` is a Guard's own selector — it picks which Rules a
- * Guard reads, not which Plants a task-creating Rule reaches — so it plays no
- * part here. A task-creating Rule that happens to carry `ruleTags` (nothing
- * stops one from being authored that way) is resolved exactly as if the
- * field were null: not an error, because the field simply has no meaning for
- * this question.
+ * `appliesTo.ruleTags` is a Guard's own selector—it picks which Rules a Guard
+ * reads, not which Plants a task-creating Rule reaches—so it plays no part
+ * here. `guardTargets` in guard-targets.ts is where it does its work, over
+ * Tasks that already exist. The two functions are the Plant half and the Rule
+ * half of one question about `appliesTo`, which is what makes the field's
+ * absence from this one a division of labour rather than a field nobody reads.
+ * A task-creating Rule that happens to carry `ruleTags` (nothing stops one
+ * from being authored that way) is resolved exactly as if the field were null:
+ * not an error, because the field simply has no meaning for this question.
  *
  * `plantIds` and `plantTags` are read as a union rather than each vetoing a
  * Plant the other left out, because that is the only reading under which a

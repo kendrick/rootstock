@@ -42,6 +42,14 @@ export type ProductLabel = z.infer<typeof productLabelSchema>;
  * constraint on that selector—a rule with all three null applies to the whole
  * yard, which is what a lawn-wide pre-emergent wants.
  *
+ * The three combine as OR inside a selector and AND across them: `plantIds`
+ * and `plantTags` together choose the plants, and `ruleTags` narrows what they
+ * chose. The reading being turned down is the whole-OR one, where any selector
+ * matching is enough. Under it, a guard naming `plantIds: ['fig-1']` and
+ * `ruleTags: ['fertilizer']` also reaches the lawn's last nitrogen of the
+ * year, and September's lawn feeding arrives deferred by a guard written about
+ * the fig.
+ *
  * Null rather than an empty array: an empty array reads as "matches nothing",
  * so a hand-authored `[]` left behind by an edit would quietly disable the
  * rule instead of failing.
