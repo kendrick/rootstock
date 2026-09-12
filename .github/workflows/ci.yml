@@ -44,8 +44,14 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # The Away Card's slug comes from a repository secret. The repo is public,
+      # so a committed slug is a published one, which is the case ADR 0004
+      # makes for the coordinates and applies just as well here. The build
+      # fails without the variable rather than falling back to a default.
       - name: Build static export
         run: pnpm build
+        env:
+          ROOTSTOCK_AWAY_SLUG: ${{ secrets.ROOTSTOCK_AWAY_SLUG }}
 
       # Chromium only. The other engines are worth running locally before a
       # release; paying for three downloads on every push is not.
@@ -55,6 +61,11 @@ jobs:
       # Chromium projects only, matching the single browser installed above.
       - name: End-to-end tests
         run: pnpm test:e2e --project=mobile-chrome --project=desktop-chrome
+        # Playwright's webServer runs `pnpm dev`, which reads the same variable.
+        # Without it the first test that navigates to the Away Card takes the
+        # whole job down with a build error instead of a failed assertion.
+        env:
+          ROOTSTOCK_AWAY_SLUG: ${{ secrets.ROOTSTOCK_AWAY_SLUG }}
 
       # The report is the only thing that explains a failed run after the
       # runner is gone.

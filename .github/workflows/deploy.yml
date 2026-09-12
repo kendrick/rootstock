@@ -44,6 +44,12 @@ jobs:
         run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+          # The Away Card's slug lives in a repository secret. ADR 0004 carries
+          # the reasoning. The repo is public, and Pages publishes a public site
+          # whatever the repo is, so a committed slug is one anyone can read. A
+          # build without the variable fails rather than publishing the card
+          # somewhere guessable.
+          ROOTSTOCK_AWAY_SLUG: ${{ secrets.ROOTSTOCK_AWAY_SLUG }}
 
       - uses: actions/configure-pages@v5
 
