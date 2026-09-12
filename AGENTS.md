@@ -14,6 +14,12 @@ The five canonical triage roles, each label string equal to its name. See `docs/
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## Domain
+
+Read `CONTEXT.md` before naming anything. The domain words are load-bearing: a Rule is not a Task, a Guard creates no work, an Occurrence is not a checkbox, and an Advisory is not a Citation. Each entry carries an `_Avoid_` line naming the synonyms that must not be used for it.
+
+Decisions with consequences live in `docs/adr/`. Read the ones touching what you are about to change, and say so explicitly if your work contradicts one rather than quietly overriding it.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
