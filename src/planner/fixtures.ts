@@ -344,9 +344,9 @@ export const safetyGuard: Rule = parseWith(ruleSchema, 'planner fixtures: safety
 });
 
 /**
- * `rules` plus the five above, parsed once so a later wave can pull in the
- * whole guard-and-priority scenario with one import instead of spreading five
- * names into an array at every call site that wants it.
+ * `rules` plus the five above, parsed once so a spec can pull in the whole
+ * guard-and-priority scenario with one import instead of spreading five names
+ * into an array at every call site that wants it.
  */
 export const guardScenarioRules: Rule[] = parseWith(z.array(ruleSchema), 'planner fixtures: guard scenario rules')([
 	...rules,
@@ -439,7 +439,7 @@ function soilTemperatureAt(daysBeforeAsOf: number, localHour: number): number {
  * mostly dry, 1 spikes to a 70% afternoon chance, and 2 relaxes back toward
  * the same low chance as everything else. Because `forecastRain` paints its
  * loop index against `asOf + index + 1`, the spike lands on the day two
- * calendar days after `asOf`, not one — which is exactly the day
+ * calendar days after `asOf`, not one—which is exactly the day
  * `rain-expected`'s `no-rain-within` needs above 50% inside its two-day
  * lookahead. Moving the spike to index 0, or dropping it below 50, clears the
  * Guard without touching the Guard's own condition.

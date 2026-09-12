@@ -8,7 +8,7 @@ import type { Plant } from '@/yard/plant';
  * no `plantId` fails here: there is no Plant to compare against, and reading
  * that absence as a match would turn the fig's Guard into a yard-wide one.
  *
- * The two selectors union rather than each vetoing what the other left out,
+ * The two selectors union rather than each overruling what the other left out,
  * for the same reason `targets()` unions them. An intersection would let a
  * null `plantIds` silently narrow a tag match to nothing, when a null
  * selector is supposed to constrain nothing at all.

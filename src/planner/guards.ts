@@ -86,9 +86,14 @@ function guarded(task: Task, guard: GuardRule, verdict: GuardVerdict): Task {
  * of by accident. Nothing here reads the target Rule's `priority` either, so a
  * Rule cannot outrun a Guard by asking to go first.
  *
- * The pass belongs between authoring and ordering. Guards read finished Tasks,
- * so they cannot run before the Rules that create them, and a deferred Task
- * sorts differently from a fired one, so they cannot run after the ranking.
+ * Guards read finished Tasks, so the pass cannot run before the Rules that
+ * create them. Which side of the ordering it falls on is a weaker claim than
+ * it looks: `orderTasks` ranks on tags, specificity and priority and never
+ * reads `status`, so today the Plan comes out in the same order either way.
+ * Running before the sort is what keeps that true by accident rather than by
+ * arrangement, because it leaves the ranking the last thing applied and hands
+ * a tier that does one day read `status` a Task whose deferrals are already
+ * settled.
  *
  * Targeting is resolved against the Tasks as they arrived rather than against
  * the copies carrying earlier Guards' work. `guardTargets` reads `ruleId`,

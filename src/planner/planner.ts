@@ -1,7 +1,7 @@
 import type { OrderableTask } from './order';
 import type { DailyAggregate, Plan } from './plan';
 import type { Citation, Task } from './task';
-import type { CadenceRule, Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { CadenceRule, GuardCondition, Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
 import type { Aggregate, Variable } from '@/weather/observation';
 import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
@@ -119,23 +119,37 @@ type TaskCreatingRule = WindowRule | ThresholdRule | CadenceRule;
  * past the constant widens the window, and shortening the Rule to fit the days
  * on hand is the repair the ADR rules out.
  *
- * A Guard counts toward the span on the same terms. `no-rain-within` names a
- * run of days the way a Threshold Rule's `consecutiveDays` does, and the span
- * takes the widest run any Rule named without asking which direction that Rule
- * reads in: the number is what the Rule said it needs. A Guard planned against
- * a window that never carried the series it asked for finds no rain and says
- * nothing about having failed to look, and `evaluateGuardCondition` carries
- * that argument in full.
+ * The Guard arm is worth reading twice, because the two runs of days it
+ * compares do not point the same way. `consecutiveDays` reaches backwards and
+ * this span bounds history, so a Threshold Rule widening it is the ADR's case
+ * exactly. `no-rain-within` reaches forwards, and `buildWindow` bounds the
+ * forecast by what was fetched rather than by this number, so widening the
+ * history on a Guard's horizon buys that Guard nothing. At the days the yard
+ * actually uses it changes nothing either: the rain Guard looks two days out
+ * against a thirty-day floor. It is left here because trimming a Rule's stated
+ * lookback is the repair ADR 0003 rules out, and no Rule has yet asked for a
+ * number that makes the difference visible.
  */
+/**
+ * Narrows a Rule to the one Guard shape that reads weather, so the two places
+ * that care about it ask the same question rather than each spelling out the
+ * pair of checks. A Guard on any other condition is settled by the date alone
+ * and asks the window for nothing.
+ */
+function rainForecastGuard(rule: Rule): Extract<GuardCondition, { kind: 'no-rain-within' }> | null {
+	return rule.kind === 'guard' && rule.condition.kind === 'no-rain-within' ? rule.condition : null;
+}
+
 function windowSpan(rules: Rule[]): number {
 	let days = PLAN_WINDOW_DAYS;
 
 	for (const rule of rules) {
+		const rain = rainForecastGuard(rule);
 		if (rule.kind === 'threshold') {
 			days = Math.max(days, rule.consecutiveDays);
 		}
-		else if (rule.kind === 'guard' && rule.condition.kind === 'no-rain-within') {
-			days = Math.max(days, rule.condition.days);
+		else if (rain !== null) {
+			days = Math.max(days, rain.days);
 		}
 	}
 
@@ -179,7 +193,7 @@ function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 		if (rule.kind === 'threshold') {
 			want(rule.aggregate, seriesKey(rule.variable, rule.depthCm));
 		}
-		else if (rule.kind === 'guard' && rule.condition.kind === 'no-rain-within') {
+		else if (rainForecastGuard(rule) !== null) {
 			want('max', seriesKey('precipitation-probability', null));
 		}
 	}
@@ -404,7 +418,7 @@ function stampDelegability(tasks: Task[], rules: Rule[], tagPolicy: TagPolicy): 
  * the Plan says so. A missing id throws for the same reason, rather than
  * letting a `Map.get` miss become an `undefined` somewhere inside the Plan.
  */
-function repaired(orderables: OrderableTask[], tasks: Task[]): OrderableTask[] {
+function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableTask[] {
 	const byId = new Map(tasks.map(task => [task.id, task]));
 
 	return orderables.map((entry) => {
@@ -433,13 +447,11 @@ function repaired(orderables: OrderableTask[], tasks: Task[]): OrderableTask[] {
  * history every other Rule then reads, instead of each Rule getting whatever
  * days its own lookback happened to reach.
  *
- * The Guard pass sits between the authoring and the ordering because both
- * sides pin it there. Guards read finished Tasks, so they cannot run before
- * the Rules that write them, and a deferred Task sorts differently from a
- * fired one, so they cannot run after the ranking. The unpairing and repairing
- * around it is the price of that placement: ordering needs a Rule's
- * specificity and priority, a Task carries neither of them, and a Guard has no
- * use for them.
+ * The Guard pass sits between the authoring and the ordering, for reasons
+ * `applyGuards` sets out rather than repeats here. What that placement costs
+ * is local and visible: ordering needs a Rule's specificity and priority, a
+ * Task carries neither, and `applyGuards` has no use for either, so the Tasks
+ * come apart from their ranking facts and go back together around the pass.
  *
  * Delegability is stamped here, after the Guards and before the sort, and
  * nowhere else. The tag policy narrows what a Rule already claimed, and a
@@ -462,7 +474,7 @@ export function plan(input: PlanInput): Plan {
 
 	return {
 		asOf: input.asOf,
-		tasks: orderTasks(repaired(orderables, tasks), input.tagPolicy),
+		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
 		window,
 	};
 }

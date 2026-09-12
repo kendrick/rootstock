@@ -20,11 +20,12 @@ import { applyGuards, FORECAST_UNAVAILABLE_TEXT } from './guards';
 import { taskId, taskSchema } from './task';
 
 /*
- * The Tasks below are hand-authored rather than taken from `plan()`, because a
- * later wave wires `plan()` to this function. Reading its output here would
- * make half these assertions circular the day that lands: the Tasks would
- * arrive already guarded, and a spec asserting that `applyGuards` deferred
- * something would be watching itself run twice.
+ * The Tasks below are hand-authored rather than taken from `plan()`, which
+ * runs this function itself. Reading its output here would make half these
+ * assertions circular: the Tasks would arrive already guarded, and a spec
+ * asserting that `applyGuards` deferred something would be watching itself
+ * run twice. `planner.spec.ts` covers the pass from outside, where the round
+ * trip is the point.
  *
  * They are still real Tasks. Each one is parsed through `taskSchema`, carries
  * the Citation its Rule kind produces, and copies `delegable` and `tags` off
@@ -172,9 +173,11 @@ const scenarioTasks = [
 const rainyWindow = toDailyAggregates(observations, timeZone, 'max');
 
 /**
- * What `buildWindow` hands a Guard today: soil temperature and nothing else,
- * because it collects series from Threshold Rules alone. The forecast here is
- * absent rather than clear, and telling those two apart is why
+ * A window with the rain series missing from it. `buildWindow` collects the
+ * series a `no-rain-within` Guard reads, so this is no longer what a Guard is
+ * routinely handed, but a forecast can still stop short of a Guard's horizon
+ * and the series can still be absent for a day nobody fetched. The forecast
+ * here is absent rather than clear, and telling those two apart is why
  * `evaluateGuardCondition` has a third verdict at all.
  */
 const forecastlessWindow: DailyAggregate[] = toDailyAggregates(observations, timeZone, 'mean')
@@ -284,6 +287,14 @@ describe('applyGuards', () => {
 			// `fig-prune-first` carries the lowest priority in the fixture set,
 			// so a short-circuit letting an urgent Rule outrun a Guard shows up
 			// here.
+			//
+			// Read what this does and does not claim. `safetyGuard` is tagged
+			// `ladder`, which sits on the fixture policy's `safetyTags`, and
+			// the tag is descriptive here rather than load-bearing: no Guard
+			// consults `safetyTags`, so retagging it would leave this passing.
+			// That is the design and not a gap. A Guard's effect is settled
+			// before any ranking happens, so there is no contest between a
+			// Guard and a priority for a tag to arbitrate.
 			const others = guardScenarioRules
 				.filter(rule => rule.id !== highPriorityRule.id)
 				.map(rule => rule.priority);

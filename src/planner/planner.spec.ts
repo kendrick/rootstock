@@ -16,6 +16,7 @@ import {
 	occurrences,
 	plants,
 	rules,
+	safetyGuard,
 	tagPolicy,
 	timeZone,
 } from './fixtures';
@@ -602,6 +603,34 @@ describe('plan under guards', () => {
 	it('returns a plan that still parses through planSchema once the guards have run', () => {
 		expect(() => planSchema.parse(guardScenarioPlan)).not.toThrow();
 	});
+
+	/*
+	 * `applyGuards` proves in isolation that it never reads `priority`. What
+	 * only `plan()` can show is that nothing downstream quietly undoes that:
+	 * the Rule with the lowest priority number in the fixture set sorts near
+	 * the front of the Plan and is deferred where it sits.
+	 *
+	 * Both halves are the assertion. A Task that lost its deferral on the way
+	 * through the ordering would fail the first; a Plan that answered by
+	 * demoting held work to the bottom would fail the second, and would be a
+	 * Deferred Task the household reads as finished rather than held. Ranking
+	 * and holding are separate questions about a Task and the Plan answers
+	 * them separately.
+	 */
+	it('defers the rule that asked to go first without moving it down the plan', () => {
+		const ranked = guardScenarioPlan.tasks.findIndex(task => task.ruleId === highPriorityRule.id);
+		const held = guardScenarioPlan.tasks[ranked];
+
+		expect(held?.status).toBe('deferred');
+		expect(held?.deferrals.map(deferral => deferral.guardId)).toContain(safetyGuard.id);
+		expect(ranked).toBeLessThan(guardScenarioPlan.tasks.length - 1);
+
+		const undeferred = plan(inputWith({ rules: withoutRule(safetyGuard.id, withoutRule('rain-expected', guardScenarioRules)) }));
+		const unheld = undeferred.tasks.findIndex(task => task.ruleId === highPriorityRule.id);
+
+		expect(undeferred.tasks[unheld]?.status).not.toBe('deferred');
+		expect(unheld).toBe(ranked);
+	});
 });
 
 describe('plan window', () => {
@@ -641,7 +670,7 @@ describe('plan window', () => {
 	});
 
 	// The other half of the same claim, and the one that keeps the window a
-	// budget rather than a dump: the readings are here because a Guard asked,
+	// budget rather than a dump: these days are here because a Guard asked,
 	// not because the weather layer fetched them.
 	it('carries no rain at all when no guard asks about it', () => {
 		expect(observations.some(observation => observation.variable === 'precipitation-probability')).toBe(true);
