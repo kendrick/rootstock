@@ -23,6 +23,9 @@ importers:
       tailwind-merge:
         specifier: 3.6.0
         version: 3.6.0
+      zod:
+        specifier: 4.6.2
+        version: 4.6.2
     devDependencies:
       '@antfu/eslint-config':
         specifier: 9.3.0
