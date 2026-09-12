@@ -117,11 +117,13 @@ type TaskCreatingRule = WindowRule | ThresholdRule | CadenceRule;
  * past the constant widens the window, and shortening the Rule to fit the days
  * on hand is the repair the ADR rules out.
  *
- * Guards are counted even though no Guard runs yet. The Guard pass reads this
- * same window, so a `no-rain-within` Guard asking about more days than the
- * window holds would find no rain, release the work it exists to hold, and say
- * nothing about it. Counting Guards here costs a few days of history and
- * closes that hole before the pass that would fall into it is written.
+ * Guards widen the span too, though nothing here runs one yet, and it is worth
+ * being exact about how far that gets #7. The span will be long enough for a
+ * `no-rain-within` Guard, and that is all it is. `buildWindow` collects series
+ * from Threshold Rules alone, so no precipitation reaches the window at any
+ * span. Whoever writes the Guard pass has to widen that collection as well: a
+ * Guard handed an empty series finds no rain, releases the work it exists to
+ * hold, and says nothing about having done so.
  */
 function windowSpan(rules: Rule[]): number {
 	let days = PLAN_WINDOW_DAYS;
@@ -211,8 +213,20 @@ function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
 				continue;
 			}
 
+			/*
+			 * Bounded from both sides, and matching what a Threshold Rule
+			 * actually reads, because ADR 0003 makes the window the readings
+			 * the Rules looked at rather than everything on hand. Observed
+			 * history reaches back `span` days; forecast runs forward from
+			 * `asOf`. A forecast row dated before `asOf` is left over from an
+			 * earlier fetch, and carrying one would put a point on the
+			 * published sparkline that no Rule ever read.
+			 */
 			const trailing = daysBetween(day.date, input.asOf);
-			if (day.basis === 'forecast' || (trailing >= 0 && trailing < span)) {
+			const keep = day.basis === 'forecast'
+				? trailing <= 0
+				: trailing >= 0 && trailing < span;
+			if (keep) {
 				window.push(day);
 			}
 		}

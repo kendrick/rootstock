@@ -138,26 +138,33 @@ export function evaluateThresholdRule(
 	}
 
 	/*
-	 * The same scan over the same series, forecast days included. A run here
-	 * may open on the trailing observed days and close on the forecast ones,
-	 * which is the ordinary shape of a Rule about to be satisfied. A run made
-	 * only of observed days cannot reach this line, because it would already
-	 * have fired above.
-	 */
-	/*
-	 * A forecast day dated before `asOf` is a leftover from an earlier fetch
-	 * rather than a prediction, and counting one would date a crossing in the
-	 * past. `projectedDate` is a promise about a day that has not arrived, so
-	 * the stale rows come out here instead of the scan trusting the caller to
-	 * have handed it a tidy window. A forecast day dated exactly `asOf` stays:
-	 * a Rule crossing on today's own partly-predicted day is the ordinary case.
+	 * The same scan again, now with the forecast days in. A run here opens on
+	 * the trailing observed days and closes on a forecast one, which is the
+	 * ordinary shape of a Rule about to be satisfied.
 	 *
-	 * Observed days are all kept, including any dated past `asOf`. Such a day
-	 * cannot fire the Rule, because the run above reaches no further than the
-	 * day being planned for, but it is a recorded reading rather than a guess
-	 * and it makes a better projection than a forecast would.
+	 * The two halves are bounded from opposite sides, and between them they
+	 * buy the property CONTEXT.md asks of an Approaching Task: its Citation
+	 * names a day that is forecast to satisfy the Rule, never one that already
+	 * did. An observed day is evidence only up to `asOf`, because the Planner
+	 * has not reached past that date whatever a reading claims. A forecast day
+	 * counts only from `asOf` forward, because a forecast for a day already
+	 * gone is a leftover from an earlier fetch and would date a crossing in the
+	 * past.
+	 *
+	 * That makes the closing day of any run found here a forecast day, and it
+	 * falls out rather than being checked for. A run closing on an observed day
+	 * would consist entirely of observed days at or before `asOf` (the days are
+	 * adjacent and ascending, and stale forecast days are gone), so the scan
+	 * above would already have fired it.
+	 *
+	 * Dropping a stale forecast day leaves a hole the run counter reads as a
+	 * break, which is the honest answer: a day whose only row is a forecast is
+	 * a day nobody observed, and a run has no business claiming continuity
+	 * through it.
 	 */
-	const projection = series.filter(day => day.basis === 'observed' || day.date >= asOf);
+	const projection = series.filter(day =>
+		day.basis === 'observed' ? day.date <= asOf : day.date >= asOf,
+	);
 
 	const projectedRun = firstRun(projection, rule);
 	if (projectedRun !== null) {

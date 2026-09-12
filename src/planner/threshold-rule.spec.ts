@@ -140,7 +140,6 @@ describe('evaluateThresholdRule', () => {
 		const verdict = evaluateThresholdRule(rule(), window, '2026-09-11');
 
 		expect(verdict).toMatchObject({ fires: true, status: 'approaching' });
-		expect(verdict).not.toMatchObject({ status: 'fired' });
 		expect(citationOf(verdict)).toEqual({
 			kind: 'threshold-projection',
 			variable: 'soil-temperature',
@@ -164,7 +163,6 @@ describe('evaluateThresholdRule', () => {
 		const verdict = evaluateThresholdRule(warming, window, '2026-03-03');
 
 		expect(verdict).toMatchObject({ fires: true, status: 'approaching' });
-		expect(verdict).not.toMatchObject({ status: 'fired' });
 		expect(citationOf(verdict)).toMatchObject({ projectedDate: '2026-03-06' });
 	});
 
@@ -304,15 +302,44 @@ describe('evaluateThresholdRule', () => {
 		expect(evaluateThresholdRule(rule(), [], '2026-09-11')).toEqual({ fires: false });
 	});
 
-	it('does not count an observed day dated past the as-of date toward firing', () => {
-		// A Planner run for the 10th has not reached the 11th yet, whatever the
-		// day's own basis claims.
+	/*
+	 * A Planner run for the 10th has not reached the 11th, whatever that day's
+	 * own basis claims, so the reading cannot fire the Rule. Nor can it project
+	 * one: CONTEXT.md says an Approaching Task is one the Rule "is forecast to"
+	 * satisfy, and its Citation names a forecast day so that evidence which has
+	 * happened is never confused with evidence that is expected. A recorded
+	 * reading for the 11th is neither, so the Rule has nothing to say yet.
+	 */
+	it('neither fires nor projects on an observed day dated past the as-of date', () => {
 		const window = [day('2026-09-09', 68), day('2026-09-10', 67), day('2026-09-11', 66)];
 
-		const verdict = evaluateThresholdRule(rule(), window, '2026-09-10');
+		expect(evaluateThresholdRule(rule(), window, '2026-09-10')).toEqual({ fires: false });
+	});
 
-		expect(verdict).toMatchObject({ fires: true, status: 'approaching' });
-		expect(citationOf(verdict)).toMatchObject({ projectedDate: '2026-09-11' });
+	/*
+	 * The invariant the two filters buy, asserted directly rather than left to
+	 * be inferred from the cases above. Every day that could close a projected
+	 * run is a forecast day, so a projection can never cite a reading that has
+	 * already happened.
+	 */
+	it('always names a forecast day as the projected crossing', () => {
+		const window = [
+			day('2026-09-09', 74),
+			day('2026-09-10', 69),
+			day('2026-09-11', 68),
+			forecast('2026-09-12', 67),
+			forecast('2026-09-13', 66),
+		];
+
+		const verdict = evaluateThresholdRule(rule(), window, '2026-09-11');
+		const citation = citationOf(verdict);
+
+		if (citation.kind !== 'threshold-projection') {
+			throw new Error(`expected a projection citation, got '${citation.kind}'`);
+		}
+
+		const cited = window.find(entry => entry.date === citation.projectedDate);
+		expect(cited?.basis).toBe('forecast');
 	});
 
 	it('sorts the series itself instead of trusting the order it was handed', () => {

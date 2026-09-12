@@ -75,29 +75,35 @@ describe('orderTasks', () => {
 		expect(result.map(item => item.ruleId)).toEqual(['b', 'a']);
 	});
 
-	// Tier 1 (safety): the pair ties on ruleId, plantId, specificity, and
-	// priority, and differs only in whether a tag appears in safetyTags.
-	it('tier 1: sorts a safety Task ahead of a tied non-safety Task', () => {
+	// Tier 1 (safety): the pair ties on plantId, specificity, and priority —
+	// everything below safety in the tier order — but the ruleId ('a-rule',
+	// 'b-rule') is chosen so ruleId's own ordering would put the *other*
+	// entry first. A same-ruleId pair would tie on tier 4 too and let a
+	// deleted safety check pass on stability alone; giving ruleId the
+	// opposite opinion means only a working safety tier can produce this
+	// result. Distinct ruleIds also give the two entries distinct ids, so the
+	// pair describes a Plan that could actually exist.
+	it('tier 1: sorts a safety Task ahead of a tied non-safety Task, even though ruleId favors the other one', () => {
 		const entries = [
-			entry({ ruleId: 'shared', plantId: 'p', tags: [], specificity: 2, priority: 5 }),
-			entry({ ruleId: 'shared', plantId: 'p', tags: ['chemical'], specificity: 2, priority: 5 }),
+			entry({ ruleId: 'a-rule', plantId: 'p', tags: [], specificity: 2, priority: 5 }),
+			entry({ ruleId: 'b-rule', plantId: 'p', tags: ['chemical'], specificity: 2, priority: 5 }),
 		];
 
 		const result = orderTasks(entries, chemicalIsSafety);
 
-		expect(result.map(item => item.tags)).toEqual([['chemical'], []]);
+		expect(result.map(item => item.ruleId)).toEqual(['b-rule', 'a-rule']);
 	});
 
 	// Tier 2 (specificity): the pair ties on safety standing (both
-	// non-safety, since safetyTags is empty), priority, ruleId, and plantId,
-	// and differs only in specificity. The two entries share a ruleId and
-	// plantId, so the tags are used purely as a label to tell the two Tasks
-	// apart in the output — with no safetyTags to match against, they play
-	// no part in the comparison itself.
-	it('tier 2: sorts higher specificity ahead of a tied lower one', () => {
+	// non-safety) and priority — the tiers above specificity — but 'b-rule'
+	// (specificity 3) sorts after 'a-rule' (specificity 2) by ruleId alone.
+	// If specificity were deleted from the comparator, tier 4 would put
+	// 'a-rule' first; the fact that 'b-rule' leads instead proves specificity
+	// decided it, not a leftover ruleId or input-order tie.
+	it('tier 2: sorts higher specificity ahead of a tied lower one, even though ruleId favors the other one', () => {
 		const entries = [
-			entry({ ruleId: 'shared', plantId: 'p', tags: ['low'], specificity: 1, priority: 5 }),
-			entry({ ruleId: 'shared', plantId: 'p', tags: ['high'], specificity: 3, priority: 5 }),
+			entry({ ruleId: 'a-rule', plantId: 'p', tags: ['low'], specificity: 2, priority: 5 }),
+			entry({ ruleId: 'b-rule', plantId: 'p', tags: ['high'], specificity: 3, priority: 5 }),
 		];
 
 		const result = orderTasks(entries, noSafetyTags);
@@ -105,14 +111,15 @@ describe('orderTasks', () => {
 		expect(result.map(item => item.tags)).toEqual([['high'], ['low']]);
 	});
 
-	// Tier 3 (priority): the pair ties on safety standing, specificity,
-	// ruleId, and plantId, and differs only in priority; tags again serve
-	// only as a label, since an empty safetyTags list keeps them out of the
-	// comparison.
-	it('tier 3: sorts lower priority ahead of a tied higher one', () => {
+	// Tier 3 (priority): the pair ties on safety standing and specificity —
+	// the tiers above priority — but 'b-rule' (priority 3) again sorts after
+	// 'a-rule' by ruleId alone. Same shape as the specificity case above: a
+	// deleted priority tier would fall to ruleId and pick 'a-rule', so
+	// 'b-rule' leading proves priority did the work.
+	it('tier 3: sorts lower priority ahead of a tied higher one, even though ruleId favors the other one', () => {
 		const entries = [
-			entry({ ruleId: 'shared', plantId: 'p', tags: ['low'], specificity: 2, priority: 20 }),
-			entry({ ruleId: 'shared', plantId: 'p', tags: ['high'], specificity: 2, priority: 3 }),
+			entry({ ruleId: 'a-rule', plantId: 'p', tags: ['low'], specificity: 2, priority: 20 }),
+			entry({ ruleId: 'b-rule', plantId: 'p', tags: ['high'], specificity: 2, priority: 3 }),
 		];
 
 		const result = orderTasks(entries, noSafetyTags);
@@ -120,15 +127,17 @@ describe('orderTasks', () => {
 		expect(result.map(item => item.tags)).toEqual([['high'], ['low']]);
 	});
 
-	it('lets a negative priority lead', () => {
+	it('lets a negative priority lead, even though ruleId favors the other one', () => {
+		// 'a-ordinary' sorts before 'z-must-lead' by ruleId alone, so a
+		// deleted priority tier would put the ordinary Task first instead.
 		const entries = [
-			entry({ ruleId: 'ordinary', specificity: 2, priority: 5 }),
-			entry({ ruleId: 'must-lead', specificity: 2, priority: -1 }),
+			entry({ ruleId: 'a-ordinary', specificity: 2, priority: 5 }),
+			entry({ ruleId: 'z-must-lead', specificity: 2, priority: -1 }),
 		];
 
 		const result = orderTasks(entries, noSafetyTags);
 
-		expect(result.map(item => item.ruleId)).toEqual(['must-lead', 'ordinary']);
+		expect(result.map(item => item.ruleId)).toEqual(['z-must-lead', 'a-ordinary']);
 	});
 
 	// Tier 4 (ruleId): the pair ties on safety standing, specificity,
@@ -207,5 +216,24 @@ describe('orderTasks', () => {
 		];
 		expect(forward.map(item => item.id)).toEqual(expectedIds);
 		expect(backward.map(item => item.id)).toEqual(expectedIds);
+	});
+
+	// Every id below is distinct, so the comparator can never fall back on
+	// input order to break a tie — comparing the two full Task arrays (not
+	// just their ids) proves the sort is a pure function of the entries, with
+	// nothing left over that a same-id pair could have hidden.
+	it('produces byte-identical output for distinct-id entries handed in two different orders', () => {
+		const entries = [
+			entry({ ruleId: 'alpha', specificity: 2, priority: 5 }),
+			entry({ ruleId: 'beta', plantId: 'plant-a', specificity: 1, priority: 0 }),
+			entry({ ruleId: 'beta', plantId: 'plant-b', specificity: 1, priority: 0 }),
+			entry({ ruleId: 'gamma', tags: ['chemical'], specificity: 3, priority: -2 }),
+		];
+		const reversed = [...entries].reverse();
+
+		const forward = orderTasks(entries, chemicalIsSafety);
+		const backward = orderTasks(reversed, chemicalIsSafety);
+
+		expect(forward).toEqual(backward);
 	});
 });

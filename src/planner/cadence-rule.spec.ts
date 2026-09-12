@@ -193,6 +193,27 @@ describe('evaluateCadenceRule', () => {
 		});
 	});
 
+	// The doc comment on findAnchor argues for an id tie-break but nothing
+	// exercised it: two Occurrences with an identical completedAt only prove
+	// the tie-break exists if the answer stays the same in both input orders.
+	it('breaks a completedAt tie by picking the greater id, regardless of input order', () => {
+		const rule = buildRule({ everyDays: { min: 10, max: 20 } });
+		const lower = buildOccurrence({ id: 'occurrence-a', completedAt: '2026-01-01T00:00:00Z' });
+		const higher = buildOccurrence({ id: 'occurrence-b', completedAt: '2026-01-01T00:00:00Z' });
+
+		const forward = evaluateCadenceRule(rule, null, [lower, higher], '2026-01-11', 'UTC');
+		const backward = evaluateCadenceRule(rule, null, [higher, lower], '2026-01-11', 'UTC');
+
+		const expected = {
+			fires: true,
+			status: 'fired',
+			titleSuffix: null,
+			citation: { kind: 'cadence', lastOccurrenceId: 'occurrence-b', elapsedDays: 10 },
+		};
+		expect(forward).toEqual(expected);
+		expect(backward).toEqual(expected);
+	});
+
 	it('uses fixture data: the latest esperanza-feeding occurrence wins over the earlier one', () => {
 		const rule = findFixtureCadenceRule('esperanza-feeding');
 

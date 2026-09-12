@@ -379,6 +379,43 @@ describe('plan', () => {
 
 		expect(tasks.find(task => task.ruleId === 'spray-the-beds')?.delegable).toBe(true);
 	});
+
+	/*
+	 * The approaching branch end to end. Every other proof of it stops at the
+	 * verdict, so nothing until now showed that `plan()` carries a projection
+	 * onto the Task it authors: wiring that dropped the status or handed back a
+	 * fired Citation would have passed the whole suite.
+	 *
+	 * The Rule asks for a run the observed days never reach. The fixture's soil
+	 * series bottoms out at 66.8F on the as-of date and keeps falling through
+	 * the forecast tail, so both days at or below 65.5F are forecast and the
+	 * crossing is expected rather than recorded.
+	 */
+	it('carries a threshold projection onto the task it authors', () => {
+		const overseed = thresholdRule({
+			id: 'overseed-when-cool',
+			name: 'Overseed once the soil settles below 65.5F',
+			value: 65.5,
+			consecutiveDays: 2,
+			appliesTo: { plantIds: ['front-lawn'], plantTags: null, ruleTags: null },
+		});
+
+		const tasks = plan(inputWith({ rules: [...rules, overseed] })).tasks;
+
+		expect(tasks.find(task => task.ruleId === 'overseed-when-cool')).toMatchObject({
+			id: 'overseed-when-cool@front-lawn',
+			plantId: 'front-lawn',
+			status: 'approaching',
+			citation: {
+				kind: 'threshold-projection',
+				variable: 'soil-temperature',
+				depthCm: 6,
+				aggregate: 'mean',
+				projectedDate: '2026-09-14',
+			},
+			title: 'Overseed once the soil settles below 65.5F (Front lawn)',
+		});
+	});
 });
 
 describe('plan window', () => {
@@ -407,6 +444,33 @@ describe('plan window', () => {
 		const forecast = fixturePlan.window.filter(day => day.basis === 'forecast');
 		expect(forecast).not.toHaveLength(0);
 		expect(forecast.every(day => day.date > asOf)).toBe(true);
+	});
+
+	/*
+	 * A forecast row for a day already gone is left over from an earlier fetch.
+	 * No Rule reads one, and ADR 0003 makes the window the readings the Rules
+	 * looked at, so carrying one would draw a point on the published sparkline
+	 * that nothing in the Plan can account for.
+	 *
+	 * One forecast hour is enough to make its whole local day forecast, which
+	 * is what puts the day three days back on the wrong side of the boundary.
+	 */
+	it('leaves a stale forecast day out of the window', () => {
+		const stale = observationSchema.parse({
+			observedAt: `${shiftDate(asOf, -3)}T12:00:00Z`,
+			variable: 'soil-temperature',
+			depthCm: 6,
+			value: 61,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		});
+
+		const window = plan(inputWith({ observations: [...observations, stale] })).window;
+
+		expect(window.some(day => day.basis === 'forecast' && day.date < asOf)).toBe(false);
 	});
 
 	it('reaches back the standard span when no rule asks for more', () => {
