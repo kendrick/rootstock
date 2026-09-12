@@ -152,9 +152,23 @@ export interface Store {
 	 * refused one, because the refusal is visible and the half is not.
 	 *
 	 * Records are written by id, overwriting what is there; records the payload
-	 * omits are left alone. The append-only guard on {@link Store.set} does not
+	 * omits are left alone. The append-only check on {@link Store.set} does not
 	 * apply, because a restore that refused ids it already held could never be
 	 * run twice.
 	 */
 	load: (payload: unknown) => Promise<void>;
+}
+
+/**
+ * The rejection every implementation raises when a `set` would overwrite an
+ * Occurrence.
+ *
+ * Shared rather than written per implementation. The three stores have to be
+ * indistinguishable through the interface, and a caller that matched on this
+ * message would otherwise get a different sentence depending on which one it
+ * held. It had already drifted between "replacing" and "changing" before this
+ * was pulled out, which is the drift a single definition ends.
+ */
+export function occurrenceAlreadyStored(id: string): Error {
+	return new Error(`An Occurrence is already stored under '${id}', and occurrences are append-only: marking work done writes a new Occurrence rather than replacing an old one.`);
 }

@@ -22,10 +22,11 @@ function envelope<T>(id: string, record: T): StoredRecord<T> {
  * A read-only {@link Store} over data the caller already has in hand.
  *
  * `data` arrives as an argument rather than being read from disk or imported
- * from `src/seed/`, which is what lets that ticket's JSON-authoring work and
- * this ticket's store-shape work land on separate branches without either
- * waiting on the other. Wiring the two together is one call site in whatever
- * ships next, not a dependency baked into this module.
+ * from the module that owns the seed JSON. Authoring that JSON and shaping
+ * this store are separate concerns that changed at different times, and
+ * keeping the dependency pointed this way means neither has to wait on the
+ * other. Wiring the two together is one call site, not a coupling baked in
+ * here.
  *
  * Every write rejects. This store fronts committed JSON the running page has
  * no way to persist a change back to, so accepting a write would let a caller
@@ -53,7 +54,11 @@ export function createSeedStore(data: SeedData): Store {
 
 		dump: async () => dumpSchema.parse({
 			version: 1,
-			exportedAt: SEEDED_AT,
+			// The real moment, unlike the seeded `updatedAt` above. `exportedAt` says
+			// when the export was taken, and a read-only store still gets exported at
+			// a time somebody could check against; reusing the seed constant here
+			// would report a January provenance for a file written in September.
+			exportedAt: new Date().toISOString(),
 			collections: {
 				yard: [...tables.yard.values()],
 				plants: [...tables.plants.values()],

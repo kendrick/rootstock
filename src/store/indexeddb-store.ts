@@ -3,7 +3,7 @@ import type { Dump } from './dump';
 import type { Collection, CollectionRecords, Store, StoredRecord } from './store';
 import { wrap } from 'idb';
 import { parseDump } from './dump';
-import { COLLECTIONS } from './store';
+import { COLLECTIONS, occurrenceAlreadyStored } from './store';
 
 /**
  * Bump this and `upgradeneeded` runs again, which is where the object stores
@@ -61,7 +61,7 @@ export async function openStore(options: OpenStoreOptions): Promise<Store> {
 
 	return {
 		get: async <C extends Collection>(collection: C, id: string) =>
-			guard(`'${id}' could not be read from the '${collection}' collection`, async () => {
+			withStorageError(`'${id}' could not be read from the '${collection}' collection`, async () => {
 				const stored = await db.get(collection, id);
 				// `undefined` is what IndexedDB returns for a key it does not hold, and
 				// `null` is what the contract promises. See Store.get for why.
@@ -69,21 +69,27 @@ export async function openStore(options: OpenStoreOptions): Promise<Store> {
 			}),
 
 		list: async <C extends Collection>(collection: C) =>
-			guard(`The '${collection}' collection could not be listed`, async () => {
+			withStorageError(`The '${collection}' collection could not be listed`, async () => {
 				const stored = await db.getAll(collection);
 				return stored as StoredRecord<CollectionRecords[C]>[];
 			}),
 
 		set: async <C extends Collection>(collection: C, record: StoredRecord<CollectionRecords[C]>) => {
-			const wrote = await guard(`'${record.id}' could not be written to the '${collection}' collection`, async () => {
+			const wrote = await withStorageError(`'${record.id}' could not be written to the '${collection}' collection`, async () => {
 				const tx = db.transaction(collection, 'readwrite');
 				const objectStore = tx.objectStore(collection);
 
 				// The append-only check and the write share one transaction, so no other
 				// write can slip in between them and turn a clean check into a silent
-				// overwrite. The conflict comes back as a value because a throw here
-				// would land in `guard` and be reworded as a storage failure, when what
-				// happened is a domain rule doing its job.
+				// overwrite. Awaiting the read mid-transaction is safe: `idb` settles its
+				// promise from the request's own success event, so the `put` below is
+				// queued in the same tick and the transaction never goes inactive. That
+				// only holds while everything awaited in here is an IndexedDB request;
+				// await anything else and the transaction commits out from under it.
+				//
+				// The conflict comes back as a value rather than a throw, because a throw
+				// here would land in `withStorageError` and be reworded as a storage
+				// failure, when what happened is a domain rule doing its job.
 				if (collection === 'occurrences' && await objectStore.get(record.id) !== undefined) {
 					// Deliberately no `abort()`. Nothing was written, so the empty
 					// transaction can commit, and aborting would reject `tx.done` with an
@@ -98,12 +104,12 @@ export async function openStore(options: OpenStoreOptions): Promise<Store> {
 			});
 
 			if (!wrote) {
-				throw new Error(`An Occurrence is already stored under '${record.id}', and occurrences are append-only: marking work done writes a new Occurrence rather than changing an old one.`);
+				throw occurrenceAlreadyStored(record.id);
 			}
 		},
 
 		dump: async (): Promise<Dump> =>
-			guard('The store could not be exported', async () => {
+			withStorageError('The store could not be exported', async () => {
 				// One readonly transaction across all five, so the export is a single
 				// consistent moment rather than five reads a concurrent write could
 				// land between.
@@ -131,7 +137,7 @@ export async function openStore(options: OpenStoreOptions): Promise<Store> {
 			// the refusal is visible and the half is not.
 			const restored = parseDump(payload).collections;
 
-			await guard('The store could not be restored from the payload', async () => {
+			await withStorageError('The store could not be restored from the payload', async () => {
 				// All five collections in one transaction. A transaction per collection
 				// would leave the database holding the first three when the fourth
 				// failed, which is the state this method exists to avoid.
@@ -207,7 +213,7 @@ async function openDatabase(name: string, indexedDB: IDBFactory): Promise<IDBPDa
  * write. The original travels on `cause`, which keeps the stack for a debugger
  * without putting `AbortError` in front of a person.
  */
-async function guard<T>(what: string, operation: () => Promise<T>): Promise<T> {
+async function withStorageError<T>(what: string, operation: () => Promise<T>): Promise<T> {
 	try {
 		return await operation();
 	}

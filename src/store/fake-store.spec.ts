@@ -11,7 +11,7 @@ describeStoreConformance({
 describe('fake store: implementation-specific behavior', () => {
 	// The conformance suite never builds two stores from the same SeedData and
 	// then writes to one, so it cannot catch a factory that hoists its tables
-	// out of the closure by accident — a mistake that would make every test
+	// out of the closure by accident, a mistake that would make every test
 	// file importing this fake share state through whichever test happened to
 	// run first. A `Map` declared inside `createFakeStore` can't leak this way,
 	// but the property is worth pinning down explicitly rather than trusting a

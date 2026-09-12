@@ -40,7 +40,7 @@ export interface RecordOccurrenceOptions {
  * Cadence Rule measures from whichever matching record is most recent, so an
  * overwritten history is a wrong plan with nothing left to show for it.
  * `Store.set` enforces the same rule from the other side and rejects a
- * repeat id, which is what makes a UUID id (Contract 11) safe here: the id
+ * repeat id, which is what makes a minted UUID safe here: the id
  * only has to be fresh, never stable, so there is nothing to look up first.
  *
  * `source` is `'browser'` on both the Occurrence and its envelope, because

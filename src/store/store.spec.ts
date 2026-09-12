@@ -1,10 +1,10 @@
-import type { Collection, CollectionRecords, SeedData, Store, StoredRecord } from './store';
+import type { Collection, SeedData, Store, StoredRecord } from './store';
 import type { Occurrence } from '@/planner/occurrence';
 import type { Rule } from '@/rules/rule';
 import type { Plant, Region, Yard } from '@/yard/plant';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { dumpSchema, parseDump } from './dump';
+import { createFakeStore } from './fake-store';
 import { COLLECTIONS, TAG_POLICY_ID } from './store';
 
 /*
@@ -15,10 +15,10 @@ import { COLLECTIONS, TAG_POLICY_ID } from './store';
  * and src/validation/colocation.spec.ts fails a spec with no sibling.
  *
  * The consequence is worth knowing before it surprises someone: importing
- * this module runs its `describe` blocks, so the scaffold suite at the bottom
- * is reported once per importing spec file. The duplication is noise rather
- * than a failure, and the alternative, guessing at which file vitest happens
- * to be collecting, is worse.
+ * this module runs its `describe` blocks, so the run at the bottom against
+ * the fake is reported once per importing spec file. The duplication is noise
+ * rather than a failure, and the alternative, guessing at which file vitest
+ * happens to be collecting, is worse.
  */
 
 const region: Region = { name: 'Denton County, Texas', hardinessZone: '8a' };
@@ -189,6 +189,44 @@ export interface StoreConformanceOptions {
 	writable: boolean;
 }
 
+/** Sorts envelopes by id, so two listings compare without depending on an order the contract does not promise. */
+function byId(left: { id: string }, right: { id: string }): number {
+	return left.id.localeCompare(right.id);
+}
+
+/**
+ * A plant no fixture holds, used to make "nothing was applied" falsifiable.
+ *
+ * A rejected payload built purely from a store's own dump proves nothing about
+ * atomicity, because applying it writes back what was already there. This
+ * record is the one thing whose presence afterwards can only mean the store
+ * wrote before it finished checking.
+ */
+const INTRUDER: StoredRecord<Plant> = {
+	id: 'intruder-1',
+	updatedAt: '2026-09-12T15:04:00Z',
+	source: 'browser',
+	record: {
+		id: 'intruder-1',
+		name: 'Intruder',
+		kind: 'plant',
+		status: 'planted',
+		tags: [],
+		position: null,
+		site: null,
+		lawn: null,
+		notes: null,
+	},
+};
+
+/** Every collection listed and ordered, for comparing a whole store against itself before and after. */
+async function snapshot(store: Store): Promise<Record<Collection, StoredRecord<unknown>[]>> {
+	const entries = await Promise.all(
+		COLLECTIONS.map(async collection => [collection, [...await store.list(collection)].sort(byId)] as const),
+	);
+	return Object.fromEntries(entries) as Record<Collection, StoredRecord<unknown>[]>;
+}
+
 /** Captures a rejection's message, and fails loudly rather than silently passing when the promise resolves. */
 async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
 	try {
@@ -314,30 +352,48 @@ export function describeStoreConformance(options: StoreConformanceOptions): void
 			expect(kept?.record.completedAt).toBe(lastFeeding.completedAt);
 		});
 
-		it('round-trips a dump into a fresh store with every id intact', async () => {
+		it('round-trips a dump into a fresh store with every record intact', async () => {
 			const source = await createStore(seedFixture);
 			const payload = await source.dump();
 			const target = await createStore(emptySeedData);
 
 			await target.load(payload);
 
+			// Whole envelopes rather than ids alone. An id-only check passes against
+			// a load that wrote stubs, which is the loss this test is named for.
+			//
+			// Each payload record is looked up rather than the two listings being
+			// compared outright, because `load` merges: the target keeps the records
+			// its own seed gave it, so `list` legitimately returns more than the
+			// payload carried. See Store.load.
 			for (const collection of COLLECTIONS) {
-				const ids = (await target.list(collection)).map(row => row.id);
+				const restored = new Map((await target.list(collection)).map(row => [row.id, row]));
+
 				for (const envelope of payload.collections[collection]) {
-					expect(ids, `${collection} lost ${envelope.id}`).toContain(envelope.id);
+					expect(restored.get(envelope.id), `${collection} lost or altered ${envelope.id}`).toEqual(envelope);
 				}
 			}
 		});
 
-		it('refuses a payload whose version it does not know, and leaves the store as it was', async () => {
+		it('refuses a payload whose version it does not know, and applies none of it', async () => {
 			const store = await createStore(seedFixture);
-			const before = (await store.list('plants')).map(row => row.id).sort();
+			const before = await snapshot(store);
 
-			const message = await rejectionMessage(store.load({ ...(await store.dump()), version: 2 }));
+			// The payload carries a record the store does not already hold, so a
+			// store that applied it before checking `version` is detectable. Feeding
+			// back the store's own dump would not be: applying it would rewrite the
+			// same bytes and every assertion below would still pass.
+			const payload = await store.dump();
+			const message = await rejectionMessage(store.load({
+				...payload,
+				version: 2,
+				collections: { ...payload.collections, plants: [...payload.collections.plants, INTRUDER] },
+			}));
 
 			expect(message).toContain('version');
 			expect(message, 'the message reads as a sentence').toMatch(/\.$/);
-			expect((await store.list('plants')).map(row => row.id).sort()).toEqual(before);
+			expect(await store.get('plants', INTRUDER.id), 'the refused payload was applied anyway').toBeNull();
+			expect(await snapshot(store)).toEqual(before);
 		});
 
 		it('refuses a payload holding one malformed record, and writes none of it', async () => {
@@ -364,65 +420,6 @@ export function describeStoreConformance(options: StoreConformanceOptions): void
 	});
 }
 
-const SEEDED_AT = '2026-09-11T00:00:00Z';
-
-function seeded<T>(id: string, record: T): StoredRecord<T> {
-	return { id, updatedAt: SEEDED_AT, source: 'seed', record };
-}
-
-/*
- * Scaffolding, not a deliverable. src/store/fake-store.ts is a separate piece
- * of work; this exists only so the suite above is proven runnable and
- * non-vacuous in the same commit that introduces it. A conformance suite that
- * has never been run against anything is three passing tickets waiting to
- * happen.
- */
-function createInlineStore(data: SeedData): Store {
-	const tables: Record<Collection, Map<string, StoredRecord<unknown>>> = {
-		yard: new Map<string, StoredRecord<unknown>>([[data.yard.id, seeded(data.yard.id, data.yard)]]),
-		plants: new Map<string, StoredRecord<unknown>>(data.plants.map(plant => [plant.id, seeded(plant.id, plant)])),
-		rules: new Map<string, StoredRecord<unknown>>(data.rules.map(rule => [rule.id, seeded(rule.id, rule)])),
-		occurrences: new Map<string, StoredRecord<unknown>>(data.occurrences.map(each => [each.id, seeded(each.id, each)])),
-		tagPolicy: new Map<string, StoredRecord<unknown>>([[TAG_POLICY_ID, seeded(TAG_POLICY_ID, data.tagPolicy)]]),
-	};
-
-	return {
-		get: async <C extends Collection>(collection: C, id: string) =>
-			(tables[collection].get(id) ?? null) as StoredRecord<CollectionRecords[C]> | null,
-
-		list: async <C extends Collection>(collection: C) =>
-			[...tables[collection].values()] as StoredRecord<CollectionRecords[C]>[],
-
-		set: async <C extends Collection>(collection: C, record: StoredRecord<CollectionRecords[C]>) => {
-			if (collection === 'occurrences' && tables.occurrences.has(record.id)) {
-				throw new Error(`An Occurrence is already stored under '${record.id}', and occurrences are append-only: marking work done writes a new Occurrence rather than replacing an old one.`);
-			}
-			tables[collection].set(record.id, record);
-		},
-
-		dump: async () => dumpSchema.parse({
-			version: 1,
-			exportedAt: new Date().toISOString(),
-			collections: {
-				yard: [...tables.yard.values()],
-				plants: [...tables.plants.values()],
-				rules: [...tables.rules.values()],
-				occurrences: [...tables.occurrences.values()],
-				tagPolicy: [...tables.tagPolicy.values()],
-			},
-		}),
-
-		load: async (payload: unknown) => {
-			const restored: Record<Collection, StoredRecord<unknown>[]> = parseDump(payload).collections;
-			for (const collection of COLLECTIONS) {
-				for (const envelope of restored[collection]) {
-					tables[collection].set(envelope.id, envelope);
-				}
-			}
-		},
-	};
-}
-
 describe('collection names', () => {
 	// The five names are a value as well as a type, and only this catches the
 	// day someone adds a sixth to the type map and not to the array.
@@ -433,8 +430,15 @@ describe('collection names', () => {
 	});
 });
 
+/*
+ * The suite is run here against the committed fake, so it is never shipped
+ * without having been run against something. It began as a throwaway inline
+ * store written in the same commit as the suite; `fake-store.ts` then landed
+ * as a near-verbatim copy of it, and two implementations of one interface
+ * kept in step by hand is the drift this suite exists to catch.
+ */
 describeStoreConformance({
-	name: 'in-memory scaffold',
-	createStore: async data => createInlineStore(data),
+	name: 'fake store',
+	createStore: async data => createFakeStore(data),
 	writable: true,
 });

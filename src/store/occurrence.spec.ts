@@ -7,7 +7,7 @@ import { emptySeedData } from './store.spec';
 /**
  * Advances through a fixed list of instants, one per call. A test proving
  * that two writes get two distinct `recordedAt` values must not depend on
- * `Date.now()` moving between them — on a fast machine two real calls can
+ * `Date.now()` moving between them. On a fast machine two real calls can
  * land in the same millisecond and produce the identical ISO string, which
  * is exactly the flake `occurrence.ts`'s doc comment calls out.
  */
@@ -53,7 +53,11 @@ describe('recordOccurrence', () => {
 
 	it('records the same work twice as two records with distinct ids and timestamps, and keeps the first unchanged', async () => {
 		const store = createFakeStore(emptySeedData);
-		const now = fakeClock('2026-09-10T08:00:00.000Z', '2026-09-10T08:00:00.000Z');
+		// The clock advances between the two calls, which is what makes the
+		// distinct-timestamp claim falsifiable: a function that stamped once and
+		// reused the value would fail here, and could not be caught by a test
+		// racing the real clock.
+		const now = fakeClock('2026-09-10T08:00:00.000Z', '2026-09-10T08:00:01.000Z');
 		const generateId = fakeIds('occurrence-one', 'occurrence-two');
 		const input = { ruleId: 'esperanza-feeding', plantId: 'esperanza-1', completedAt: '2026-09-10T00:00:00Z' };
 
@@ -61,15 +65,31 @@ describe('recordOccurrence', () => {
 		const second = await recordOccurrence(store, input, { now, generateId });
 
 		expect(first.record.id).not.toEqual(second.record.id);
-		// Same clock reading fed to both calls on purpose: this is the case a
-		// bare `new Date()` could produce by accident, and the one this test
-		// exists to distinguish from a function that only stamped one record.
-		expect(first.record.recordedAt).toEqual(second.record.recordedAt);
+		expect(first.record.recordedAt).not.toEqual(second.record.recordedAt);
+		expect(second.record.recordedAt > first.record.recordedAt, 'the later write carries the later stamp').toBe(true);
 
 		const stillFirst = await store.get('occurrences', first.record.id);
 		const stillSecond = await store.get('occurrences', second.record.id);
 		expect(stillFirst).toEqual(first);
 		expect(stillSecond).toEqual(second);
+	});
+
+	it('records two separate occurrences even when both land in the same instant', async () => {
+		const store = createFakeStore(emptySeedData);
+		// The case a real clock produces by accident on a fast machine. Two
+		// recordings sharing a millisecond are still two Occurrences, because the
+		// id is what separates them and it is minted per call. A store that keyed
+		// on the timestamp would lose one here.
+		const now = fakeClock('2026-09-10T08:00:00.000Z', '2026-09-10T08:00:00.000Z');
+		const generateId = fakeIds('occurrence-one', 'occurrence-two');
+		const input = { ruleId: 'esperanza-feeding', plantId: 'esperanza-1', completedAt: '2026-09-10T00:00:00Z' };
+
+		const first = await recordOccurrence(store, input, { now, generateId });
+		const second = await recordOccurrence(store, input, { now, generateId });
+
+		expect(first.record.recordedAt).toEqual(second.record.recordedAt);
+		expect(first.record.id).not.toEqual(second.record.id);
+		expect((await store.list('occurrences')).map(row => row.id).sort()).toEqual(['occurrence-one', 'occurrence-two']);
 	});
 
 	it('rejects a repeat Store.set carrying an occurrence id already on file', async () => {
@@ -81,10 +101,10 @@ describe('recordOccurrence', () => {
 			completedAt: '2026-09-10T00:00:00Z',
 		});
 
-		// The append-only guard lives on Store.set (see fake-store.ts), not in
-		// this module. Exercising it here, from a record recordOccurrence itself
-		// produced, is what pins down that marking work done can never mutate an
-		// existing Occurrence: the only route back to that id rejects.
+		// The append-only check lives on Store.set, not in this module. Exercising
+		// it here, from a record recordOccurrence itself produced, is what pins
+		// down that marking work done can never mutate an existing Occurrence:
+		// the only route back to that id rejects.
 		await expect(store.set('occurrences', written)).rejects.toThrow();
 
 		expect(await store.get('occurrences', written.record.id)).toEqual(written);

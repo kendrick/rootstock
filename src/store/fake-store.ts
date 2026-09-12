@@ -1,7 +1,7 @@
 import type { Dump } from './dump';
 import type { Collection, CollectionRecords, SeedData, Store, StoredRecord } from './store';
 import { dumpSchema, parseDump } from './dump';
-import { COLLECTIONS, TAG_POLICY_ID } from './store';
+import { COLLECTIONS, occurrenceAlreadyStored, TAG_POLICY_ID } from './store';
 
 /**
  * Stamped on every envelope this factory seeds, in place of `new Date()`.
@@ -26,8 +26,8 @@ function seededEnvelope<T>(id: string, record: T): StoredRecord<T> {
  *
  * `unknown` rather than a union of the five record types: a `Map` typed to a
  * union would let a plant slip into the rules table at the type level, and
- * the actual guarantee — that `tables.plants` only ever holds
- * `StoredRecord<Plant>` — comes from every access into this structure going
+ * the actual guarantee—that `tables.plants` only ever holds
+ * `StoredRecord<Plant>`—comes from every access into this structure going
  * through the generic `Collection`-keyed methods below, never from the
  * declared type of the map itself.
  */
@@ -47,7 +47,7 @@ function toDump(tables: Tables): Dump {
 	// Round-tripped through `dumpSchema` rather than assembled as a bare object
 	// literal typed `Dump`. A hand-typed literal would trust the compiler that
 	// every envelope sitting in `tables` still matches its schema, but nothing
-	// re-checks that after a `set` — this is the one place left where a bug
+	// re-checks that after a `set`. This is the one place left where a bug
 	// upstream would otherwise surface as a silently wrong dump instead of a
 	// thrown error naming the field that drifted.
 	return dumpSchema.parse({
@@ -67,8 +67,8 @@ function toDump(tables: Tables): Dump {
  * An in-memory `Store`, seeded once at creation and gone when the process
  * exits.
  *
- * This is the fake three later tickets write their tests against, standing
- * in for `indexeddb-store.ts` the way `seed-store.ts` stands in for the
+ * This is the fake other modules write their tests against, standing in for
+ * `indexeddb-store.ts` the way `seed-store.ts` stands in for the
  * committed-JSON path: no `indexedDB` global, no fake-timers dance around a
  * database's own async machinery, just a `Map` a test can seed exactly the
  * way it wants and inspect synchronously between awaits. Every method is
@@ -79,7 +79,7 @@ function toDump(tables: Tables): Dump {
  * A factory rather than a class: nothing here needs inheritance or a second
  * constructor path, and the rest of the codebase builds things this way (see
  * `dumpSchema`, `parseDump`). Each call opens a fresh closure over its own
- * `Tables`, so two stores built from the same `SeedData` never share state —
+ * `Tables`, so two stores built from the same `SeedData` never share state.
  * `fake-store.spec.ts` pins that down, because it is exactly the kind of
  * thing a later refactor could break by hoisting the tables out of the
  * function by accident.
@@ -101,7 +101,7 @@ export function createFakeStore(data: SeedData): Store {
 			// `Store.set`'s doc comment for why overwriting silently would be worse
 			// than refusing.
 			if (collection === 'occurrences' && tables.occurrences.has(record.id)) {
-				throw new Error(`An Occurrence is already stored under '${record.id}', and occurrences are append-only: marking work done writes a new Occurrence rather than replacing an old one.`);
+				throw occurrenceAlreadyStored(record.id);
 			}
 			tables[collection].set(record.id, record as StoredRecord<unknown>);
 		},
