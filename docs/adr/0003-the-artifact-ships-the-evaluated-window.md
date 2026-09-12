@@ -1,6 +1,6 @@
 # The artifact carries the readings the rules looked at, not only the triggers
 
-The published Artifact holds the Observation window the Rules actually evaluated, roughly a month of daily values, alongside the Plan. It does not hold only the firing values, and it does not hold the whole fetched history.
+The published Artifact holds the window of DailyAggregates the Rules actually evaluated, roughly a month of them, on the Plan itself. It does not hold only the firing values, and it does not hold the whole fetched history.
 
 ## The two ends, and why the middle wins
 
@@ -19,6 +19,12 @@ It also does not buy what it appears to buy. The argument for it is a future bro
 Thirty daily values per variable is small enough to ignore and large enough to draw.
 
 That is the real return: a sparkline of soil temperature with the Rule's threshold drawn across it and the firing day marked. It turns the Citation from a sentence into a picture, and it answers "how close are we" without another run. For a project whose entire claim is that its reasoning is inspectable, showing the series the reasoning read is the difference between asserting that and demonstrating it.
+
+## A note on wording
+
+This record predates `CONTEXT.md`, and originally called the window a run of Observations and placed it "alongside the Plan". The glossary written since separates Observation, one hourly reading, from DailyAggregate, one day reduced from many of them, and the window is the latter. It also lives on `Plan.window` rather than beside the Plan, because only the Planner run that produced a Plan knows which days it read.
+
+The decision is unchanged. Only the words are, and they are corrected above rather than left to contradict the glossary.
 
 ## Consequences
 

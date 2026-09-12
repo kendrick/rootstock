@@ -57,6 +57,9 @@ export default antfu(
 			'test-results',
 			'playwright-report',
 			'.preview',
+			// Generated output from scripts/generate-schema.ts. Linting it would report
+			// problems that can only be fixed by editing the generator, not this file.
+			'schemas',
 		],
 	},
 	{

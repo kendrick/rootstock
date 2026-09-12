@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import nextConfig from '../../next.config';
+import nextConfig from './next.config';
 
 // GitHub Pages serves files, not a Node process. Every constraint below is one
 // the deploy would otherwise discover for us, in production, as a blank page or
