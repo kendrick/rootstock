@@ -58,8 +58,8 @@ const MONTHS = [
 ];
 
 /**
- * MM-DD is deliberately yearless — rule.ts keeps the fall pre-emergent window
- * attached to every September rather than to 2026 — so this splits the string
+ * MM-DD is deliberately yearless—rule.ts keeps the fall pre-emergent window
+ * attached to every September rather than to 2026—so this splits the string
  * instead of going through `Date`. A parsed Date would have to borrow a year,
  * and a borrowed year plus the reader's timezone is how "August 20" renders as
  * August 19 for somebody west of the yard.
@@ -137,7 +137,7 @@ function CadenceRows({ rule }: { rule: Extract<Rule, { kind: 'cadence' }> }): Re
 			{/*
 			 * CONTEXT.md's Anchor: a follow-up measures its interval from the Rule it
 			 * follows, not from itself. The ID is rendered raw because this component
-			 * is handed one Rule and has no rule set to resolve a name against — and
+			 * is handed one Rule and has no rule set to resolve a name against—and
 			 * accepting one just to prettify a string would put a second source of
 			 * Rules into a view that only describes the one it was given.
 			 */}
@@ -154,7 +154,7 @@ function CadenceRows({ rule }: { rule: Extract<Rule, { kind: 'cadence' }> }): Re
  * ADR 0002 gives a Guard two effects and no third, so the words here are
  * exhaustive on purpose: a reader who sees neither sentence is looking at an
  * effect nobody decided the consequences of. Neither sentence carries the
- * Guard's own `release` or `text` — those describe what happened to one Task,
+ * Guard's own `release` or `text`—those describe what happened to one Task,
  * and this component describes the Rule in the abstract. The deferred section
  * renders `releaseWhen` where a reader is actually looking at held work.
  */
@@ -177,7 +177,7 @@ export interface RuleSummaryProps {
  * What a Rule says, with no date on it. The dated evidence behind a particular
  * Task is a Citation and lives in `citation.tsx`, which composes this; the
  * split is what lets the Rules route render the same summary for a Rule that
- * produced no Task this week — including a Guard, which never produces one at
+ * produced no Task this week—including a Guard, which never produces one at
  * all.
  *
  * No heading element anywhere below. This renders inside a `<details>` on the
@@ -192,7 +192,7 @@ export function RuleSummary({
 }: RuleSummaryProps): ReactElement {
 	// The stamped flag wins when there is one. `isDelegable` has already been
 	// applied to it by the Planner, and CONTEXT.md's Delegable entry says tag
-	// policy only ever narrows — so the stamp is the narrowed answer, and asking
+	// policy only ever narrows—so the stamp is the narrowed answer, and asking
 	// again here would be the same question with a second chance to answer it
 	// differently. The fallback exists for the Rules route, which renders Rules
 	// that produced no Task and so has no stamp to read.
@@ -248,7 +248,7 @@ export function RuleSummary({
 
 			<div className="flex flex-wrap items-center gap-2">
 				{/*
-				 * A Guard reaching a reader outside a Task — on the Rules route, say —
+				 * A Guard reaching a reader outside a Task—on the Rules route, say —
 				 * looks exactly like a Rule that asks for work unless it says otherwise
 				 * on its face. CONTEXT.md's Guard entry is the sentence.
 				 */}
@@ -263,7 +263,7 @@ export function RuleSummary({
 				 * Word and icon shape, not colour. A reader with a colour-vision
 				 * deficiency has to be able to tell delegable work from work that stays
 				 * with the owner, and this is the flag that decides whether a Task can
-				 * be handed to somebody else while the owner is away — see the docblock
+				 * be handed to somebody else while the owner is away—see the docblock
 				 * in source-badge.tsx for the longer version of the argument.
 				 */}
 				<Badge variant={canDelegate ? 'secondary' : 'outline'} className="gap-1.5">

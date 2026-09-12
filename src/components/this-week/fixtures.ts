@@ -15,7 +15,7 @@ export { failingStatus, okStatus } from '@/artifact/fixtures';
  * The This Week route has no sparkline: nothing on the page draws a line over
  * `Plan.window`, only `CitationDisclosure` reading one Task's own Citation at a
  * time. `src/artifact/fixtures.ts` keeps the approaching Task on a separate
- * spring Plan for exactly the reason a sparkline would care about — drawing
+ * spring Plan for exactly the reason a sparkline would care about—drawing
  * September's window and a spring projection on one axis would contradict
  * itself. That reason has nothing to bite on here, so this file does the thing
  * the frozen fixture's own comment says not to do to *it*: it puts all three
@@ -32,7 +32,7 @@ if (approachingTask === undefined) {
  * One Plan carrying a fired pair, a deferred Task, and the lifted approaching
  * Task, spread from the frozen September Artifact rather than retyped. The
  * narration is untouched, so the one advisory and the narrated/unnarrated
- * pairing both travel with it — see the module comment above for why the
+ * pairing both travel with it—see the module comment above for why the
  * mismatched window is not a bug.
  */
 export const combinedNarratedArtifact: Artifact = {
@@ -50,7 +50,7 @@ export const combinedNarratedArtifact: Artifact = {
  * retyped here where a future edit to one could drift from the other.
  *
  * Neither variant narrates the approaching Task or the delegable nitrogen
- * Task — `narratedArtifact`'s own narration already leaves the nitrogen Task
+ * Task—`narratedArtifact`'s own narration already leaves the nitrogen Task
  * out on purpose, and the lifted approaching Task was never in that narration
  * to begin with. That gap is what a spec needs to exercise the `title`
  * fallback; closing it here would take that case away from every test that
@@ -135,7 +135,7 @@ const waterInAfterApplicationRule: Rule = {
 /**
  * Every Rule a Task, a Deferral, or an Annotation in {@link combinedNarratedArtifact}
  * names: the four seed Rules reused by id rather than retyped, plus the two
- * authored above. `rulesById` below resolves every one of them — the
+ * authored above. `rulesById` below resolves every one of them—the
  * deliberately unresolved case lives only in {@link rulesByIdMissingDeepWaterFig}.
  */
 export const rules: Rule[] = [
@@ -162,8 +162,8 @@ export const plantsById: ReadonlyMap<string, Plant> = new Map(plants.map(plant =
  * `deep-water-fig` taken back out, for a spec that needs `TaskItem` or
  * `CitationDisclosure` to resolve a Task's Rule to null and render the
  * "not in the current rule set" line. This mirrors the real gap `data/
- * artifact.json` and `src/artifact/fixtures.ts` both ship with today — see the
- * plan's "A Task whose Rule the rule set does not carry" — rather than
+ * artifact.json` and `src/artifact/fixtures.ts` both ship with today—see the
+ * plan's "A Task whose Rule the rule set does not carry"—rather than
  * inventing a gap that does not exist elsewhere in the system.
  */
 export const rulesByIdMissingDeepWaterFig: ReadonlyMap<string, Rule> = new Map(

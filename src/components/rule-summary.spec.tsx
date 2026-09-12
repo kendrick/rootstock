@@ -210,7 +210,7 @@ describe('ruleSummary', () => {
 	});
 
 	// #14 reuses this component untouched, so every kind in rules.json has to
-	// render standing alone — a Guard included, which never produces a Task.
+	// render standing alone—a Guard included, which never produces a Task.
 	it('renders every Rule in the seed set, of every kind', () => {
 		for (const rule of seedRules) {
 			const { container, unmount } = render(<RuleSummary rule={rule} />);
