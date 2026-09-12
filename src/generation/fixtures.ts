@@ -194,7 +194,7 @@ export const fixtureRules: Rule[] = parseWith(z.array(ruleSchema), 'generation f
 ]);
 
 /**
- * One feeding older than `water-fig`'s own `everyDays.max`, so the Cadence
+ * One watering older than `water-fig`'s own `everyDays.max`, so the Cadence
  * Rule fires (and reports itself overdue) rather than exercising the "never
  * recorded" branch. This package only needs a Task to exist for
  * `hold-fig-watering` to defer, and an overdue one says more about what the
@@ -278,7 +278,7 @@ export const fixtureSeed: SeedData = {
  * `statusRecordSchema`'s doc comment: a run that failed does not erase the
  * file the site is still serving.
  */
-export const previousStatus: StatusRecord = {
+export const fixturePreviousStatus: StatusRecord = {
 	attemptedAt: '2026-09-10T11:04:11Z',
 	ok: false,
 	error: 'open-meteo: request timed out after 3 attempts',

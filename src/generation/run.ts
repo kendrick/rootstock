@@ -52,12 +52,17 @@ export type GenerationResult
 		| { failure: GenerationFailure; status: StatusRecord };
 
 /*
- * The coordinate walk, copied from `src/seed/index.ts` rather than imported
- * from it. That module parses the committed yard at import time, so importing
- * two regular expressions out of it would drag `plants.json`, `rules.json` and
- * every schema behind them into the generation path. The duplication is
- * deliberate, and the two copies have to stay in step. Hoisting both checks
- * into a module of their own is worth doing once a third caller needs them.
+ * The two coordinate patterns, copied out of `src/seed/index.ts` rather than
+ * imported from it. That module parses the committed yard at import time, so
+ * importing two regular expressions out of it would drag `plants.json`,
+ * `rules.json` and every schema behind them into the generation path.
+ *
+ * Both copies are answerable to the same ADR, so a change to one is a reason
+ * to look at the other. They are already not identical: the seed's pair
+ * pattern carries the `g` flag because it collects every match, and a global
+ * regex keeps state between calls, which `exec` below would trip over. A
+ * module holding nothing but these three checks is the real fix, and it is
+ * worth writing once a third caller wants them.
  *
  * `findLongDecimals` is the third check over there and is deliberately not
  * here. A bare number with three or more decimal places is a hand-authored
@@ -73,25 +78,50 @@ const COORDINATE_KEY = /lat|lon|lng|coord/i;
 // release sentence are free text that reaches the published file verbatim.
 const COORDINATE_PAIR = /-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}/;
 
+/** Every field name in the Artifact, at every depth, so the check below reads names and never the text stored under them. */
+function* fieldNames(value: unknown): Generator<string> {
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			yield* fieldNames(entry);
+		}
+		return;
+	}
+
+	if (typeof value === 'object' && value !== null) {
+		for (const [name, entry] of Object.entries(value)) {
+			yield name;
+			yield* fieldNames(entry);
+		}
+	}
+}
+
 /**
- * Reads the finished Artifact as text and refuses anything shaped like the
- * property's location. ADR 0004 keeps the coordinates in the generation
- * environment, and this file is published to a public site, so the check runs
- * against the serialized Artifact rather than against its fields: a schema walk
- * can see that `title` is a string and cannot see that somebody pasted a map
- * pin into a Rule name.
+ * Refuses an Artifact carrying anything shaped like the property's location.
+ * ADR 0004 keeps the coordinates in the generation environment, and this file
+ * is published to a public site.
+ *
+ * The two halves read the Artifact differently on purpose. Field names come
+ * off the parsed object, because a `"key":` pattern run over the serialized
+ * text cannot tell a field name from a quoted word that happens to sit before
+ * a colon in a Rule name or in a sentence the model wrote. `COORDINATE_KEY`
+ * matches any substring, so `"related":` inside somebody's prose would fail
+ * the whole night's run over nothing. That looseness is right where
+ * `src/seed/index.ts` uses it, since a false positive there costs one rename
+ * argued out in review, and it is worth this much care here, where the same
+ * false positive costs the run.
+ *
+ * The pair check does read the serialized text, because that is the case it
+ * exists for: a map pin pasted into a Rule name is a value, not a field name,
+ * and it reaches the published file verbatim.
  */
 function assertNoCoordinates(artifact: Artifact): void {
-	const json = JSON.stringify(artifact);
-
-	for (const match of json.matchAll(/"([^"]+)"\s*:/g)) {
-		const key = match[1];
-		if (key !== undefined && COORDINATE_KEY.test(key)) {
-			throw new Error(`artifact: the field '${key}' is named like a coordinate, which docs/adr/0004-coordinates-never-enter-the-repository.md keeps out of the published file.`);
+	for (const name of fieldNames(artifact)) {
+		if (COORDINATE_KEY.test(name)) {
+			throw new Error(`artifact: the field '${name}' is named like a coordinate, which docs/adr/0004-coordinates-never-enter-the-repository.md keeps out of the published file.`);
 		}
 	}
 
-	const pair = COORDINATE_PAIR.exec(json);
+	const pair = COORDINATE_PAIR.exec(JSON.stringify(artifact));
 	if (pair !== null) {
 		throw new Error(`artifact: free text in the artifact carries '${pair[0]}', which is shaped like a coordinate pair and cannot be published (docs/adr/0004-coordinates-never-enter-the-repository.md).`);
 	}
@@ -132,6 +162,27 @@ function failureResult(failure: GenerationFailure, options: GenerationRunOptions
 			error: `generation failed at the ${failure.stage} stage: ${failure.message}`,
 			artifactGeneratedAt: options.previousStatus.artifactGeneratedAt,
 			consecutiveFailures: options.previousStatus.consecutiveFailures + 1,
+		},
+	};
+}
+
+/**
+ * The status record beside an Artifact that published. `consecutiveFailures`
+ * goes back to zero rather than counting down, because the field answers "how
+ * many nights in a row has this been broken", and one good night is the whole
+ * answer. It sits next to {@link failureResult} so the two records a run can
+ * write are read side by side, and neither drifts into disagreeing with the
+ * other about what `attemptedAt` means.
+ */
+function publishedResult(artifact: Artifact, options: GenerationRunOptions): GenerationResult {
+	return {
+		artifact,
+		status: {
+			attemptedAt: options.now.toISOString(),
+			ok: true,
+			error: null,
+			artifactGeneratedAt: artifact.generatedAt,
+			consecutiveFailures: 0,
 		},
 	};
 }
@@ -214,14 +265,5 @@ export async function run(options: GenerationRunOptions): Promise<GenerationResu
 		return failureResult(toGenerationFailure('validate', cause), options);
 	}
 
-	return {
-		artifact,
-		status: {
-			attemptedAt: options.now.toISOString(),
-			ok: true,
-			error: null,
-			artifactGeneratedAt: artifact.generatedAt,
-			consecutiveFailures: 0,
-		},
-	};
+	return publishedResult(artifact, options);
 }

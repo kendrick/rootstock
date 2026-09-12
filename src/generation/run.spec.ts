@@ -5,14 +5,15 @@ import type { Narration } from '@/artifact/narration';
 import type { Rule } from '@/rules/rule';
 import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
+import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { fakeObservations } from '@/weather/fake-adapter';
 import {
 	fixtureLocation,
 	fixtureNow,
 	fixtureObservations,
 	fixturePlan,
+	fixturePreviousStatus,
 	fixtureSeed,
-	previousStatus,
 } from './fixtures';
 import { fakeNarrator } from './narrator';
 import { run } from './run';
@@ -41,7 +42,7 @@ function options(overrides: Partial<GenerationRunOptions> = {}): GenerationRunOp
 		now: fixtureNow,
 		location: fixtureLocation,
 		seed: fixtureSeed,
-		previousStatus,
+		previousStatus: fixturePreviousStatus,
 		...overrides,
 	};
 }
@@ -135,6 +136,36 @@ describe('run', () => {
 		expect(artifact.narration).toBeNull();
 		expect(artifact.narrated).toBe(false);
 		expect(result.status.ok).toBe(true);
+	});
+
+	it('leaves every task carrying the planner\'s own sentence when the model is off', async () => {
+		// The mechanical title is what the Away Card renders on a night the model
+		// could not be reached, and ADR 0001 calls it a real deliverable rather
+		// than a placeholder. Checking only `narrated === false` would pass over
+		// an Artifact whose Tasks went out with nothing to read on them.
+		const artifact = artifactOf(await run(options({
+			narrator: fakeNarrator(new Error('the model timed out')),
+		})));
+
+		expect(artifact.plan.tasks.length).toBeGreaterThan(0);
+		for (const task of artifact.plan.tasks) {
+			expect(task.title, `task '${task.id}' published with no prose to read`).not.toBe('');
+		}
+	});
+
+	it('publishes prose carrying a quoted word before a colon', async () => {
+		// The coordinate walk reads field names off the parsed Artifact rather
+		// than out of its text, and this is why. `related` contains `lat`, and a
+		// `"key":` pattern run over the serialized file would read the quoted word
+		// as a field name and reject the night's run over a sentence.
+		const quoting: Narration = {
+			...narration,
+			summary: 'The lawn and the fig are "related": both went in the same autumn.',
+		};
+
+		const artifact = artifactOf(await run(options({ narrator: fakeNarrator(quoting) })));
+
+		expect(artifact.narrated).toBe(true);
 	});
 
 	it('falls back to mechanical prose when the narration names a task the plan does not contain', async () => {
@@ -248,15 +279,33 @@ describe('run', () => {
 			attemptedAt: fixtureNow.toISOString(),
 			ok: false,
 			error: 'generation failed at the weather stage: Open-Meteo answered HTTP 503.',
-			artifactGeneratedAt: previousStatus.artifactGeneratedAt,
-			consecutiveFailures: previousStatus.consecutiveFailures + 1,
+			artifactGeneratedAt: fixturePreviousStatus.artifactGeneratedAt,
+			consecutiveFailures: fixturePreviousStatus.consecutiveFailures + 1,
 		});
+	});
+
+	it('ships the days the rules read rather than the whole fetch', async () => {
+		// ADR 0003's actual claim, which the fixture's three days cannot test:
+		// the daily run pulls about three months of trailing data and the
+		// published file carries roughly a month of it. A fetch shorter than the
+		// window proves the window travels, never that it bounds anything.
+		const long: Observation[] = Array.from({ length: 90 }, (_unused, index) => {
+			const day = new Date(fixtureNow);
+			day.setUTCDate(day.getUTCDate() - index);
+			return { ...fixtureObservations[0]!, observedAt: day.toISOString(), value: 74 };
+		});
+
+		const artifact = artifactOf(await run(options({ fetchObservations: fakeObservations(long) })));
+		const days = new Set(artifact.plan.window.map(aggregate => aggregate.date));
+
+		expect(days.size).toBeGreaterThan(1);
+		expect(days.size).toBeLessThanOrEqual(PLAN_WINDOW_DAYS);
 	});
 
 	it('resets the failure count on a run that publishes', async () => {
 		const result = await run(options());
 
-		expect(previousStatus.consecutiveFailures).toBeGreaterThan(0);
+		expect(fixturePreviousStatus.consecutiveFailures).toBeGreaterThan(0);
 		expect(result.status.consecutiveFailures).toBe(0);
 	});
 });
