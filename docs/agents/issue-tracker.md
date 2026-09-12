@@ -14,20 +14,6 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-This repo lives in the Slalom GitHub org. Contributors are usually signed in to `gh` with two accounts, and only the org one can see this repo. A 404 from `gh` on a repo that plainly exists is that mismatch, not a missing repo.
-
-Prefix each command with a token resolved from the remote:
-
-```sh
-GH_TOKEN=$(./scripts/gh-token.sh) gh issue list
-```
-
-`scripts/gh-token.sh` finds the signed-in account that can reach `origin` and prints its token. It needs no setup and names no username, so it works for whoever runs it. Run it from the repo root. To force a particular account, set `SLALOM_GH_USER`.
-
-This applies to `gh api` calls too, not just `gh issue` / `gh pr`. Every milestone and relationship command below is a `gh api` call and needs the same prefix.
-
-Never run `gh auth switch` or `gh auth logout`. The personal account must stay active, so borrow a token per command instead of changing global state.
-
 ## Issue relationships
 
 **Relationships are always native GitHub objects. Never a line of body text.**
@@ -39,8 +25,7 @@ Sub-issues and dependencies are real records: they render in the issue sidebar, 
 Relationship endpoints take the **database ID**, not the `#number` you see in the UI and not the `node_id`. Getting this wrong yields a 404 that looks like a permissions problem. Resolve it first:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api repos/:owner/:repo/issues/<number> --jq .id
+gh api repos/:owner/:repo/issues/<number> --jq .id
 ```
 
 Path parameters (`ISSUE_NUMBER` in the URLs below) take the **number**. Body parameters (`issue_id`, `sub_issue_id`) take the **database ID**. Every call below mixes the two.
@@ -50,10 +35,9 @@ Path parameters (`ISSUE_NUMBER` in the URLs below) take the **number**. Body par
 Add a child to a parent:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api --method POST repos/:owner/:repo/issues/<parent-number>/sub_issues \
-  -H "X-GitHub-Api-Version: 2026-03-10" \
-  -F sub_issue_id=<child-db-id>
+gh api --method POST repos/:owner/:repo/issues/<parent-number>/sub_issues \
+-H "X-GitHub-Api-Version: 2026-03-10" \
+-F sub_issue_id=<child-db-id>
 ```
 
 Returns 201. Use `-F` (typed) rather than `-f` (string) — these fields must serialize as integers.
@@ -71,10 +55,9 @@ Reorder children: `PATCH .../issues/<parent-number>/sub_issues/priority`.
 Record that `<blocked>` cannot start until `<blocker>` is done:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api --method POST repos/:owner/:repo/issues/<blocked-number>/dependencies/blocked_by \
-  -H "X-GitHub-Api-Version: 2026-03-10" \
-  -F issue_id=<blocker-db-id>
+gh api --method POST repos/:owner/:repo/issues/<blocked-number>/dependencies/blocked_by \
+-H "X-GitHub-Api-Version: 2026-03-10" \
+-F issue_id=<blocker-db-id>
 ```
 
 Returns 201. `issue_id` is the id of the issue that _blocks_ the current one, so the direction is: POST to the ticket that is stuck, naming the ticket it waits on.
@@ -97,12 +80,10 @@ Both the sub-issue and dependency endpoints warn that creating or removing conte
 Before ending any session that created tickets, confirm the edges exist as objects:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh issue list --state open --milestone "<spec-slug>" --json number,title \
+gh issue list --state open --milestone "<spec-slug>" --json number,title \
   --jq '.[].number' | while read n; do
     printf '#%s blocked_by: ' "$n"
-    GH_TOKEN=$(./scripts/gh-token.sh) \
-      gh api repos/:owner/:repo/issues/$n/dependencies/blocked_by --jq '[.[].number] | @csv'
+    gh api repos/:owner/:repo/issues/$n/dependencies/blocked_by --jq '[.[].number] | @csv'
   done
 ```
 
@@ -119,11 +100,10 @@ The spec itself stays a GitHub issue — downstream skills reference it by numbe
 **Creating one.** `gh` has no native milestone commands; use the REST API:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api --method POST /repos/:owner/:repo/milestones \
-  -f title='<spec-slug>' \
-  -f description='Spec: #<spec-issue-number>' \
-  -f due_on='2026-10-31T23:59:59Z'
+gh api --method POST /repos/:owner/:repo/milestones \
+-f title='<spec-slug>' \
+-f description='Spec: #<spec-issue-number>' \
+-f due_on='2026-10-31T23:59:59Z'
 ```
 
 `due_on` is optional; set it when the spec has a real delivery date, omit the flag otherwise.
@@ -131,18 +111,15 @@ GH_TOKEN=$(./scripts/gh-token.sh) \
 **Checking whether one exists** (do this before creating — the API returns 422 on a duplicate title):
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api /repos/:owner/:repo/milestones --jq '.[].title'
+gh api /repos/:owner/:repo/milestones --jq '.[].title'
 ```
 
 **Closing one.** When every issue in a milestone is closed, close the milestone. Look up its number by title first:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api /repos/:owner/:repo/milestones --jq '.[] | select(.title=="<spec-slug>") | .number'
+gh api /repos/:owner/:repo/milestones --jq '.[] | select(.title=="<spec-slug>") | .number'
 
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh api --method PATCH /repos/:owner/:repo/milestones/<n> -f state='closed'
+gh api --method PATCH /repos/:owner/:repo/milestones/<n> -f state='closed'
 ```
 
 **Constraints, so you don't design around them by accident:**
@@ -192,9 +169,8 @@ A ticket created without a milestone, without a parent, or missing an edge it sh
 **Verify before ending the session** — both the milestone sweep and the edge sweep:
 
 ```sh
-GH_TOKEN=$(./scripts/gh-token.sh) \
-  gh issue list --state open --json number,title,milestone \
-  --jq '.[] | select(.milestone == null) | "\(.number)  \(.title)"'
+gh issue list --state open --json number,title,milestone \
+--jq '.[] | select(.milestone == null) | "\(.number)  \(.title)"'
 ```
 
 Anything returned here that came from this session's slicing needs `gh issue edit <n> --milestone "<spec-slug>"`. Then run the `blocked_by` sweep from **Verifying the graph**.
