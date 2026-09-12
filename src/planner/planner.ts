@@ -1,10 +1,23 @@
-import type { Plan } from './plan';
-import type { Citation } from './task';
+import type { OrderableTask } from './order';
+import type { DailyAggregate, Plan } from './plan';
+import type { Citation, Task } from './task';
+import type { CadenceRule, Rule, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { Aggregate, Variable } from '@/weather/observation';
+import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
 import { ruleSchema, tagPolicySchema } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
+import { toDailyAggregates } from './aggregate';
+import { evaluateCadenceRule } from './cadence-rule';
+import { daysBetween } from './dates';
 import { occurrenceSchema } from './occurrence';
+import { orderTasks } from './order';
+import { PLAN_WINDOW_DAYS } from './plan';
+import { targets } from './targets';
+import { taskId } from './task';
+import { evaluateThresholdRule } from './threshold-rule';
+import { evaluateWindowRule } from './window-rule';
 
 /**
  * An IANA zone name, checked by handing it to `Intl` instead of matching a
@@ -55,6 +68,15 @@ export const planInputSchema = z.strictObject({
 	tagPolicy: tagPolicySchema,
 });
 
+/**
+ * Inferred off the parser rather than written out beside it, because the two
+ * would describe different objects. Half the hand-authored fields carry
+ * `.default(null)`—a Rule's `productLabel`, an `appliesTo` selector, an
+ * Occurrence's `plantId`—so the JSON somebody types and the object the Planner
+ * reads are already different shapes. An interface written by hand here would
+ * describe whichever of the two its author had in mind that day, and every
+ * caller of `plan()` would then be coding against that guess.
+ */
 export type PlanInput = z.infer<typeof planInputSchema>;
 
 /**
@@ -86,14 +108,267 @@ export type RuleVerdict
 			titleSuffix: string | null;
 		};
 
+/** The three kinds that author work. A Guard is the fourth and creates none, so it never reaches the functions below. */
+type TaskCreatingRule = WindowRule | ThresholdRule | CadenceRule;
+
+/**
+ * How far back the Plan carries history, which is `PLAN_WINDOW_DAYS` until a
+ * Rule asks for more. ADR 0003 fixes that direction of travel: a Rule reaching
+ * past the constant widens the window, and shortening the Rule to fit the days
+ * on hand is the repair the ADR rules out.
+ *
+ * Guards are counted even though no Guard runs yet. The Guard pass reads this
+ * same window, so a `no-rain-within` Guard asking about more days than the
+ * window holds would find no rain, release the work it exists to hold, and say
+ * nothing about it. Counting Guards here costs a few days of history and
+ * closes that hole before the pass that would fall into it is written.
+ */
+function windowSpan(rules: Rule[]): number {
+	let days = PLAN_WINDOW_DAYS;
+
+	for (const rule of rules) {
+		if (rule.kind === 'threshold') {
+			days = Math.max(days, rule.consecutiveDays);
+		}
+		else if (rule.kind === 'guard' && rule.condition.kind === 'no-rain-within') {
+			days = Math.max(days, rule.condition.days);
+		}
+	}
+
+	return days;
+}
+
+/**
+ * A series identity as a comparable string, the same trick as `groupKey` in
+ * aggregate.ts and for the same reason: `depthCm` is nullable, so the natural
+ * key is not a primitive, and a null depth has to stay its own series rather
+ * than collapsing into a surface reading.
+ */
+function seriesKey(variable: Variable, depthCm: number | null): string {
+	return `${variable} ${depthCm === null ? 'null' : depthCm}`;
+}
+
+/**
+ * Which series each reduction has to be run for, grouped by the reduction
+ * rather than listed one triple at a time. Two Rules reading soil temperature
+ * as a mean share a single pass over the hourly Observations; fanning out per
+ * triple would re-reduce the same thirty days once per Rule, and the yard's
+ * Rule set grows faster than its variable list does.
+ */
+function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
+	const wanted = new Map<Aggregate, Set<string>>();
+
+	for (const rule of rules) {
+		if (rule.kind !== 'threshold') {
+			continue;
+		}
+
+		const keys = wanted.get(rule.aggregate) ?? new Set<string>();
+		keys.add(seriesKey(rule.variable, rule.depthCm));
+		wanted.set(rule.aggregate, keys);
+	}
+
+	return wanted;
+}
+
+function compareDepth(left: number | null, right: number | null): number {
+	if (left === right) {
+		return 0;
+	}
+	if (left === null) {
+		return 1;
+	}
+	if (right === null) {
+		return -1;
+	}
+	return left - right;
+}
+
+/**
+ * The DailyAggregates the Threshold Rules actually read, which is what ADR
+ * 0003 says travels with the Plan. Only the series some Rule consults are
+ * carried: reducing every variable the weather layer happened to fetch would
+ * put soil moisture nobody reads in the published file, and the window is a
+ * budget somebody spends deliberately.
+ *
+ * The trailing span bounds the history alone. Every forecast day on hand is
+ * carried however far out it sits, because a Threshold Rule's `approaching`
+ * verdict is drawn from exactly those days, and a Citation naming a projected
+ * date past the window's end is one the interface cannot draw.
+ *
+ * The assembled array gets its own sort even though `toDailyAggregates`
+ * returns each call already sorted. The days arrive one reduction at a time,
+ * so concatenating them leaves the reductions sitting in blocks rather than in
+ * date order, and the order a Plan's window lands in shows up as a diff in the
+ * committed Artifact every time somebody reorders the Rule set.
+ */
+function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
+	const window: DailyAggregate[] = [];
+
+	for (const [aggregate, keys] of seriesByAggregate(input.rules)) {
+		for (const day of toDailyAggregates(input.observations, input.timeZone, aggregate)) {
+			if (!keys.has(seriesKey(day.variable, day.depthCm))) {
+				continue;
+			}
+
+			const trailing = daysBetween(day.date, input.asOf);
+			if (day.basis === 'forecast' || (trailing >= 0 && trailing < span)) {
+				window.push(day);
+			}
+		}
+	}
+
+	window.sort((left, right) => {
+		if (left.date !== right.date) {
+			return left.date < right.date ? -1 : 1;
+		}
+		if (left.variable !== right.variable) {
+			return left.variable < right.variable ? -1 : 1;
+		}
+		if (left.depthCm !== right.depthCm) {
+			return compareDepth(left.depthCm, right.depthCm);
+		}
+		return left.aggregate < right.aggregate ? -1 : left.aggregate > right.aggregate ? 1 : 0;
+	});
+
+	return window;
+}
+
+/**
+ * Hands one Rule to the module that knows how to read it.
+ *
+ * A Window Rule and a Threshold Rule reach the same verdict for every Plant
+ * they target, because neither one looks at the Plant. `plantId` reaches only
+ * the Cadence Rule, which counts from Occurrences keyed by the pair. The
+ * repeated evaluation is deliberate: the Rule still owes one Task per Plant it
+ * named, and a Task is what a person checks off, so mulching three fruit trees
+ * is three checkboxes however identical the reasoning behind them was.
+ *
+ * The switch has no default branch, so a fifth Rule kind added to the schema
+ * fails here at compile time. The alternative is a Rule kind that authors
+ * nothing and says so nowhere, which reads from outside exactly like a yard
+ * with nothing to do.
+ */
+function verdictFor(
+	rule: TaskCreatingRule,
+	plantId: string | null,
+	input: PlanInput,
+	window: DailyAggregate[],
+): RuleVerdict {
+	switch (rule.kind) {
+		case 'window':
+			return evaluateWindowRule(rule, input.asOf);
+		case 'threshold':
+			return evaluateThresholdRule(rule, window, input.asOf);
+		case 'cadence':
+			return evaluateCadenceRule(rule, plantId, input.occurrences, input.asOf, input.timeZone);
+	}
+}
+
+/**
+ * The mechanical sentence every Task carries. ADR 0001 makes this a real
+ * deliverable rather than a placeholder the model will improve on: Narration
+ * is optional by construction, the Away Card falls back to this line, and the
+ * household reads that card without knowing which version they were handed.
+ *
+ * The Plant's name goes in parentheses instead of being worked into the
+ * sentence because a Rule's `name` is authored once and reused across every
+ * Plant it reaches. Any smoother phrasing would need the Rule author to write
+ * a sentence with a hole in it, and that is a worse thing to get wrong than a
+ * parenthesis is to read.
+ */
+function titleFor(rule: TaskCreatingRule, plant: Plant | null, titleSuffix: string | null): string {
+	const subject = plant === null ? rule.name : `${rule.name} (${plant.name})`;
+
+	return titleSuffix === null ? subject : `${subject}, ${titleSuffix}`;
+}
+
+/**
+ * Turns every Rule that fired into the Task it authored, paired with the two
+ * facts the ordering needs and a Task does not carry.
+ *
+ * This is a named function and not a stretch of `plan()` because the Guard
+ * pass slots in at exactly this seam: Guards run over finished Tasks, per ADR
+ * 0002, so there has to be a moment where the Tasks exist and nothing has
+ * ranked them yet.
+ *
+ * `delegable` is copied off the Rule verbatim. Narrowing it by the TagPolicy's
+ * `neverDelegableTags` is the Guard pass's job and deliberately not done
+ * twice: the policy only ever narrows, so a second place applying it would
+ * pass every test right up until the day the two disagreed about which tags
+ * count.
+ */
+function createTasks(input: PlanInput, window: DailyAggregate[]): OrderableTask[] {
+	const orderables: OrderableTask[] = [];
+
+	for (const rule of input.rules) {
+		// A Guard creates no work. It reaches the Plan by holding a Task back or
+		// marking one up, and neither is possible before the Tasks exist.
+		if (rule.kind === 'guard') {
+			continue;
+		}
+
+		const scope = targets(rule, input.plants);
+		const pairs: Array<{ plantId: string | null; plant: Plant | null }>
+			= scope.plants === null
+				? [{ plantId: null, plant: null }]
+				: scope.plants.map(plant => ({ plantId: plant.id, plant }));
+
+		for (const { plantId, plant } of pairs) {
+			const verdict = verdictFor(rule, plantId, input, window);
+			if (!verdict.fires) {
+				continue;
+			}
+
+			const task: Task = {
+				id: taskId(rule.id, plantId),
+				ruleId: rule.id,
+				plantId,
+				status: verdict.status,
+				citation: verdict.citation,
+				deferrals: [],
+				annotations: [],
+				delegable: rule.delegable,
+				tags: rule.tags,
+				title: titleFor(rule, plant, verdict.titleSuffix),
+			};
+
+			orderables.push({ task, specificity: scope.specificity, priority: rule.priority });
+		}
+	}
+
+	return orderables;
+}
+
 /**
  * Turns one day's inputs into the Plan for that date.
  *
- * Not implemented yet. The signature and the input contract land ahead of the
- * body so the Rule modules and their specs can be written against them.
- * Throwing is what keeps a half-built Planner from publishing an empty Plan,
- * which reads exactly like a yard with nothing to do.
+ * Everything here is derived from the arguments. There is no clock read, no
+ * fetch and no model call, because ADR 0001 rests the whole product on this
+ * function being re-runnable: turning the model off has to leave the Task list
+ * byte-identical, and that claim is only checkable if the same inputs give the
+ * same Plan tomorrow. `input.asOf` is the only notion of today anything in
+ * this package has.
+ *
+ * The window is built before the Tasks rather than alongside them, because a
+ * Threshold Rule reads days it did not choose. Sizing the span off the whole
+ * Rule set first is what lets one Rule asking for a forty-day run widen the
+ * history every other Rule then reads, instead of each Rule getting whatever
+ * days its own lookback happened to reach.
+ *
+ * Nothing here calls `planSchema.parse`. This repo validates at its
+ * boundaries—`parseWith` in src/validation/parse.ts, at the generation run
+ * that writes the Artifact—and a function re-parsing what it just built would
+ * pay a boundary's price in the middle of the system. The specs prove the
+ * returned Plan parses; the Planner does not pay for that proof on every call.
  */
-export function plan(_input: PlanInput): Plan {
-	throw new Error('plan() is not implemented yet');
+export function plan(input: PlanInput): Plan {
+	const window = buildWindow(input, windowSpan(input.rules));
+	const orderables = createTasks(input, window);
+
+	return {
+		asOf: input.asOf,
+		tasks: orderTasks(orderables, input.tagPolicy),
+		window,
+	};
 }
