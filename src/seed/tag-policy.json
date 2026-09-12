@@ -1,0 +1,4 @@
+{
+	"neverDelegableTags": ["chemical"],
+	"safetyTags": ["chemical", "pesticide"]
+}
