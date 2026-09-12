@@ -10,11 +10,16 @@ describe('footer', () => {
 		expect(screen.getByRole('contentinfo').textContent).toBe(OPEN_METEO_ATTRIBUTION);
 	});
 
-	// The footer reads no route and takes no props, which is how the attribution
-	// reaches every page without each view remembering to render it.
-	it('needs nothing from the route to render', () => {
+	// Open-Meteo licences the data CC BY 4.0, and the licence names the source
+	// rather than describing it. A footer that paraphrased would satisfy this
+	// suite while failing the licence, so the assertion above compares against
+	// the exported constant; this one pins the wording that constant has to
+	// carry, matching what `open-meteo.spec.ts` asserts from the other side.
+	it('carries the source and the licence, not a paraphrase', () => {
 		render(<Footer />);
 
-		expect(screen.getByText(OPEN_METEO_ATTRIBUTION)).toBeDefined();
+		const attribution = screen.getByRole('contentinfo').textContent ?? '';
+		expect(attribution).toContain('Open-Meteo');
+		expect(attribution).toContain('CC BY 4.0');
 	});
 });

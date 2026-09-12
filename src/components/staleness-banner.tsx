@@ -1,6 +1,9 @@
+'use client';
+
 import type { ReactElement } from 'react';
 import type { StatusRecord } from '@/artifact/artifact';
 import { CalendarClock, TriangleAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { staleness } from '@/artifact/staleness';
 import { cn } from '@/lib/utils';
 
@@ -37,11 +40,14 @@ export interface StalenessBannerProps {
 	generatedAt: string;
 	status: StatusRecord;
 	/**
-	 * Defaulted here rather than read inside the body so a spec can pin the
-	 * instant, and so one render of a page can hand the same `now` to every
-	 * banner on it. The default is evaluated per call, not once at module load:
-	 * a tab left open over a weekend would otherwise keep answering with the
-	 * time the bundle was parsed.
+	 * Pins the instant the age is measured against. Omit it and the banner reads
+	 * the clock on every render instead, which is what a route wants: the age is
+	 * a fact about the moment someone is looking, so a tab left open across the
+	 * 36-hour line has to change band without a reload.
+	 *
+	 * Passing one buys determinism, and a spec is the caller that needs it. It
+	 * also suppresses the mount gate below, because a caller supplying its own
+	 * instant has already decided what render one means.
 	 */
 	now?: Date;
 	/**
@@ -75,17 +81,35 @@ export interface StalenessBannerProps {
 export function StalenessBanner({
 	generatedAt,
 	status,
-	// react/purity is right that reading the clock mid-render is impure, and the
-	// impurity is the point: age is a fact about the moment someone is looking,
-	// which is why CONTEXT.md refuses to bake it into the Artifact. The escape
-	// hatch is the prop itself — a caller that needs a stable render (a
-	// prerendered page, a spec, a page with several banners on it) passes one
-	// instant in and gets determinism back.
-	// eslint-disable-next-line react/purity -- see above; the default is deliberate, not an oversight
-	now = new Date(),
+	now,
 	prominent = false,
 }: StalenessBannerProps): ReactElement | null {
-	const { band, consecutiveFailures } = staleness(generatedAt, now, status);
+	// `output: 'export'` prerenders every route in Node, so a clock read during
+	// the first render would bake the build machine's instant into the HTML and
+	// the browser would contradict it on hydration. Rendering nothing until the
+	// effect fires keeps the timestamp out of the exported file, and the renders
+	// after that read the clock freely.
+	//
+	// A mount flag rather than the instant itself, because storing the instant
+	// would freeze it: the band would then be whatever it was when the tab
+	// opened, and the tab left open over a weekend — the case CONTEXT.md's
+	// Staleness entry exists for — would never change band at all.
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => {
+		// eslint-disable-next-line react/set-state-in-effect -- the prerender has to run once with no clock at all, so the extra render is the point
+		setMounted(true);
+	}, []);
+
+	// react/purity is right that reading the clock mid-render is impure, and the
+	// impurity is what the feature is: age is a fact about the moment someone is
+	// looking, which is why CONTEXT.md refuses to bake it into the Artifact.
+	// eslint-disable-next-line react/purity -- see above; every render past the first is meant to re-read the clock
+	const asOf = now ?? (mounted ? new Date() : null);
+	if (asOf === null) {
+		return null;
+	}
+
+	const { band, consecutiveFailures } = staleness(generatedAt, asOf, status);
 
 	const isFresh = band === 'fresh';
 	const hasFailures = consecutiveFailures > 0;

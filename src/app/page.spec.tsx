@@ -83,5 +83,12 @@ describe('this week page', () => {
 		expect(markup).toContain('This Week');
 		expect(markup).not.toContain('<time');
 		expect(markup).not.toContain(narratedArtifact.generatedAt);
+		// The banner has to be absent whole, not merely missing its timestamp.
+		// `generatedAt` is a fixed instant and the wall clock keeps moving, so the
+		// band this fixture lands in changes over time — and the failure sentence
+		// is the one part that renders in every band. Asserting on it keeps this
+		// test's teeth from depending on what day it runs.
+		expect(markup).not.toContain('runs failed');
+		expect(markup).not.toContain('role="status"');
 	});
 });

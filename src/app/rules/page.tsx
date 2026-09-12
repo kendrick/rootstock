@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { StalenessBanner } from '@/components/staleness-banner';
@@ -18,28 +17,16 @@ import { StalenessBanner } from '@/components/staleness-banner';
 export default function RulesPage(): ReactElement {
 	const { artifact, status } = loadArtifact();
 
-	// Read after mount, never during render. `output: 'export'` prerenders this
-	// route in Node, so a clock read at render time would bake the build
-	// machine's instant into the HTML for the browser to contradict on hydration.
-	const [now, setNow] = useState<Date | null>(null);
-	useEffect(() => {
-		// eslint-disable-next-line react/set-state-in-effect -- the prerender has to run once with no clock at all, so the extra render is the point
-		setNow(new Date());
-	}, []);
-
 	return (
 		<ArtifactGate artifact={artifact} status={status}>
 			{validated => (
 				<div className="space-y-6">
 					<h1 className="text-2xl font-medium tracking-tight text-foreground">Rules</h1>
 
-					{now && (
-						<StalenessBanner
-							generatedAt={validated.artifact.generatedAt}
-							status={validated.status}
-							now={now}
-						/>
-					)}
+					<StalenessBanner
+						generatedAt={validated.artifact.generatedAt}
+						status={validated.status}
+					/>
 
 					<p className="text-muted-foreground">
 						Every Rule goes here, with the region it covers and where it came from.

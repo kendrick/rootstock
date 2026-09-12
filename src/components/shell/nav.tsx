@@ -6,12 +6,17 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 /**
- * Every route a visitor is offered. The Away Card is absent on purpose. Per
- * ADR 0004 it renders the same whether or not anyone is travelling, so finding
- * it tells a stranger nothing; a nav link would tell them plenty, by
- * advertising that the household has an away mode worth hunting for. This repo
- * and the deployed site are both public. Leaving the Away Card unlinked is the
- * decision, so do not "fix" it by adding a fourth entry.
+ * Every route a visitor is offered. The Away Card is absent because this
+ * component has no way to name it: the route is `/away/[slug]`, the slug comes
+ * from `ROOTSTOCK_AWAY_SLUG` at build time, and that variable is deliberately
+ * not `NEXT_PUBLIC_`, so it never reaches the browser bundle this nav ships in.
+ *
+ * Not for secrecy. CONTEXT.md is clear that the card renders the same way
+ * whether or not anyone is travelling, precisely so that finding it tells a
+ * stranger nothing — which means linking it would give nothing away either. It
+ * is simply not a section of the site. The household reaches it by its own
+ * link, and a fourth entry here would need the slug in the client bundle to
+ * build the href at all.
  *
  * The labels are the domain's own words. CONTEXT.md forbids Schedule, list,
  * result and output as synonyms for Plan, so This Week cannot drift into

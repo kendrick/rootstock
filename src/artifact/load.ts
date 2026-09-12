@@ -8,16 +8,17 @@ import status from '../../data/status.json';
  *
  * The return type is `unknown`, not `Artifact` and `StatusRecord`, even though
  * `resolveJsonModule` lets TypeScript infer a precise structural type from the
- * JSON literals above. That inferred type is a lie the moment someone hand-edits
- * `data/artifact.json` or `data/status.json`, which is exactly the case this
- * architecture exists to survive: the files are committed, not generated at
- * request time, so nothing stops a bad edit from reaching a build. Widening the
- * return to `unknown` forces every caller through `ArtifactGate`, which is
- * where `safeParseArtifact` and `parseStatusRecord` actually run.
+ * JSON literals above. That inferred type always matches the file, and matching
+ * the file is the problem: it is a description of the bytes on disk, and it
+ * carries none of the invariants the schemas enforce. `narrated` agreeing with
+ * `narration`, a Citation's discriminant, an ISO instant that parses — a
+ * structural type accepts a file that breaks all three, and hands a caller
+ * field access that looks checked.
  *
- * A component below a route that imported this for itself would skip the gate
- * and render a Plan nobody parsed, so the gate is the only caller: everything
- * beneath it receives an already-validated `Artifact` and `StatusRecord`.
+ * `unknown` removes that field access, so the only way to read anything here is
+ * to parse it. Convention decides where that happens, not the compiler: the
+ * rule is that `ArtifactGate` is the one caller, because a component that
+ * loaded this for itself would render a Plan nobody parsed.
  */
 export function loadArtifact(): { artifact: unknown; status: unknown } {
 	return { artifact, status };
