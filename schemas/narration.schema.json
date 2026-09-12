@@ -1,0 +1,54 @@
+{
+	"type": "object",
+	"properties": {
+		"summary": {
+			"type": "string",
+			"description": "A few sentences about the week in the yard as a whole, read before any individual task."
+		},
+		"tasks": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"taskId": {
+						"type": "string",
+						"description": "The id of a task from the plan you were given. Select from that plan; never invent an id."
+					},
+					"text": {
+						"type": "string",
+						"description": "The sentence a person reads for that task, in plain language."
+					}
+				},
+				"required": [
+					"taskId",
+					"text"
+				],
+				"additionalProperties": false
+			},
+			"description": "The tasks worth doing this week, in the order they should be read."
+		},
+		"advisories": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"text": {
+						"type": "string",
+						"description": "Something you noticed that no rule produced, in a sentence or two."
+					}
+				},
+				"required": [
+					"text"
+				],
+				"additionalProperties": false
+			},
+			"description": "Observations the plan did not cover. An empty array is a normal answer."
+		}
+	},
+	"required": [
+		"summary",
+		"tasks",
+		"advisories"
+	],
+	"additionalProperties": false
+}
