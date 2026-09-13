@@ -248,7 +248,7 @@ export function RuleSummary({
 
 			<div className="flex flex-wrap items-center gap-2">
 				{/*
-				 * A Guard reaching a reader outside a Task—on the Rules route, say —
+				 * A Guard reaching a reader outside a Task—on the Rules route, say—
 				 * looks exactly like a Rule that asks for work unless it says otherwise
 				 * on its face. CONTEXT.md's Guard entry is the sentence.
 				 */}
