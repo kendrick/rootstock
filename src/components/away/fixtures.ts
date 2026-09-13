@@ -9,21 +9,21 @@ import { seedRules, seedTagPolicy } from '@/seed';
  * The Away Card renders a Task exactly when it is both fired and delegable.
  * Everything else in this Plan is withheld into one of two buckets, both
  * read off stamped fields and never off `tags`: owner-only (fired but not
- * delegable) and on hold (deferred). `approachingAwayArtifact` covers the
+ * delegable) and deferred. `approachingAwayArtifact` covers the
  * third case, where there is no work yet to sort into either bucket.
  *
  * Five Tasks on `awayArtifact`, each one there to make a different failure
  * impossible:
- *   - a delegable, fired, narrated Task — what the card actually renders.
- *   - a delegable, fired, un-narrated twin — exercises the `title` fallback
+ *   - a delegable, fired, narrated Task—what the card actually renders.
+ *   - a delegable, fired, un-narrated twin—exercises the `title` fallback
  *     ADR 0001 calls a real deliverable.
- *   - a deferred, delegable Task — proves "on hold" comes from `status`, and
+ *   - a deferred, delegable Task—proves deferral comes from `status`, and
  *     that a Guard's `release` string lands on the Task's `releaseWhen`
  *     verbatim.
- *   - a fired, chemical-tagged Task whose own Rule sets `delegable: true` —
- *     proves the tag policy narrows the stamped flag rather than a view
- *     re-deriving it from tags. This is #15's central case.
- *   - a fired, undelegable Task with no safety tag — the gap
+ *   - a fired, chemical-tagged Task whose own Rule sets `delegable: true`,
+ *     which proves the tag policy narrows the stamped flag rather than a
+ *     view re-deriving it from tags. This is #15's central case.
+ *   - a fired, undelegable Task with no safety tag—the gap
  *     `src/artifact/fixtures.ts` names in its own comments but cannot close
  *     itself, because no seed Rule is undelegable without also being
  *     chemical. Without this row, a renderer keyed on the `chemical` tag
@@ -122,7 +122,7 @@ export const awayArtifact: Artifact = {
 				deferrals: [],
 				annotations: [],
 				// No seed Rule holds `deep-water-fig`, the way `src/artifact/fixtures.ts`'s own
-				// deferred Task for this Rule has none either — it is a literal here because
+				// deferred Task for this Rule has none either—it is a literal here because
 				// there is nothing to call `isDelegable` against. `true` for the same reason
 				// that fixture gives it: plain watering, no chemical tag, nothing a tag policy
 				// would ever narrow.
@@ -205,6 +205,33 @@ export const unnarratedAwayArtifact: Artifact = {
 };
 
 /**
+ * The week where the card has nothing to hand over and still has something to
+ * say: every fired Task is the owner's, and one more sits deferred. An
+ * ordinary September looks like this the moment the only work in season is
+ * chemical.
+ *
+ * It is the combination #15's withheld count was written for, and the one a
+ * card can get wrong in the most expensive way, by reporting an empty list as
+ * an untroubled yard. Narration is filtered to the Tasks that survive, because
+ * ADR 0001 lets the model select from a Plan and never lets it name a Task the
+ * Plan does not hold.
+ */
+const nothingDelegableTasks = awayArtifact.plan.tasks.filter(task => !(task.status === 'fired' && task.delegable));
+
+export const nothingDelegableAwayArtifact: Artifact = {
+	...awayArtifact,
+	plan: { ...awayArtifact.plan, tasks: nothingDelegableTasks },
+	narration: awayArtifact.narration === null
+		? null
+		: {
+				...awayArtifact.narration,
+				tasks: awayArtifact.narration.tasks.filter(
+					entry => nothingDelegableTasks.some(task => task.id === entry.taskId),
+				),
+			},
+};
+
+/**
  * The single-Task Plan whose status is `approaching`. CONTEXT.md's
  * Approaching Task entry is why it renders apart from fired work and why
  * counting it would be wrong: there is no work to do yet. Spread untouched —
@@ -221,7 +248,7 @@ export const awayStatus: StatusRecord = {
 	artifactGeneratedAt: awayArtifact.generatedAt,
 };
 
-/** Three failed runs in a row against the same Artifact — the loud state the Away Card's staleness banner renders. The band itself comes from `generatedAt` against a pinned clock in the spec that reads this, not from anything stored here. */
+/** Three failed runs in a row against the same Artifact—the loud state the Away Card's staleness banner renders. The band itself comes from `generatedAt` against a pinned clock in the spec that reads this, not from anything stored here. */
 export const failingAwayStatus: StatusRecord = {
 	...failingStatus,
 	artifactGeneratedAt: awayArtifact.generatedAt,

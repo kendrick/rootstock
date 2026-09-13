@@ -12,6 +12,7 @@ import {
 	delegableNarratedTaskId,
 	delegableUnnarratedTaskId,
 	failingAwayStatus,
+	nothingDelegableAwayArtifact,
 	undelegableNoTagTaskId,
 	unnarratedAwayArtifact,
 } from './fixtures';
@@ -61,21 +62,21 @@ describe('partitionForCard', () => {
 	// bucket would leave the yard without ever being mentioned—and nothing on
 	// the page would look wrong.
 	it('puts every Task in the Plan in exactly one bucket', () => {
-		const { shown, ownerOnly, deferred, notYet } = partitionForCard(awayArtifact.plan.tasks);
+		const { shown, ownerOnly, deferred, approaching } = partitionForCard(awayArtifact.plan.tasks);
 
-		const sorted = [...shown, ...ownerOnly, ...deferred, ...notYet].map(each => each.id).sort();
+		const sorted = [...shown, ...ownerOnly, ...deferred, ...approaching].map(each => each.id).sort();
 
 		expect(sorted).toEqual(awayArtifact.plan.tasks.map(each => each.id).sort());
 		expect(new Set(sorted).size).toBe(sorted.length);
 	});
 
 	it('shows the fired and delegable Tasks, and withholds the rest by reason', () => {
-		const { shown, ownerOnly, deferred, notYet } = partitionForCard(awayArtifact.plan.tasks);
+		const { shown, ownerOnly, deferred, approaching } = partitionForCard(awayArtifact.plan.tasks);
 
 		expect(shown.map(each => each.id)).toEqual([delegableNarratedTaskId, delegableUnnarratedTaskId]);
 		expect(ownerOnly.map(each => each.id)).toEqual([chemicalTaskId, undelegableNoTagTaskId]);
 		expect(deferred.map(each => each.id)).toEqual([deferredDelegableTaskId]);
-		expect(notYet).toEqual([]);
+		expect(approaching).toEqual([]);
 	});
 
 	// A deferred Task is nobody's work this week, so `delegable` has no say in
@@ -92,9 +93,9 @@ describe('partitionForCard', () => {
 	// CONTEXT.md's Approaching Task entry: there is no work to do yet. Counting
 	// it as withheld would tell the household about work that does not exist.
 	it('leaves an approaching Task out of both withheld buckets', () => {
-		const { shown, ownerOnly, deferred, notYet } = partitionForCard(approachingAwayArtifact.plan.tasks);
+		const { shown, ownerOnly, deferred, approaching } = partitionForCard(approachingAwayArtifact.plan.tasks);
 
-		expect(notYet).toHaveLength(1);
+		expect(approaching).toHaveLength(1);
 		expect(shown).toEqual([]);
 		expect(ownerOnly).toEqual([]);
 		expect(deferred).toEqual([]);
@@ -168,7 +169,7 @@ describe('awayCard', () => {
 
 		expect(container.textContent).toContain('2 tasks are for the owner to do.');
 		expect(container.textContent).toContain('1 task is waiting for conditions to change.');
-		expect(container.textContent).toContain('The list above is not everything the yard needs this week.');
+		expect(container.textContent).toContain('The yard needs more this week than this page shows.');
 
 		for (const { id, title } of WITHHELD) {
 			expect(container.textContent).not.toContain(title);
@@ -276,6 +277,54 @@ describe('awayCard', () => {
 		expect(banner.className).not.toBe(quiet?.className);
 	});
 
+	/*
+	 * The week the count exists for. Every fired Task is the owner's, so the
+	 * household's list is empty and the yard still needs work. Telling this
+	 * reader the yard needs nothing, directly above a line saying it needs
+	 * more, is how a pre-emergent window closes with everyone believing the
+	 * card.
+	 */
+	it('does not call the yard finished when it is holding work back', () => {
+		const container = renderCard(nothingDelegableAwayArtifact, awayStatus, FRESH);
+
+		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+		expect(container.textContent).not.toContain('Nothing in the yard needs doing');
+		expect(container.textContent).toContain('There is nothing here for you this week.');
+		expect(container.textContent).toContain('2 tasks are for the owner to do.');
+		expect(container.textContent).toContain('1 task is waiting for conditions to change.');
+	});
+
+	// The closing sentence points at no list, because on the week above there is
+	// no list for it to point at.
+	it('reports what it withheld without pointing at a list that may not be there', () => {
+		const withList = renderCard(awayArtifact, awayStatus, FRESH);
+		const withoutList = renderCard(nothingDelegableAwayArtifact, awayStatus, FRESH);
+
+		for (const container of [withList, withoutList]) {
+			expect(container.textContent).toContain('The yard needs more this week than this page shows.');
+			expect(container.textContent).not.toContain('list above');
+		}
+	});
+
+	/*
+	 * Plain language is hard to assert in general, so this asserts the half that
+	 * is mechanical: every word a household member would have to look up reaches
+	 * this card through a Task the card withholds. If one shows up, something
+	 * leaked rather than something got worded badly.
+	 */
+	it('leaks none of the vocabulary that only a withheld Task carries', () => {
+		// The trap has to be set for the assertion to mean anything: a withheld
+		// title really does carry the word being swept for.
+		expect(WITHHELD.some(({ title }) => title.toLowerCase().includes('pre-emergent'))).toBe(true);
+
+		const container = renderCard(awayArtifact, awayStatus, FRESH);
+		const text = (container.textContent ?? '').toLowerCase();
+
+		for (const word of ['pre-emergent', 'herbicide', 'chemical']) {
+			expect(text).not.toContain(word);
+		}
+	});
+
 	it('says so plainly when the yard needs nothing, and counts nothing it is not withholding', () => {
 		const container = renderCard(approachingAwayArtifact, awayStatus, APPROACHING_FRESH);
 
@@ -283,7 +332,7 @@ describe('awayCard', () => {
 		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
 		expect(container.textContent).not.toContain('for the owner to do');
 		expect(container.textContent).not.toContain('waiting for conditions to change');
-		expect(container.textContent).not.toContain('The list above is not everything');
+		expect(container.textContent).not.toContain('The yard needs more this week');
 	});
 
 	// The gate fails closed here for the same reason it does on every other

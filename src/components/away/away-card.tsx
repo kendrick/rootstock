@@ -21,7 +21,23 @@ export interface CardPartition {
 	/** Held back by a Guard, delegable or not: nobody does this work this week. */
 	deferred: Task[];
 	/** Approaching, so there is no work yet. Counted nowhere, for that reason. */
-	notYet: Task[];
+	approaching: Task[];
+}
+
+/**
+ * What the card says when it has nothing to hand over.
+ *
+ * The two sentences exist because one of them is a lie in the other's case. An
+ * empty list with work withheld behind it is an ordinary September: the only
+ * Rule in season is chemical, so the household's list is empty and the yard
+ * still needs something. Saying the yard needs nothing there is the exact
+ * belief #15 was written against, since a household that reads a finished list
+ * as a finished yard is how a pre-emergent window closes.
+ */
+function emptyText(withheld: number): string {
+	return withheld === 0
+		? 'Nothing in the yard needs doing this week.'
+		: 'There is nothing here for you this week.';
 }
 
 /**
@@ -39,14 +55,14 @@ export interface CardPartition {
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the split belongs beside the one component that reads it; a second file is where a second copy of the rule starts
 export function partitionForCard(tasks: Task[]): CardPartition {
-	const partition: CardPartition = { shown: [], ownerOnly: [], deferred: [], notYet: [] };
+	const partition: CardPartition = { shown: [], ownerOnly: [], deferred: [], approaching: [] };
 
 	for (const task of tasks) {
 		if (task.status === 'deferred') {
 			partition.deferred.push(task);
 		}
 		else if (task.status === 'approaching') {
-			partition.notYet.push(task);
+			partition.approaching.push(task);
 		}
 		else if (task.delegable) {
 			partition.shown.push(task);
@@ -92,6 +108,14 @@ export interface AwayCardProps {
  * Nothing here takes input. #15 rules out shared state, and a checkbox that
  * silently fails to sync is worse than a sheet of paper—which is what this card
  * becomes most weeks.
+ *
+ * A deferred Task arrives here as an anonymous number, which is narrower than
+ * CONTEXT.md's Deferred Task entry describes. That entry and ADR 0002 both say
+ * a deferred Task stays on screen carrying the Guard that held it and the
+ * condition that would release it, and it does—on This Week, which the owner
+ * reads. The release condition is a reason to act once it clears, and this
+ * reader has no standing to act on it. Naming the Guard would also name the
+ * work, which is the one thing the count is built to avoid.
  */
 export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement {
 	return (
@@ -123,7 +147,7 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 						{shown.length === 0
 							? (
 									<p className="text-base text-muted-foreground sm:text-lg print:text-black">
-										Nothing in the yard needs doing this week.
+										{emptyText(ownerOnly.length + deferred.length)}
 									</p>
 								)
 							: (

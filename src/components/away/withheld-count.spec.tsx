@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { WithheldCount } from './withheld-count';
 
-const REASON = 'The list above is not everything the yard needs this week.';
+const REASON = 'The yard needs more this week than this page shows.';
 
 describe('withheldCount', () => {
 	// A zero line is worse than no line: it trains a reader to skip the block,
