@@ -91,7 +91,7 @@ fi
 # instead of prompting a terminal nobody is at, and `StrictHostKeyChecking=no` spares a rebuilt
 # box the fingerprint question. The key is write-only to one repo, so that last trade is cheap.
 deploy_key="${ROOTSTOCK_DEPLOY_KEY:-$HOME/.ssh/rootstock_deploy}"
-ssh_command="ssh -i $deploy_key -o IdentitiesOnly=yes"
+ssh_command="ssh -i \"$deploy_key\" -o IdentitiesOnly=yes"
 ssh_command="$ssh_command -o StrictHostKeyChecking=no -o BatchMode=yes"
 GIT_SSH_COMMAND="$ssh_command" git push
 
