@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
@@ -70,10 +71,32 @@ const TRAVEL_WORDS = /\b(?:travel(?:l?ing)?|trip|vacation|holiday|out of town|wh
  */
 const FRESH = new Date(Date.parse(artifact.generatedAt) + 12 * 60 * 60 * 1000);
 
+/**
+ * Resolves once React has taken the page over.
+ *
+ * Duplicated from `staleness.spec.ts` rather than shared, because #16's file
+ * list names the spec files and no helper beside them; the shared version is a
+ * follow-up. Both absence assertions below need it for the reason that file
+ * spells out: this route is a client component prerendered to static HTML, so
+ * its heading is in the exported file whether or not the bundle ever ran. An
+ * absence checked against that HTML is an absence of JavaScript rather than an
+ * absence of dates, and the axe scan would be reading markup no visitor sees.
+ */
+async function waitForHydration(page: Page): Promise<void> {
+	await page.waitForFunction(() => {
+		const main = document.querySelector('main');
+
+		return main !== null && Object.keys(main).some(key => key.startsWith('__reactFiber$'));
+	});
+}
+
 test('hands over the delegable work and withholds the rest', async ({ page }) => {
 	await page.clock.setFixedTime(FRESH);
 	const response = await page.goto(`away/${slug}`);
-	// `out/away/<slug>.html`, written flat under the away directory.
+	// Asserted because `dynamicParams = false` means a wrong slug is a 404 rather
+	// than a rendered page, and a 404 body has no h1 to fail on either. Without
+	// this the whole suite would read as "the card rendered nothing" when what
+	// actually happened is that the build never knew about this slug.
 	expect(response?.status()).toBe(200);
 
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Yard tasks this week');
@@ -90,15 +113,20 @@ test('hands over the delegable work and withholds the rest', async ({ page }) =>
 
 	// The committed Artifact withholds the fall pre-emergent, which is chemical
 	// and so undelegable however its Rule's own field reads.
+	//
+	// `cardText` on this half too, not `task.title`. The card prints narration
+	// text when it has some, so once `daily-run.sh` publishes a narrated Artifact
+	// a leaked chemical Task would render under its narration text and an
+	// assertion against the title alone would keep passing.
 	for (const task of withheld) {
-		await expect(page.getByText(task.title, { exact: true })).toHaveCount(0);
+		await expect(page.getByText(cardText(task), { exact: true })).toHaveCount(0);
 	}
 });
 
 test('names no date and says nothing about anyone being away', async ({ page }) => {
 	await page.clock.setFixedTime(FRESH);
 	await page.goto(`away/${slug}`);
-	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await waitForHydration(page);
 
 	await expect(page.locator('time')).toHaveCount(0);
 	await expect(page.locator('body')).not.toContainText(TRAVEL_WORDS);
@@ -107,7 +135,7 @@ test('names no date and says nothing about anyone being away', async ({ page }) 
 test('away card has no accessibility violations', async ({ page }) => {
 	await page.clock.setFixedTime(FRESH);
 	await page.goto(`away/${slug}`);
-	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await waitForHydration(page);
 
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);

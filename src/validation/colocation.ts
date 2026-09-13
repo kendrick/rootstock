@@ -3,7 +3,11 @@ import { dirname, join, relative } from 'node:path';
 
 // Playwright drives the built site rather than importing a module, so its specs
 // have no subject to sit beside and run under a different runner entirely.
-const IGNORED = ['node_modules', '.next', 'out', 'dist', 'build', join('tests', 'integration')];
+//
+// `.preview` is `out` a second time: `pnpm preview` copies the export there to
+// serve it under the basePath, so whatever reason kept `out` off this list
+// applies to a duplicate of it sitting beside it.
+const IGNORED = ['node_modules', '.next', 'out', '.preview', 'dist', 'build', join('tests', 'integration')];
 
 const SUBJECT_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js'];
 

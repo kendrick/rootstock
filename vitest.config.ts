@@ -17,7 +17,9 @@ export default defineConfig({
 		// tree rather than a separate test root. `*.spec.ts` at the top level is for
 		// config files, which have nowhere else to sit beside.
 		include: ['*.spec.ts', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'scripts/**/*.spec.mjs'],
-		exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/build/**', '**/out/**'],
+		// `.preview` is the export copied under the basePath by `pnpm preview`, so
+		// it is `out` twice over and belongs here for the same reason.
+		exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/build/**', '**/out/**', '**/.preview/**'],
 		// Uncomment if you have a setup file:
 		// setupFiles: ['./tests/setup.ts'],
 		// Coverage runs on every `pnpm test` so the number lands in front of
@@ -40,7 +42,12 @@ export default defineConfig({
 			// end to end; `src/components/ui/**` is generated shadcn source this
 			// repo does not author. Counting either dilutes the figure for the
 			// code that does carry logic.
-			exclude: ['src/app/**', 'src/components/ui/**'],
+			//
+			// `data/**` is in here because `load.ts` imports the committed JSON,
+			// which drags it into the report at a free 100%. A data file has no
+			// branch to miss and no function to leave untested, so scoring it at
+			// all only moves the headline number up for nothing.
+			exclude: ['src/app/**', 'src/components/ui/**', 'data/**'],
 		},
 	},
 	resolve: {
