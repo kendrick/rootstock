@@ -1,16 +1,34 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { failingStatus, narratedArtifact, okStatus } from '@/artifact/fixtures';
 import { loadArtifact } from '@/artifact/load';
 import ThisWeekPage from './page';
+// The route passes no `store` prop, so `ThisWeek` falls back to
+// `openBrowserStore` and reaches for `globalThis.indexedDB`, which jsdom does
+// not ship. Installing the fake here lets these tests exercise the default the
+// deployed page runs on, rather than a seam invented for them.
+import 'fake-indexeddb/auto';
 
 // The loader is the seam. Swapping it is the only way to put a malformed
 // Artifact in front of the page, and a hand-edit to data/artifact.json between
 // generation runs is exactly the case the gate exists for.
 vi.mock('@/artifact/load', () => ({ loadArtifact: vi.fn() }));
 
-const PLACEHOLDER = /The Plan for this week goes here/;
+/**
+ * The model's line for the fixture's first Task, read off the fixture rather
+ * than retyped, so an edited narration fails here by name instead of leaving
+ * this spec asserting a sentence nobody renders.
+ */
+function narratedLine(): string {
+	const line = narratedArtifact.narration?.tasks[0]?.text;
+	if (line === undefined) {
+		throw new Error('narratedArtifact no longer narrates a Task: this spec has nothing to look for');
+	}
+	return line;
+}
+
+const PLAN_LINE = narratedLine();
 
 // Far enough past the fixture's generatedAt to land in the stale band, so the
 // banner renders the paragraph that carries the timestamp. Left to the real
@@ -28,25 +46,38 @@ afterEach(() => {
 	vi.mocked(loadArtifact).mockReset();
 });
 
+/**
+ * Renders the route and lets the Occurrence load settle.
+ *
+ * `ThisWeek` reads its checked state from the store in an effect, so a bare
+ * render leaves a state update in flight past the end of the test. Flushing it
+ * here means every assertion below reads a settled page.
+ */
+async function renderPage(): Promise<void> {
+	await act(async () => {
+		render(<ThisWeekPage />);
+	});
+}
+
 describe('this week page', () => {
-	it('renders its own heading and placeholder once both values validate', () => {
+	it('renders its own heading and the Plan once both values validate', async () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
 
-		render(<ThisWeekPage />);
+		await renderPage();
 
 		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This Week');
-		expect(screen.getByText(PLACEHOLDER)).toBeDefined();
+		expect(screen.getByText(PLAN_LINE)).toBeDefined();
 		expect(screen.queryByRole('alert')).toBeNull();
 	});
 
 	// Both halves of what the loader returned have to arrive at the banner: the
 	// Artifact supplies the instant on the <time> element, the status record
-	// supplies the failure count. Asserting on the placeholder alone would pass
-	// just as well with the page handing the gate two literals of its own.
-	it('passes both loaded values through the gate to the banner', () => {
+	// supplies the failure count. Asserting on the Plan alone would pass just as
+	// well with the page handing the gate two literals of its own.
+	it('passes both loaded values through the gate to the banner', async () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: failingStatus });
 
-		render(<ThisWeekPage />);
+		await renderPage();
 
 		const banner = screen.getByRole('status');
 
@@ -55,40 +86,46 @@ describe('this week page', () => {
 	});
 
 	// The gate's own spec proves the render prop is never called. This one proves
-	// the route puts nothing beside the error: no heading, and no staleness claim
-	// to suggest the rest of the page is merely running late.
-	it('renders none of its own content when the gate fails', () => {
+	// the route puts nothing beside the error: no heading, no Task, and no
+	// staleness claim to suggest the rest of the page is merely running late.
+	it('renders none of its own content when the gate fails', async () => {
 		vi.mocked(loadArtifact).mockReturnValue({
 			artifact: { ...narratedArtifact, generatedAt: 'yesterday' },
 			status: okStatus,
 		});
 
-		render(<ThisWeekPage />);
+		await renderPage();
 
 		expect(screen.getByRole('alert').textContent).toContain('generatedAt');
-		expect(screen.queryByText(PLACEHOLDER)).toBeNull();
+		expect(screen.queryByText(PLAN_LINE)).toBeNull();
 		expect(screen.queryByRole('status')).toBeNull();
 	});
 
-	// `output: 'export'` prerenders this route in Node at build time. A timestamp
-	// in that markup would be the build machine's instant, and the browser would
-	// contradict it on hydration, so the prerender has to carry no clock reading
-	// at all. renderToStaticMarkup stands in for that prerender, since effects
-	// never fire there.
-	it('keeps every timestamp out of the prerendered markup', () => {
+	// `output: 'export'` prerenders this route in Node at build time. A clock
+	// reading in that markup would be the build machine's instant, and the
+	// browser would contradict it on hydration, so the prerender has to carry no
+	// clock reading at all. renderToStaticMarkup stands in for that prerender,
+	// since effects never fire there.
+	it('keeps every clock reading out of the prerendered markup', () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: failingStatus });
 
 		const markup = renderToStaticMarkup(<ThisWeekPage />);
 
 		expect(markup).toContain('This Week');
-		expect(markup).not.toContain('<time');
-		expect(markup).not.toContain(narratedArtifact.generatedAt);
 		// The banner has to be absent whole, not merely missing its timestamp.
 		// `generatedAt` is a fixed instant and the wall clock keeps moving, so the
-		// band this fixture lands in changes over time — and the failure sentence
+		// band this fixture lands in changes over time—and the failure sentence
 		// is the one part that renders in every band. Asserting on it keeps this
 		// test's teeth from depending on what day it runs.
+		expect(markup).not.toContain(narratedArtifact.generatedAt);
 		expect(markup).not.toContain('runs failed');
 		expect(markup).not.toContain('role="status"');
+		// Nothing here forbids `<time>` itself, and that is deliberate.
+		// `CitationDisclosure` dates its evidence with one, and those dates are
+		// calendar days the Artifact already carries: settled at generation,
+		// identical in Node and in the browser, so hydration has nothing to
+		// contradict. The property this test protects is narrower. No reading of
+		// the clock the build ran on may reach this markup.
+		expect(markup).toContain(PLAN_LINE);
 	});
 });
