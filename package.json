@@ -10,6 +10,7 @@
 	"scripts": {
 		"build": "next build",
 		"dev": "next dev",
+		"generate": "tsx scripts/generate.ts",
 		"lint": "eslint .",
 		"lint:css": "stylelint \"**/*.css\" --allow-empty-input",
 		"lint:css:fix": "stylelint \"**/*.css\" --fix --allow-empty-input",
