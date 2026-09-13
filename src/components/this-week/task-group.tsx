@@ -3,7 +3,6 @@ import { useId } from 'react';
 
 export interface TaskGroupProps {
 	heading: string;
-	/** Shown in place of the list when there is nothing in it. Omit to render nothing. */
 	emptyText?: string;
 	children?: ReactNode;
 }

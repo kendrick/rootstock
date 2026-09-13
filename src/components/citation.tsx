@@ -1,46 +1,21 @@
 import type { ReactElement, ReactNode } from 'react';
+import type { DailyAggregate } from '@/planner/plan';
 import type { Citation } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
-import type { Aggregate, Variable } from '@/weather/observation';
+import type { Variable } from '@/weather/observation';
 import { ChevronRight, TriangleAlert } from 'lucide-react';
-import { RuleSummary } from '@/components/rule-summary';
+import { AGGREGATE_TEXT, formatValue, MONTHS, RuleSummary, VARIABLE_TEXT } from '@/components/rule-summary';
 import { cn } from '@/lib/utils';
 
 /*
- * Copied out of rule-summary.tsx rather than imported from it. That file does
- * not export these maps, and contract 11 freezes it so #14 can reuse it
- * unchanged; adding an export to save two small objects would edit a file this
- * component is only meant to compose. Either file needs them because the enum
- * values are wire spellings: `soil-temperature` beside `mean` reads as a dump
- * of the JSON rather than a sentence about the lawn.
+ * The series words, the month table and the unit formatter come from
+ * rule-summary.tsx, which this component already composes. The overlap that
+ * remains is deliberate: `Row` here baselines a `<time>` against its label
+ * where rule-summary centres badges against theirs, and the two date formatters
+ * read different shapes—a yearless `MM-DD` window on a Rule against a full ISO
+ * day on a Citation. `src/planner/dates.ts` is where a shared month table
+ * belongs, and it is frozen for this ticket.
  */
-const VARIABLE_TEXT: Record<Variable, string> = {
-	'soil-temperature': 'soil temperature',
-	'precipitation': 'rainfall',
-	'precipitation-probability': 'chance of rain',
-};
-
-const AGGREGATE_TEXT: Record<Aggregate, string> = {
-	mean: 'mean',
-	min: 'minimum',
-	max: 'maximum',
-	sum: 'total',
-};
-
-const MONTHS = [
-	'January',
-	'February',
-	'March',
-	'April',
-	'May',
-	'June',
-	'July',
-	'August',
-	'September',
-	'October',
-	'November',
-	'December',
-];
 
 /**
  * Splits the ISO string instead of parsing it. `new Date('2026-09-11')` is UTC
@@ -77,6 +52,28 @@ function Row({ term, children }: { term: string; children: ReactNode }): ReactEl
 	);
 }
 
+/**
+ * The days of the window the Citation points at: same series, same depth, same
+ * reduction, inside the run it names. All three fields and not `variable`
+ * alone, because a window may carry one variable at two depths, or a mean
+ * beside a max, and a row mixing those would be a reading nobody observed.
+ *
+ * Dates compare as strings on purpose. Both ends are `z.iso.date()`, so lexical
+ * order is calendar order, and parsing them would hand a time zone the chance
+ * to move a day the Planner already settled on.
+ */
+function citedReadings(
+	citation: Extract<Citation, { kind: 'threshold' }>,
+	window: DailyAggregate[],
+): DailyAggregate[] {
+	return window.filter(day =>
+		day.variable === citation.variable
+		&& day.depthCm === citation.depthCm
+		&& day.aggregate === citation.aggregate
+		&& day.date >= citation.from
+		&& day.date <= citation.to);
+}
+
 /** What the run read, in the words a household member uses for it. */
 function seriesPhrase(citation: Extract<Citation, { variable: Variable }>): string {
 	const depth = citation.depthCm === null ? '' : ` at ${citation.depthCm} cm`;
@@ -85,12 +82,15 @@ function seriesPhrase(citation: Extract<Citation, { variable: Variable }>): stri
 }
 
 /**
- * The dated half of the Citation, one branch per kind. No value and no unit
- * appear anywhere below, because the Citation carries neither. ADR 0003 puts
- * the readings themselves on `Plan.window`, and a number invented here to round
- * out a sentence would be a reading nobody observed.
+ * The dated half of the Citation, one branch per kind.
+ *
+ * A Citation carries no value of its own, so the readings come off
+ * `Plan.window`. ADR 0003 ships that window for this: it turns the Citation
+ * from a sentence into something a reader can check, and it answers "how close
+ * are we". Every number below is lifted off a DailyAggregate, unit included, so
+ * nothing here can state a reading the run did not record.
  */
-function Evidence({ citation }: { citation: Citation }): ReactElement {
+function Evidence({ citation, window }: { citation: Citation; window: DailyAggregate[] }): ReactElement {
 	switch (citation.kind) {
 		case 'window':
 			// RuleSummary's "Window" row already carries the Rule's range. This row
@@ -101,17 +101,38 @@ function Evidence({ citation }: { citation: Citation }): ReactElement {
 				</Row>
 			);
 
-		case 'threshold':
+		case 'threshold': {
+			const readings = citedReadings(citation, window);
+
 			return (
-				<Row term="Observed run">
-					<span>
-						{`${seriesPhrase(citation)}, `}
-						<EvidenceDate date={citation.from} />
-						{' through '}
-						<EvidenceDate date={citation.to} />
-					</span>
-				</Row>
+				<>
+					<Row term="Observed run">
+						<span>
+							{`${seriesPhrase(citation)}, `}
+							<EvidenceDate date={citation.from} />
+							{' through '}
+							<EvidenceDate date={citation.to} />
+						</span>
+					</Row>
+
+					{/*
+					 * With no window, or a window holding nothing for these days, the
+					 * row does not render at all. A missing reading is not a zero, and a
+					 * dash beside a date reads as a number that failed to load.
+					 */}
+					{readings.length > 0 && (
+						<Row term="Readings">
+							{readings.map(day => (
+								<span key={day.date} className="whitespace-nowrap">
+									<EvidenceDate date={day.date} />
+									{` · ${formatValue(day.value, day.unit)}`}
+								</span>
+							))}
+						</Row>
+					)}
+				</>
 			);
+		}
 
 		case 'threshold-projection':
 			return (
@@ -165,12 +186,17 @@ function Evidence({ citation }: { citation: Citation }): ReactElement {
 }
 
 export interface CitationDisclosureProps {
-	/** The line a reader sees before expanding: the Task's text. Goes in <summary>. */
 	summary: ReactNode;
 	citation: Citation;
 	/** Null when the Artifact cites a Rule this rule set does not carry. */
 	rule: Rule | null;
 	delegable?: boolean | null;
+	/**
+	 * `Plan.window`, for the readings behind a threshold Citation. Omitting it
+	 * costs the reading row and nothing else, which is what a caller holding a
+	 * Citation and no Plan needs.
+	 */
+	window?: DailyAggregate[];
 	/** Rendered inside the disclosure below the evidence. */
 	children?: ReactNode;
 }
@@ -198,6 +224,7 @@ export function CitationDisclosure({
 	citation,
 	rule,
 	delegable = null,
+	window = [],
 	children,
 }: CitationDisclosureProps): ReactElement {
 	return (
@@ -238,7 +265,7 @@ export function CitationDisclosure({
 					: <RuleSummary rule={rule} delegable={delegable} />}
 
 				<dl className="space-y-1">
-					<Evidence citation={citation} />
+					<Evidence citation={citation} window={window} />
 				</dl>
 
 				{children}

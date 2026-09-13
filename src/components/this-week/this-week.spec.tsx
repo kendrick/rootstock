@@ -10,7 +10,7 @@ import { localDate } from '@/planner/dates';
 import { occurrenceSchema } from '@/planner/occurrence';
 import { seedPlants, seedRules, seedTagPolicy, seedYard } from '@/seed';
 import { createFakeStore } from '@/store/fake-store';
-import { combinedNarratedArtifact, combinedUnnarratedArtifact, failingStatus, okStatus, plants, rules } from './fixtures';
+import { combinedNarratedArtifact, combinedUnnarratedArtifact, okStatus, plants, rules } from './fixtures';
 import { ThisWeek } from './this-week';
 
 /**
@@ -93,6 +93,29 @@ function readyBox(): HTMLInputElement {
 		throw new Error('no check-off box in the ready group');
 	}
 	return box as HTMLInputElement;
+}
+
+/**
+ * An instant the given number of days after the Artifact was generated, derived
+ * rather than written down so these tests do not depend on the day they run or
+ * on the fixture keeping its current timestamp.
+ */
+function daysAfterGeneration(days: number): Date {
+	return new Date(Date.parse(combinedNarratedArtifact.generatedAt) + days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * The element the de-emphasis lands on: the Task groups and the held-back
+ * section share one wrapper, and the advisories sit outside it. Reached through
+ * the group rather than by position, so a sibling added above the wrapper cannot
+ * move this assertion onto the wrong node.
+ */
+function taskListWrapper(): HTMLElement {
+	const wrapper = screen.getByRole('region', { name: 'Ready now' }).parentElement;
+	if (wrapper === null) {
+		throw new Error('the ready group no longer sits inside a wrapper');
+	}
+	return wrapper;
 }
 
 function fullPage(store: Store): ReactElement {
@@ -306,21 +329,53 @@ describe('thisWeek', () => {
 		expect(screen.getByText('Nothing in the yard is due this week.')).toBeDefined();
 	});
 
-	// An empty list has two causes a reader cannot tell apart: a quiet yard, or a
-	// run that never finished. The status record is the only thing on the page
-	// that can separate them.
-	it('names the failed run in the empty line when the last run failed', async () => {
+	/*
+	 * #12's de-emphasized state. The instant is pinned with `now` so the band is a
+	 * property of the test rather than of the day it runs on: eight days past the
+	 * Artifact's own `generatedAt` is past the seven-day line `staleness()` draws.
+	 *
+	 * The assertion looks for muted tokens because an arbitrary opacity is a
+	 * contrast claim nothing has checked, and `tests/integration/smoke.spec.ts`
+	 * runs axe over this page. The custom-property override is the half that
+	 * reaches the children, which set `text-foreground` on their own headings and
+	 * task text.
+	 */
+	it('de-emphasizes the task list once the Artifact has expired', async () => {
 		await mount(
 			<ThisWeek
-				artifact={artifactWithStatuses([])}
-				status={failingStatus}
+				artifact={combinedNarratedArtifact}
+				status={okStatus}
 				rules={rules}
 				plants={plants}
 				store={fakeStore()}
+				now={daysAfterGeneration(8)}
 			/>,
 		);
 
-		expect(screen.getByText(/the last run failed/)).toBeDefined();
+		const wrapper = taskListWrapper();
+
+		expect(wrapper.className).toContain('text-muted-foreground');
+		expect(wrapper.className).toContain('[--foreground:var(--muted-foreground)]');
+
+		// The held-back section is inside the de-emphasis and the advisories are
+		// not: an Advisory is not part of a Plan, so it has no staleness to inherit.
+		expect(wrapper.contains(screen.getByRole('region', { name: 'Held back' }))).toBe(true);
+		expect(wrapper.contains(screen.getByRole('region', { name: 'Also observed' }))).toBe(false);
+	});
+
+	it('leaves the task list at full weight while the Artifact is still current', async () => {
+		await mount(
+			<ThisWeek
+				artifact={combinedNarratedArtifact}
+				status={okStatus}
+				rules={rules}
+				plants={plants}
+				store={fakeStore()}
+				now={daysAfterGeneration(1)}
+			/>,
+		);
+
+		expect(taskListWrapper().className).not.toContain('text-muted-foreground');
 	});
 
 	// The other half of `TaskGroup`'s empty contract, and the case the shipped

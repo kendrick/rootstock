@@ -1,4 +1,5 @@
 import type { ChangeEvent, ReactElement } from 'react';
+import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
@@ -14,6 +15,8 @@ export interface TaskItemProps {
 	plantsById: ReadonlyMap<string, Plant>;
 	/** Narration's line for this Task. Null or omitted falls back to task.title. */
 	narrationText?: string | null;
+	/** `Plan.window`, passed through so a threshold Citation can show the readings it cites. */
+	window?: DailyAggregate[];
 	checked?: boolean;
 	onComplete?: (task: Task) => void;
 }
@@ -68,6 +71,7 @@ export function TaskItem({
 	rulesById,
 	plantsById,
 	narrationText = null,
+	window,
 	checked = false,
 	onComplete,
 }: TaskItemProps): ReactElement {
@@ -157,6 +161,7 @@ export function TaskItem({
 					citation={task.citation}
 					rule={rule}
 					delegable={task.delegable}
+					window={window}
 				/>
 
 				{(task.deferrals.length > 0 || task.annotations.length > 0) && (

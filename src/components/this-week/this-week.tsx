@@ -8,6 +8,8 @@ import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant } from '@/yard/plant';
 import { useEffect, useMemo, useState } from 'react';
+import { staleness } from '@/artifact/staleness';
+import { cn } from '@/lib/utils';
 import { isCompleted } from '@/planner/completion';
 import { seedPlants, seedRules } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
@@ -20,10 +22,23 @@ import { TaskItem } from './task-item';
 export interface ThisWeekProps {
 	artifact: Artifact;
 	status: StatusRecord;
-	rules?: Rule[]; // defaults seedRules
-	plants?: Plant[]; // defaults seedPlants
-	/** A Store, or a factory for one. Defaults to openBrowserStore. */
+	rules?: Rule[];
+	plants?: Plant[];
+	/**
+	 * Both shapes, because both callers are real. A spec hands a
+	 * `createFakeStore(...)` straight in, and the default has to stay a function
+	 * so that resolving it can wait for a browser: `output: 'export'` prerenders
+	 * this route in Node, where opening IndexedDB at module scope would fail the
+	 * build.
+	 */
 	store?: Store | (() => Promise<Store>);
+	/**
+	 * Pins the instant the Artifact's age is measured against, the same prop
+	 * `staleness-banner.tsx` takes and for the same reasons. Omit it and the band
+	 * comes off the clock on every render, so a tab left open past the seven-day
+	 * line de-emphasizes itself without a reload.
+	 */
+	now?: Date;
 }
 
 /**
@@ -73,6 +88,7 @@ export function ThisWeek({
 	rules = seedRules,
 	plants = seedPlants,
 	store = openBrowserStore,
+	now,
 }: ThisWeekProps): ReactElement {
 	const rulesById = useMemo(() => byId(rules), [rules]);
 	const plantsById = useMemo(() => byId(plants), [plants]);
@@ -125,6 +141,29 @@ export function ThisWeek({
 		};
 	}, [store]);
 
+	// The same gate `staleness-banner.tsx` puts in front of its own band, for the
+	// same two reasons. `output: 'export'` prerenders this route in Node, so a
+	// clock read during the first render would bake the build machine's instant
+	// into the exported HTML and the browser would contradict it on hydration. And
+	// a mount flag rather than the instant, because storing the instant would
+	// freeze the band at whatever it was when the tab opened, and the tab left
+	// open over a weekend is the case CONTEXT.md's Staleness entry exists for.
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => {
+		// eslint-disable-next-line react/set-state-in-effect -- the prerender has to run once with no clock at all, so the extra render is the point
+		setMounted(true);
+	}, []);
+
+	// react/purity is right that reading the clock mid-render is impure, and the
+	// impurity is the feature: age is a fact about the moment somebody is looking.
+	// eslint-disable-next-line react/purity -- see above; every render past the first is meant to re-read the clock
+	const asOf = now ?? (mounted ? new Date() : null);
+
+	// #12 asks for the Task list to go quiet under the banner once the Artifact is
+	// over a week old. `staleness()` owns both boundaries, so this reads the band
+	// it returns and never re-derives one from `ageHours`.
+	const expired = asOf !== null && staleness(artifact.generatedAt, asOf, status).band === 'expired';
+
 	const tasks = artifact.plan.tasks;
 
 	const completedIds = useMemo(
@@ -171,46 +210,64 @@ export function ThisWeek({
 				rulesById={rulesById}
 				plantsById={plantsById}
 				narrationText={narrationById.get(task.id) ?? null}
+				window={artifact.plan.window}
 				checked={completedIds.has(task.id)}
 				onComplete={handleComplete}
 			/>
 		);
 	}
 
-	// An empty list has two causes a reader cannot tell apart from the outside:
-	// the yard has nothing due, or the run that would have found something never
-	// finished. The banner above reports the broken runner; this line says what a
-	// broken runner means for the emptiness under it, because "nothing to do"
-	// otherwise reads as an answer.
-	const nothingDue = status.ok
-		? 'Nothing in the yard is due this week.'
-		: 'Nothing is due this week—though the last run failed, so this may not be the current answer.';
+	// This sentence reports the Plan and nothing else. Whether the runner that
+	// built it is still working is a second question, and `StalenessBanner` above
+	// answers that one in every band, so repeating it here would print the failed
+	// run twice on one screen.
+	const nothingDue = 'Nothing in the yard is due this week.';
 
 	return (
 		<div className="space-y-8">
-			<TaskGroup heading="Ready now" emptyText={nothingDue}>
-				{tasks.filter(task => task.status === 'fired').map(taskItem)}
-			</TaskGroup>
-
 			{/*
-			 * No `emptyText`, so a Plan with nothing on the horizon renders no
-			 * group at all. CONTEXT.md's Approaching Task entry keeps this work
-			 * apart from fired work because a forecast can be revised, and a
-			 * heading over an empty list would make the revision look like a
-			 * Task that vanished.
+			 * #12's de-emphasized state. The loud banner belongs to the shell; the work
+			 * underneath it goes quiet.
+			 *
+			 * Muted theme tokens carry that, never an `opacity` value.
+			 * `text-muted-foreground` sits on this background all over the app and
+			 * clears contrast, where an arbitrary opacity is a contrast claim nobody
+			 * has checked, and `tests/integration/smoke.spec.ts` runs axe over this
+			 * page in a sweep #16 is widening. The custom-property override is the half
+			 * that reaches the children: they set `text-foreground` on their own
+			 * headings and task text, so redefining the token those utilities resolve
+			 * against mutes the whole subtree, and no component below has to learn what
+			 * staleness is.
+			 *
+			 * None of it reaches the exported HTML, for the same reason the banner's
+			 * band does not: `asOf` stays null until the mount flag flips.
 			 */}
-			<TaskGroup heading="Approaching">
-				{tasks.filter(task => task.status === 'approaching').map(taskItem)}
-			</TaskGroup>
+			<div className={cn('space-y-8', expired && 'text-muted-foreground [--foreground:var(--muted-foreground)]')}>
+				<TaskGroup heading="Ready now" emptyText={nothingDue}>
+					{tasks.filter(task => task.status === 'fired').map(taskItem)}
+				</TaskGroup>
 
-			<DeferredSection
-				tasks={tasks.filter(task => task.status === 'deferred')}
-				rulesById={rulesById}
-				plantsById={plantsById}
-				narrationById={narrationById}
-				completedIds={completedIds}
-				onComplete={handleComplete}
-			/>
+				{/*
+				 * No `emptyText`, so a Plan with nothing on the horizon renders no
+				 * group at all. CONTEXT.md's Approaching Task entry keeps this work
+				 * apart from fired work because a forecast can be revised, and a
+				 * heading over an empty list would make the revision look like a
+				 * Task that vanished.
+				 */}
+				<TaskGroup heading="Approaching">
+					{tasks.filter(task => task.status === 'approaching').map(taskItem)}
+				</TaskGroup>
+
+				<DeferredSection
+					tasks={tasks.filter(task => task.status === 'deferred')}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					narrationById={narrationById}
+					window={artifact.plan.window}
+					completedIds={completedIds}
+					onComplete={handleComplete}
+				/>
+			</div>
 
 			{/*
 			 * An Advisory is not part of a Plan—the Planner cannot author one—so

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
@@ -10,6 +11,8 @@ export interface DeferredSectionProps {
 	rulesById: ReadonlyMap<string, Rule>;
 	plantsById: ReadonlyMap<string, Plant>;
 	narrationById?: ReadonlyMap<string, string>;
+	/** `Plan.window`, passed through so a threshold Citation can show the readings it cites. */
+	window?: DailyAggregate[];
 	completedIds?: ReadonlySet<string>;
 	onComplete?: (task: Task) => void;
 }
@@ -19,9 +22,9 @@ export interface DeferredSectionProps {
  * so held-back work stays in the Plan and stays on screen here, each one
  * still carrying the Citation that produced it and the Deferral that held it
  * back. `TaskItem` already renders both, so this component composes it rather
- * than re-deriving a Guard name or a release string from the Task itself—
- * doing that by hand would give a deferred Task a different shape from a
- * fired one, with no citation behind the difference.
+ * than re-deriving a Guard name or a release string from the Task
+ * itself—doing that by hand would give a deferred Task a different shape from
+ * a fired one, with no citation behind the difference.
  *
  * Unlike `Advisories`, an empty list does not return null. ADR 0002's whole
  * argument is that silence has two causes a reader cannot tell apart from
@@ -35,6 +38,7 @@ export function DeferredSection({
 	rulesById,
 	plantsById,
 	narrationById,
+	window,
 	completedIds,
 	onComplete,
 }: DeferredSectionProps): ReactElement {
@@ -63,6 +67,7 @@ export function DeferredSection({
 							rulesById={rulesById}
 							plantsById={plantsById}
 							narrationText={narrationById?.get(task.id) ?? null}
+							window={window}
 							checked={completedIds?.has(task.id) ?? false}
 							onComplete={onComplete}
 						/>

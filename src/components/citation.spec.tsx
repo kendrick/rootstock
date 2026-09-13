@@ -1,3 +1,4 @@
+import type { DailyAggregate } from '@/planner/plan';
 import type { Citation, Task } from '@/planner/task';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -50,6 +51,36 @@ const rainfallCitation: Citation = {
 	aggregate: 'sum',
 	from: '2026-03-12',
 	to: '2026-03-14',
+};
+
+/**
+ * A satisfied run cut out of the window the fixture Artifact already ships,
+ * rather than a series authored here. ADR 0003 puts the readings on
+ * `Plan.window` so a Citation is evidence somebody can look at, and a Citation
+ * pointing at days no window holds would prove the opposite. Three days because
+ * that is what `spring-pre-emergent` asks for.
+ */
+function citedRun(): DailyAggregate[] {
+	const observed = combinedNarratedArtifact.plan.window
+		.filter(day => day.variable === 'soil-temperature' && day.basis === 'observed')
+		.slice(-3);
+
+	if (observed.length !== 3) {
+		throw new Error('the this-week fixture window no longer carries three observed soil-temperature days: there is no run to cite');
+	}
+	return observed;
+}
+
+const citedDays = citedRun();
+
+/** The same three days as a Citation, every field read off the aggregates so the two cannot drift apart. */
+const windowedCitation: Citation = {
+	kind: 'threshold',
+	variable: 'soil-temperature',
+	depthCm: citedDays[0]?.depthCm ?? null,
+	aggregate: citedDays[0]?.aggregate ?? 'mean',
+	from: citedDays[0]?.date ?? '',
+	to: citedDays[2]?.date ?? '',
 };
 
 function ruleFor(task: Task) {
@@ -117,6 +148,79 @@ describe('citationDisclosure', () => {
 
 		expect(container.querySelector('time[datetime="2026-03-12"]')).not.toBeNull();
 		expect(container.querySelector('time[datetime="2026-03-14"]')).not.toBeNull();
+	});
+
+	it('shows what was observed on the days a threshold Citation names', () => {
+		const { container } = render(
+			<CitationDisclosure
+				summary="Apply spring pre-emergent to the front lawn"
+				citation={windowedCitation}
+				rule={rulesById.get('spring-pre-emergent') ?? null}
+				window={combinedNarratedArtifact.plan.window}
+			/>,
+		);
+
+		const readings = evidenceRow(container, 'Readings');
+
+		// Value and unit both come off the DailyAggregate, never off the Rule: the
+		// Rule says what it is waiting for and the window says what happened.
+		for (const day of citedDays) {
+			expect(readings).toContain(`${day.value}°F`);
+			expect(container.querySelector(`time[datetime="${day.date}"]`)).not.toBeNull();
+		}
+	});
+
+	// A window can carry several series at once, so the row has to select the days
+	// the Citation names instead of printing whatever the window opens with.
+	it('leaves out the days the Citation does not cite', () => {
+		const outside = combinedNarratedArtifact.plan.window
+			.filter(day => !citedDays.includes(day))
+			.map(day => day.value);
+
+		const { container } = render(
+			<CitationDisclosure
+				summary="Apply spring pre-emergent to the front lawn"
+				citation={windowedCitation}
+				rule={rulesById.get('spring-pre-emergent') ?? null}
+				window={combinedNarratedArtifact.plan.window}
+			/>,
+		);
+
+		const readings = evidenceRow(container, 'Readings');
+
+		for (const value of outside) {
+			expect(readings).not.toContain(`${value}°F`);
+		}
+	});
+
+	// A missing window is not a zero. The dates the Artifact recorded still
+	// render, and nothing stands in for a reading nobody handed over.
+	it('renders the run without readings when no window comes with it', () => {
+		const { container } = render(
+			<CitationDisclosure
+				summary="Apply spring pre-emergent to the front lawn"
+				citation={windowedCitation}
+				rule={rulesById.get('spring-pre-emergent') ?? null}
+			/>,
+		);
+
+		expect(evidenceRow(container, 'Observed run')).toContain('Daily mean soil temperature at 6 cm');
+		expect(screen.queryByText('Readings')).toBeNull();
+	});
+
+	it('renders no readings when the window holds nothing for the cited days', () => {
+		const { container } = render(
+			<CitationDisclosure
+				summary="Apply spring pre-emergent to the front lawn"
+				citation={thresholdCitation}
+				rule={rulesById.get('spring-pre-emergent') ?? null}
+				window={combinedNarratedArtifact.plan.window}
+			/>,
+		);
+
+		expect(evidenceRow(container, 'Observed run'))
+			.toBe('Daily mean soil temperature at 6 cm, March 12, 2026 through March 14, 2026');
+		expect(screen.queryByText('Readings')).toBeNull();
 	});
 
 	it('leaves the depth out of a series that has none', () => {
