@@ -20,6 +20,28 @@ export default defineConfig({
 		exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/build/**', '**/out/**'],
 		// Uncomment if you have a setup file:
 		// setupFiles: ['./tests/setup.ts'],
+		// Coverage runs on every `pnpm test` so the number lands in front of
+		// whoever ran the suite; behind a `--coverage` flag it would be read once.
+		// No `thresholds` key, deliberately: a gate would fail a branch for
+		// touching a file it had good reason to leave uncovered.
+		//
+		// The two exclusions below add to Vitest's own. Vitest 4 ships an empty
+		// `coverage.exclude` and appends its hardcoded protections (node_modules,
+		// config files, the test globs, setup files) after whatever is set here,
+		// so spreading `coverageConfigDefaults.exclude` would spread an empty
+		// array and read as though it guarded something.
+		coverage: {
+			enabled: true,
+			provider: 'v8',
+			// `json-summary` beside `text` so CI has a machine-readable figure to
+			// pick up later without a second run.
+			reporter: ['text', 'json-summary'],
+			// `src/app/**` is routing and layout that the Playwright suite covers
+			// end to end; `src/components/ui/**` is generated shadcn source this
+			// repo does not author. Counting either dilutes the figure for the
+			// code that does carry logic.
+			exclude: ['src/app/**', 'src/components/ui/**'],
+		},
 	},
 	resolve: {
 		// Must match tsconfig's `"@/*": ["./src/*"]` and components.json, or the same
