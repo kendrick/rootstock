@@ -22,10 +22,9 @@ import { rulesFor } from './applicable-rules';
 import { SoilSparkline } from './soil-sparkline';
 
 /**
- * The same four words `plant-list.tsx` prints, deliberately duplicated. See the
- * note there: exporting it from a module that also exports components trips
- * `react-refresh/only-export-components`, and #13 owns no shared non-component
- * module to hold it. Edit the two together.
+ * The same four words `plant-list.tsx` prints, deliberately duplicated. The note
+ * there carries the reasoning and the alternative that was turned down. Edit the
+ * two together.
  */
 const KIND_TEXT: Record<Plant['kind'], string> = {
 	plant: 'Plant',

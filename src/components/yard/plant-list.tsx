@@ -9,10 +9,15 @@ import { Badge } from '@/components/ui/badge';
  *
  * `plant-sheet.tsx` keeps an identical copy, which is a duplicate nobody is
  * happy about. Exporting it from here trips `react-refresh/only-export-components`,
- * a module holding components may not also export a constant, and #13 owns no
- * shared non-component module to move it to. The risk the copy carries is a row
- * and the sheet it opens naming one Plant two different things, so the two lists
- * are edited together until there is somewhere to put this.
+ * since a module holding components may not also export a constant, and #13 owns
+ * no shared non-component module to move it to. `rule-summary.tsx` shows the
+ * third way out, an eslint-disable with a written reason, and the trade it names
+ * is a full dev reload on every edit to the file. Four words did not seem worth
+ * that; a shared module still would be.
+ *
+ * The risk the copy carries is a row and the sheet it opens naming one Plant two
+ * different things, so the two lists are edited together until there is
+ * somewhere to put this.
  */
 const KIND_TEXT: Record<Plant['kind'], string> = {
 	plant: 'Plant',
