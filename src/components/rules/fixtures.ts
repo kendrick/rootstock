@@ -66,7 +66,17 @@ export const chemicalRule: Rule = windowRule;
 export const thresholdWithPublishedRange: Rule = thresholdRule;
 
 /**
- * One rule of each kind, in kind order, for specs that need a representative
- * set without caring which specific rule fills each slot.
+ * A cadence rule with `delegable: true` and no chemical tag, so `isDelegable`
+ * returns `true` for it. The other four rules in this file all have
+ * `delegable: false`—specs that need both outcomes in one render use this
+ * alongside one of the non-delegable fixtures.
  */
-export const allFixtureRules: Rule[] = [windowRule, thresholdRule, cadenceRule, guardRule];
+export const delegableRule: Rule = { ...findSeedRule('esperanza-feeding') };
+
+/**
+ * One rule of each kind, in kind order, for specs that need a representative
+ * set without caring which specific rule fills each slot. Includes one
+ * delegable rule (`delegableRule`) so specs asserting on the delegable badge
+ * can see both "Delegable" and "Not delegable" in a single render.
+ */
+export const allFixtureRules: Rule[] = [windowRule, thresholdRule, cadenceRule, guardRule, delegableRule];

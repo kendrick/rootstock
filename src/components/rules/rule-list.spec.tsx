@@ -81,7 +81,10 @@ describe('ruleList', () => {
 		const delegable = screen.queryAllByText('Delegable');
 		const notDelegable = screen.queryAllByText('Not delegable');
 
-		// At least one rule in allFixtureRules is delegable and at least one is not.
+		// Both badges must appear: if either is missing, RuleList is overriding
+		// the derivation rather than letting isDelegable run inside RuleSummary.
+		expect(delegable.length).toBeGreaterThan(0);
+		expect(notDelegable.length).toBeGreaterThan(0);
 		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.length);
 	});
 });
