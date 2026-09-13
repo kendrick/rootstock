@@ -21,7 +21,12 @@ import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
 import { SoilSparkline } from './soil-sparkline';
 
-/** The word for each `kind`, rendered on the page. `plant-list.tsx` keeps its own copy and exports none; four words are cheaper duplicated than coupled across two components. */
+/**
+ * The same four words `plant-list.tsx` prints, deliberately duplicated. See the
+ * note there: exporting it from a module that also exports components trips
+ * `react-refresh/only-export-components`, and #13 owns no shared non-component
+ * module to hold it. Edit the two together.
+ */
 const KIND_TEXT: Record<Plant['kind'], string> = {
 	plant: 'Plant',
 	container: 'Container',

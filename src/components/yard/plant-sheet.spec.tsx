@@ -185,31 +185,48 @@ describe('plantSheet', () => {
 	// A Guard creates no work, so a reader who cannot tell one from a Rule that
 	// does is reading the list wrong. Which of the two things it does matters
 	// just as much: held work and an annotated go-ahead are different news.
-	it('marks a deferring Guard as holding work back', async () => {
-		renderSheet(figPlant);
+	// `rain-expected` names no Plant and reaches the lawn only because its
+	// ruleTags find `chemical` on the pre-emergents. It is the Guard actually
+	// holding the herbicide, so the lawn's own page is where a reader has to
+	// meet it — ADR 0002 keeps held work visible with its reason attached, and a
+	// sheet that dropped the Guard would leave the reason nowhere.
+	it('marks a deferring Guard as holding work back, on the plant it holds it on', async () => {
+		renderSheet(lawnPlant);
 		await settled();
 
 		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain('No fig fertilizer until spring');
+		expect(applicable.textContent).toContain('Rain expected');
 		expect(applicable.textContent).toContain('Guard · holds work back');
 	});
 
-	// Every annotating Guard in the seed selects by `ruleTags` and names no
-	// plant, so `rulesFor` reaches none of them from a Plant. Pointing one at the
-	// fig is the only way to render the other half of the marker.
+	// No seed Rule carries `pesticide`, so both annotating Guards speak to
+	// nothing in this yard. Retagging one onto the tag the lawn's pre-emergents
+	// really carry is what puts the other half of the marker on screen.
 	it('marks an annotating Guard as adding a note', async () => {
 		const annotating = guardFixture('annotate');
 		const reaching: Rule = {
 			...annotating,
-			appliesTo: { ...annotating.appliesTo, plantIds: [figPlant.id] },
+			appliesTo: { ...annotating.appliesTo, ruleTags: ['chemical'] },
 		};
 
-		renderSheet(figPlant, { rules: [reaching] });
+		renderSheet(lawnPlant, { rules: [...ruleFixtures, reaching] });
 		await settled();
 
 		const applicable = section('Rules that reach this plant');
 		expect(applicable.textContent).toContain(annotating.name);
 		expect(applicable.textContent).toContain('Guard · adds a note');
+	});
+
+	// The other direction of the same rule. `fig-fertilizer-until-spring` names
+	// fig-1 outright, and still does not belong here: its ruleTags is
+	// ['fertilizer'] and nothing reaching the fig asks for fertilizer, so the
+	// Guard is holding nothing and listing it would be noise on the one screen
+	// meant to say what governs this plant.
+	it('leaves off a Guard that names the plant but has no work of its to hold', async () => {
+		renderSheet(figPlant);
+		await settled();
+
+		expect(screen.queryByText('No fig fertilizer until spring')).toBeNull();
 	});
 
 	// `targets()` drops a planned Plant until it is in the ground, so this is the

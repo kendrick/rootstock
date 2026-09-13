@@ -32,7 +32,7 @@ const PLOT = { top: 22, right: 14, bottom: 30, left: 14 };
 const PLOT_WIDTH = VIEW.width - PLOT.left - PLOT.right;
 const PLOT_HEIGHT = VIEW.height - PLOT.top - PLOT.bottom;
 
-/** Marker radius. The dataviz mark spec floors markers at 8px across, and the 2px ring below is what keeps this one legible where it sits on the line. */
+/** Floored by the dataviz mark spec, which puts markers at 8px across or wider; the 2px ring below is what keeps this one legible where it crosses the line. */
 const MARKER_RADIUS = 4.5;
 
 const VARIABLE_LABEL: Record<Variable, string> = {
@@ -253,6 +253,16 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 
 	const observedCount = days.filter(day => day.basis === 'observed').length;
 	const forecastCount = days.length - observedCount;
+	/*
+	 * A copy of `satisfies` in `src/planner/threshold-rule.ts`, and it has to stay
+	 * a copy: that function is private to the module and `src/planner` is frozen
+	 * for this milestone, so there is nothing to import. Both comparisons include
+	 * the boundary, which that file flags as the off-by-one a reader is most
+	 * likely to assume the other way round. The two must agree, because the count
+	 * below goes into the chart's description and the Planner's answer goes into
+	 * the Citation, and a reader comparing them is the whole point of ADR 0003.
+	 * Exporting the original is the fix once the freeze lifts.
+	 */
 	const meetsThreshold = (value: number): boolean => (rule.comparison === 'gte' ? value >= rule.value : value <= rule.value);
 	const meetingCount = values.filter(meetsThreshold).length;
 	const sideWords = rule.comparison === 'gte' ? 'at or above it' : 'at or below it';

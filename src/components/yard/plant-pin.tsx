@@ -47,9 +47,6 @@ export function PlantPin({ plant, onSelect }: {
 			// photo.width/height. Issue #29 swaps public/yard.jpg for an edited
 			// image at a different resolution, and a fraction is the only offset
 			// that survives that swap without every pin having to be re-sited.
-			// Without the translate, the button's top-left corner would land on
-			// the point and the pin would hang down and to the right of the
-			// plant it names.
 			style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
 			className={cn(
 				'absolute -translate-x-1/2 -translate-y-1/2 rounded-full',

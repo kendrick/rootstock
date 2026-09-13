@@ -24,8 +24,6 @@ export function YardPhoto({ yard, plants, onSelect }: {
 			// The box takes its shape from the photo's own dimensions, so a pin's
 			// percentage offset lands on the same blade of grass on a phone and on
 			// a desktop, and the browser reserves the space before the image loads.
-			// `relative` does double duty: it anchors the pins and gives `fill` the
-			// positioned parent it sizes against.
 			style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
 			className="relative w-full overflow-hidden rounded-lg border border-border"
 		>

@@ -90,11 +90,11 @@ export const thresholdRule: ThresholdRule = findThresholdRule('spring-pre-emerge
 export const yardArtifact: Artifact = { ...approachingArtifact };
 
 /*
- * Several completions of the seed's own `esperanza-feeding` cadence rule, on
- * the esperanza it targets, so a history view sorting descending has more than
- * one row to sort. A guard's id would not do here: CONTEXT.md's Guard entry
- * says a Guard creates no work, so there is no completion to record against
- * one — these have to name a task-creating Rule.
+ * Three dates the seed's own `esperanza-feeding` cadence rule was carried out
+ * on, against the esperanza it targets, so a history view sorting descending
+ * has more than one row to sort. A Guard's id would not do here: CONTEXT.md
+ * says a Guard creates no work, so no Occurrence can ever name one, and these
+ * have to name a task-creating Rule instead.
  */
 export const occurrenceFixtures: Occurrence[] = [
 	{

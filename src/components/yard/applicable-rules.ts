@@ -3,38 +3,61 @@ import type { Plant } from '@/yard/plant';
 import { targets } from '@/planner/targets';
 
 /**
- * Resolves which Rules reach one Plant, for a view that shows a Plant what
- * would act on it and what would hold that work back.
+ * Whether a Rule's plant selectors reach this Plant.
  *
- * The two Rule kinds are answered two different ways because the repo
- * already has a function for each question and reimplementing either would
- * risk drifting from it:
+ * `targets()` is the Planner's own answer, so the union of `plantIds` and
+ * `plantTags` and the drop of `planned` Plants only have to be right in one
+ * place. It ignores `ruleTags` outright, which is what makes it usable for a
+ * Guard as well: its docblock is explicit that a Rule carrying that field is
+ * resolved as if the field were null, because `ruleTags` says nothing about
+ * Plants.
  *
- * - A task-creating Rule (window, threshold, cadence) reaches the Plant when
- *   `targets()` — the Planner's own answer to "which Plants does this Rule
- *   reach" — puts it in the result. Reusing it means the union of
- *   `plantIds`/`plantTags` and the drop of `planned` Plants only have to be
- *   right in one place.
- * - A Guard reaches the Plant when its `appliesTo.plantIds` names it.
- *   `guardTargets()` answers a related but different question — which Tasks
- *   a Guard reaches — and needs a Plan's Tasks to do it. This view has no
- *   Tasks in hand, only a Plant, so `guardTargets()` is the wrong tool here:
- *   reading `appliesTo.plantIds` directly is the only way to ask "does this
- *   Guard name this Plant" without first building Tasks just to throw them
- *   away.
+ * `plants: null` is the whole-yard case and not "matched nothing". A Rule with
+ * no plant selector reaches every Plant, this one included, and reading the
+ * null as a non-match would hide a lawn-wide Rule from every Plant it covers.
+ */
+function reachesPlant(rule: Rule, plant: Plant, plants: Plant[]): boolean {
+	const { plants: matched } = targets(rule, plants);
+	return matched === null || matched.some(candidate => candidate.id === plant.id);
+}
+
+/**
+ * Resolves which Rules reach one Plant: the work the yard would ask for, and
+ * the Guards that would hold that work back or mark it up.
+ *
+ * A Guard has to clear both halves of `appliesTo`, because that is what the
+ * field means. `rule.ts` fixes the reading as OR inside a selector and AND
+ * across them, so `plantIds`/`plantTags` choose the Plants and `ruleTags` then
+ * narrows to the Rules the Guard has an opinion on. Checking only the plant
+ * half hides `rain-expected`, which names no Plant at all and is the Guard
+ * holding the lawn's herbicide until the rain passes — the one a reader most
+ * needs, on the Plant it acts on. Checking only `plantIds` also lists
+ * `fig-fertilizer-until-spring` on a fig that no fertilizer Rule reaches, so
+ * the Guard sits there holding nothing.
+ *
+ * `guardTargets()` answers this same question against a Plan's Tasks, and this
+ * is its Plant-shaped sibling. The difference is deliberate rather than a
+ * second implementation: a Task exists only where a Rule fired on the planned
+ * date, so asking through Tasks would drop a Guard whenever the work it holds
+ * is out of season. A Plant's page is a standing answer, not today's.
  */
 export function rulesFor(plant: Plant, rules: Rule[], plants: Plant[]): Rule[] {
+	const authoring = rules.filter(rule => rule.kind !== 'guard' && reachesPlant(rule, plant, plants));
+
 	return rules.filter((rule) => {
-		if (rule.kind === 'guard') {
-			return rule.appliesTo.plantIds !== null && rule.appliesTo.plantIds.includes(plant.id);
+		if (rule.kind !== 'guard') {
+			return authoring.includes(rule);
 		}
 
-		const { plants: matched } = targets(rule, plants);
+		if (!reachesPlant(rule, plant, plants)) {
+			return false;
+		}
 
-		// `plants: null` is targets()'s whole-yard case, not "matched nothing" —
-		// a Rule with no plant selector at all reaches every Plant, this one
-		// included. Reading it as a non-match would hide a lawn-wide rule from
-		// every Plant's page.
-		return matched === null || matched.some(candidate => candidate.id === plant.id);
+		// The Rule half. A null `ruleTags` constrains nothing, so the Guard reaches
+		// this Plant on the strength of its plant selectors alone. Otherwise it has
+		// to find one of its tags on a Rule that actually asks for work here.
+		const { ruleTags } = rule.appliesTo;
+		return ruleTags === null
+			|| authoring.some(candidate => candidate.tags.some(tag => ruleTags.includes(tag)));
 	});
 }
