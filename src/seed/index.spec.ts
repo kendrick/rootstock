@@ -3,7 +3,8 @@ import type { Plant } from '@/yard/plant';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PLAN_WINDOW_DAYS } from '@/planner/plan';
+import { dailyAggregateSchema, PLAN_WINDOW_DAYS } from '@/planner/plan';
+import { evaluateThresholdRule } from '@/planner/threshold-rule';
 import {
 	findCoordinateKeys,
 	findCoordinatePairs,
@@ -103,6 +104,40 @@ describe('seed loading', () => {
 		expect(rule?.kind).toBe('threshold');
 		expect(rule && rule.kind === 'threshold' ? rule.direction : null).toBe('rising');
 		expect(rule && rule.kind === 'threshold' ? rule.season : null).not.toBeNull();
+	});
+
+	/**
+	 * The shipped Rule driven through the real evaluator, rather than a local
+	 * Rule that merely shares its shape. Soil in Southwest Fort Worth passes
+	 * 55F twice a year, so the October reading is the one a spring
+	 * pre-emergent must not answer, and the two series below differ only in
+	 * the month they carry.
+	 */
+	it('does not fire the shipped spring-pre-emergent on an autumn crossing of the same shape', () => {
+		const springPreEmergent = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
+		if (springPreEmergent === undefined || springPreEmergent.kind !== 'threshold') {
+			throw new Error('rules.json no longer ships spring-pre-emergent as a Threshold Rule');
+		}
+
+		// Arriving from below the value, so `direction` is satisfied and the
+		// season is the only thing left to reject it.
+		const crossing = (month: string): ReturnType<typeof dailyAggregateSchema.parse>[] =>
+			[52, 56, 57, 58].map((value, index) => dailyAggregateSchema.parse({
+				variable: 'soil-temperature',
+				depthCm: 6,
+				aggregate: 'mean',
+				unit: 'F',
+				basis: 'observed',
+				provenance: 'modeled',
+				source: 'open-meteo',
+				date: `2026-${month}-0${index + 5}`,
+				value,
+			}));
+
+		expect(evaluateThresholdRule(springPreEmergent, crossing('10'), '2026-10-08')).toEqual({ fires: false });
+
+		const spring = evaluateThresholdRule(springPreEmergent, crossing('03'), '2026-03-08');
+		expect(spring).toMatchObject({ fires: true, status: 'fired' });
 	});
 });
 

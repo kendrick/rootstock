@@ -155,11 +155,11 @@ export type WindowRule = z.infer<typeof windowRuleSchema>;
  * the payload budget overrule the agronomy.
  *
  * `direction` names which way the series has to move for the run to count.
- * `null` judges the run on its own, matching today's behavior. `'rising'` or
- * `'falling'` ties itself to `comparison` (enforced by the refine below) and
- * requires the day just before the run to sit on the far side of `value`, so
- * a crossing is evidenced rather than assumed—a run already past `value`
- * before the window opened proves no trend at all.
+ * `null` judges the run on its own. `'rising'` or `'falling'` ties itself to
+ * `comparison` (enforced by the refine below) and requires the day just
+ * before the run to sit on the far side of `value`, so a crossing is
+ * evidenced rather than assumed—a run already past `value` before the window
+ * opened proves no trend at all.
  *
  * `season` fences the reading to part of the year, the same shape as
  * `cadenceRuleSchema.season` above. A soil-temperature threshold with no

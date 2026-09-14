@@ -194,7 +194,9 @@ function firstRun(days: DailyAggregate[], rule: ThresholdRule): Run | null {
  * `asOf` check below, and it keeps a March crossing off the Plan in July.
  *
  * Neither field revokes a crossing that already qualified. They decide which
- * runs qualify in the first place, and a Task that fired stays fired.
+ * runs qualify in the first place, and a Task that fired stays fired. ADR
+ * 0005 carries the argument in full, including the three shapes it turned
+ * down.
  */
 export function evaluateThresholdRule(
 	rule: ThresholdRule,
