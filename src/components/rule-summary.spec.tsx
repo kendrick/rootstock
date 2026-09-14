@@ -337,4 +337,21 @@ describe('ruleSummary', () => {
 		expect(screen.queryByText('Produced a Task this week')).toBeNull();
 		expect(screen.queryByText('Acted on a Task this week')).toBeNull();
 	});
+
+	// #64: the Rules route needs a heading landmark per Rule. asHeading swaps
+	// the name's own element rather than adding a second one beside it, so the
+	// visible name and the heading are the same node.
+	it('renders the rule name as an h3 when asHeading is true', () => {
+		render(<RuleSummary rule={seedRule('fall-pre-emergent')} asHeading />);
+
+		const heading = screen.getByRole('heading', { level: 3, name: 'Fall pre-emergent' });
+		expect(heading.tagName).toBe('H3');
+	});
+
+	it('keeps the rule name out of the heading tree by default', () => {
+		render(<RuleSummary rule={seedRule('fall-pre-emergent')} />);
+
+		expect(screen.queryByRole('heading')).toBeNull();
+		expect(screen.getByText('Fall pre-emergent').tagName).toBe('SPAN');
+	});
 });

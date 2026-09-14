@@ -22,7 +22,7 @@ const KIND_TITLES: Record<Exclude<Rule['kind'], 'guard'>, string> = {
 const KIND_ORDER = ['window', 'threshold', 'cadence'] as const;
 
 /** Every Rule id a Task in the Plan names, whatever the Task's status. */
-function firedRuleIds(plan: Plan): ReadonlySet<string> {
+function taskRuleIds(plan: Plan): ReadonlySet<string> {
 	return new Set(plan.tasks.map(task => task.ruleId));
 }
 
@@ -42,36 +42,33 @@ function actedGuardIds(plan: Plan): ReadonlySet<string> {
 
 /**
  * One Rule, boxed so the boundary—not the bold name alone—is what separates
- * it from its neighbours, and headed by an empty, `aria-label`ed heading so a
- * screen-reader user gets a landmark per Rule rather than only one for the
- * whole page. `RuleSummary` renders no heading of its own (it is reused
- * inside a `<details>` on This Week, at a depth this route does not own), so
- * the landmark has to be supplied here instead of inside it.
- *
- * The heading carries no text of its own on purpose: its accessible name
- * comes from `aria-label`, so it names the Rule for a screen reader without
- * giving `rule.name` a second text node next to the one `RuleSummary` already
- * renders—which would turn every `getByText(rule.name)` query across this
- * route's specs into a "found multiple elements" failure.
+ * it from its neighbours. `asHeading` turns `RuleSummary`'s own name into an
+ * `<h3>`, so a screen-reader user gets a landmark per Rule rather than only
+ * one for the whole page, without a second element carrying the same text.
  */
 function RuleCard({ rule, inCurrentPlan }: { rule: Rule; inCurrentPlan: boolean }): ReactElement {
 	return (
 		<div className="rounded-lg border border-card-border bg-card p-4">
-			{/* eslint-disable-next-line jsx-a11y/heading-has-content -- named via aria-label on purpose, see the docblock above */}
-			<h3 aria-label={rule.name} className="sr-only" />
-			<RuleSummary rule={rule} hideRegion inCurrentPlan={inCurrentPlan} />
+			<RuleSummary rule={rule} hideRegion asHeading inCurrentPlan={inCurrentPlan} />
 		</div>
 	);
 }
 
+/**
+ * One kind section: a heading naming it, and a card per Rule of that kind.
+ * Guards use this too, passed their own title and their own "used" set
+ * (`actedGuardIds` rather than `taskRuleIds`—a Guard never owns a Task, so
+ * the two sets mean different things even though the section shape is the
+ * same for both).
+ */
 function KindSection({
 	title,
 	rules,
-	fired,
+	usedIds,
 }: {
 	title: string;
 	rules: Rule[];
-	fired: ReadonlySet<string>;
+	usedIds: ReadonlySet<string>;
 }): ReactElement | null {
 	if (rules.length === 0) {
 		return null;
@@ -84,7 +81,7 @@ function KindSection({
 			</h2>
 			<div className="space-y-4">
 				{rules.map(rule => (
-					<RuleCard key={rule.id} rule={rule} inCurrentPlan={fired.has(rule.id)} />
+					<RuleCard key={rule.id} rule={rule} inCurrentPlan={usedIds.has(rule.id)} />
 				))}
 			</div>
 		</section>
@@ -104,13 +101,12 @@ function KindSection({
  * is suppressed via `hideRegion` for every card this component renders).
  *
  * No h1 anywhere below. The route owns the page's only h1; each section
- * heading here is an h2, and each Rule's own (visually hidden) heading is an
- * h3 nested under it.
+ * heading here is an h2, and each Rule's own name is an h3 nested under it
+ * (via `RuleSummary`'s `asHeading`).
  */
 export function RuleList({ rules, plan }: RuleListProps): ReactElement {
-	const fired = firedRuleIds(plan);
-	const actedGuards = actedGuardIds(plan);
-	const guards = rules.filter(rule => rule.kind === 'guard');
+	const taskIds = taskRuleIds(plan);
+	const guardIds = actedGuardIds(plan);
 	const [firstRule] = rules;
 
 	return (
@@ -126,22 +122,15 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 					key={kind}
 					title={KIND_TITLES[kind]}
 					rules={rules.filter(rule => rule.kind === kind)}
-					fired={fired}
+					usedIds={taskIds}
 				/>
 			))}
 
-			{guards.length > 0 && (
-				<section aria-label="Guards">
-					<h2 className="mb-3 text-lg font-medium tracking-tight text-foreground">
-						Guards
-					</h2>
-					<div className="space-y-4">
-						{guards.map(rule => (
-							<RuleCard key={rule.id} rule={rule} inCurrentPlan={actedGuards.has(rule.id)} />
-						))}
-					</div>
-				</section>
-			)}
+			<KindSection
+				title="Guards"
+				rules={rules.filter(rule => rule.kind === 'guard')}
+				usedIds={guardIds}
+			/>
 		</div>
 	);
 }

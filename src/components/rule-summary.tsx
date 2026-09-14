@@ -168,6 +168,15 @@ export interface RuleSummaryProps {
 	 * that render a Rule with no Plan in hand.
 	 */
 	inCurrentPlan?: boolean;
+	/**
+	 * Renders the Rule's name as an `<h3>` instead of a `<span>`, so a screen
+	 * reader gets a heading landmark for the name that is actually on screen,
+	 * rather than a second, invisible element carrying the same text next to
+	 * it. Defaults to false, which keeps every other caller's rendered shape—
+	 * This Week's `<details>` and the Yard plant sheet compose this at depths
+	 * an `<h3>` here would not suit.
+	 */
+	asHeading?: boolean;
 }
 
 /**
@@ -177,10 +186,11 @@ export interface RuleSummaryProps {
  * produced no Task this week—including a Guard, which never produces one at
  * all.
  *
- * No heading element anywhere below. This renders inside a `<details>` on the
- * This Week route and inside a list on the Rules route, so its depth is set by
- * whoever composed it; a heading here would land at a level that is right in
- * one place and wrong in the other. The route owns the page's only h1.
+ * No heading element anywhere below unless `asHeading` says otherwise. This
+ * renders inside a `<details>` on the This Week route and inside a list on
+ * the Rules route, so its depth is set by whoever composed it; a heading
+ * fixed at one level here would land right in one place and wrong in the
+ * other. The route owns the page's only h1.
  */
 export function RuleSummary({
 	rule,
@@ -188,7 +198,9 @@ export function RuleSummary({
 	tagPolicy = seedTagPolicy,
 	hideRegion = false,
 	inCurrentPlan = false,
+	asHeading = false,
 }: RuleSummaryProps): ReactElement {
+	const NameTag = asHeading ? 'h3' : 'span';
 	// The stamped flag wins when there is one. `isDelegable` has already been
 	// applied to it by the Planner, and CONTEXT.md's Delegable entry says tag
 	// policy only ever narrows—so the stamp is the narrowed answer, and asking
@@ -201,7 +213,7 @@ export function RuleSummary({
 	return (
 		<div className="space-y-2 text-sm">
 			<div className="flex flex-wrap items-center gap-2">
-				<span className="font-medium text-foreground">{rule.name}</span>
+				<NameTag className="font-medium text-foreground">{rule.name}</NameTag>
 				<SourceBadge source={rule.source} />
 			</div>
 
