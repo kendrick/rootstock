@@ -14,6 +14,14 @@ const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
 	lte: 'at or below',
 };
 
+// A directed Rule is evidenced by a Crossing (ADR 0005), so its sentence says
+// so in those words rather than the undirected "at or above"/"at or below",
+// which describes a level with no claim about which way the series got there.
+const DIRECTION_TEXT: Record<NonNullable<ThresholdRule['direction']>, string> = {
+	falling: 'falling through',
+	rising: 'rising through',
+};
+
 /**
  * MM-DD is deliberately yearless—rule.ts keeps the fall pre-emergent window
  * attached to every September rather than to 2026—so this splits the string
@@ -50,15 +58,33 @@ function thresholdSentence(rule: ThresholdRule): string {
 	const run = rule.consecutiveDays === 1
 		? 'for one day'
 		: `for ${rule.consecutiveDays} consecutive days`;
+	// Named for the slot it fills rather than for either branch, because a
+	// directed Rule puts a Crossing here where an undirected one puts a bare
+	// comparison. CONTEXT.md's Threshold Rule entry rules out calling it the
+	// condition.
+	const valueWords = rule.direction === null
+		? COMPARISON_TEXT[rule.comparison]
+		: DIRECTION_TEXT[rule.direction];
 
 	return `Daily ${AGGREGATE_TEXT[rule.aggregate]} ${VARIABLE_TEXT[rule.variable]}${depth}, `
-		+ `${COMPARISON_TEXT[rule.comparison]} ${formatValue(rule.value, rule.unit)} ${run}`;
+		+ `${valueWords} ${formatValue(rule.value, rule.unit)} ${run}`;
 }
 
 function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
 	return (
 		<>
 			<Row term="Fires when">{thresholdSentence(rule)}</Row>
+			{/*
+			 * Same shape as CadenceRows' season row: both fence a Rule to part of
+			 * the year through the identical seasonSchema, and ADR 0005 gives this
+			 * one a second job besides—keeping a January warm spell from reading as
+			 * the spring crossing it isn't.
+			 */}
+			{rule.season !== null && (
+				<Row term="Season">
+					{`${formatMonthDay(rule.season.start)} through ${formatMonthDay(rule.season.end)}`}
+				</Row>
+			)}
 			{/*
 			 * The published range sits beside the single number the yard acts on,
 			 * never in place of it. rule.ts makes the case: AgriLife printed 50 to

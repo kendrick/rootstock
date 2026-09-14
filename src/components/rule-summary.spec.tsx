@@ -45,6 +45,16 @@ const bareThreshold: Rule = {
 	appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
 };
 
+// The seed set's one Threshold Rule rises, so a falling one has to be built.
+// ADR 0005's schema refine pairs 'falling' with 'lte', which bareThreshold
+// already compares by, so this only has to name the direction.
+const fallingThreshold: Rule = {
+	...bareThreshold,
+	id: 'late-season-cooldown',
+	name: 'Late season cooldown',
+	direction: 'falling',
+};
+
 const fixedInterval: Rule = {
 	id: 'weekly-deep-water',
 	kind: 'cadence',
@@ -82,13 +92,14 @@ describe('ruleSummary', () => {
 	});
 
 	// The whole threshold row has to be legible at once: which series, at what
-	// depth, reduced how, against what value, in what unit, for how long. Any one
-	// of those missing turns "55" into a number nobody can act on.
+	// depth, reduced how, which way it crosses, against what value, in what unit,
+	// for how long. Any one of those missing turns "55" into a number nobody can
+	// act on.
 	it('renders every part of a threshold Rule\'s condition', () => {
 		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
 
 		expect(
-			screen.getByText('Daily mean soil temperature at 6 cm, at or above 55°F for 3 consecutive days'),
+			screen.getByText('Daily mean soil temperature at 6 cm, rising through 55°F for 3 consecutive days'),
 		).toBeDefined();
 	});
 
@@ -243,5 +254,48 @@ describe('ruleSummary', () => {
 		for (const svg of container.querySelectorAll('svg')) {
 			expect(svg.getAttribute('aria-hidden')).toBe('true');
 		}
+	});
+
+	// ADR 0005: a directed Rule is evidenced by a Crossing, so the undirected
+	// "at or above" has to leave rather than sit beside the new wording. Two
+	// sentences describing one Rule is the defect this replaced.
+	it('drops "at or above" once a Rule names a rising Crossing', () => {
+		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+
+		expect(screen.queryByText(/at or above/)).toBeNull();
+	});
+
+	it('names a falling Crossing instead of "at or below"', () => {
+		render(<RuleSummary rule={fallingThreshold} />);
+
+		expect(
+			screen.getByText('Daily minimum soil temperature, falling through 36°F for one day'),
+		).toBeDefined();
+		expect(screen.queryByText(/at or below/)).toBeNull();
+	});
+
+	// Same row, same formatMonthDay, same "through" as CadenceRows, because ADR
+	// 0005 fences a threshold Rule to part of the year through the identical
+	// seasonSchema. The term is asserted beside the dates: a `dd` that lost its
+	// `dt` still matches the date string, and the term is the half a screen
+	// reader announces first.
+	it('renders a threshold Rule\'s season in the same form as a cadence Rule\'s', () => {
+		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+
+		expect(screen.getByText('Season')).toBeDefined();
+		expect(screen.getByText('February 1 through April 30')).toBeDefined();
+	});
+
+	// The regression gate for ADR 0005: a Rule naming neither field renders the
+	// sentence and the rows main renders today. Not `spring-pre-emergent`—the
+	// seed set already gives that one both—so this reaches for the one
+	// seed-shaped fixture that still names neither.
+	it('renders the undirected sentence and no Season row when both fields are null', () => {
+		render(<RuleSummary rule={bareThreshold} />);
+
+		expect(
+			screen.getByText('Daily minimum soil temperature, at or below 36°F for one day'),
+		).toBeDefined();
+		expect(screen.queryByText('Season')).toBeNull();
 	});
 });
