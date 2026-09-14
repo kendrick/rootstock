@@ -3,6 +3,7 @@
 import type { ReactElement } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 
 /**
@@ -50,7 +51,8 @@ export function Nav(): ReactElement {
 								// the string "false", which reads as present.
 								aria-current={isCurrent ? 'page' : undefined}
 								className={cn(
-									'text-sm underline-offset-4 hover:underline',
+									'rounded-sm text-sm underline-offset-4 hover:underline',
+									FOCUS_RING,
 									isCurrent ? 'text-foreground' : 'text-muted-foreground',
 								)}
 							>

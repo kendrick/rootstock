@@ -1,9 +1,39 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
+import { Atkinson_Hyperlegible_Next } from 'next/font/google';
 import { Footer } from '@/components/shell/footer';
 import { Header } from '@/components/shell/header';
 import { WORDMARK } from '@/components/shell/name';
 import './globals.css';
+
+/**
+ * This plan gets read one-handed and outdoors in full sun, so the shell uses a
+ * typeface drawn for legibility rather than for style: Atkinson Hyperlegible
+ * Next comes from the Braille Institute and separates the characters that
+ * collapse into each other at a glance, which matters on a page of rule ids,
+ * dates and product-label numbers.
+ *
+ * `next/font/google` self-hosts the file at build time, so the static export
+ * sends no request to Google and causes no layout shift. One variable file
+ * covers weight 200 to 800, which is what lets globals.css open the type scale
+ * without shipping a second weight.
+ *
+ * The custom property is not named --font-sans, because globals.css maps
+ * Tailwind's --font-sans onto it and a property that resolves to itself is
+ * circular.
+ *
+ * The build warns that it found no font override values for this family and
+ * skipped the adjusted fallback, because Next's metrics table predates it. That
+ * is a known cost, not a misconfiguration: the file is preloaded from our own
+ * origin at roughly 34KB, so it is normally in hand before first paint, and
+ * `display: 'swap'` is left at its default rather than moving to `optional`
+ * because a reader who gets the system font instead loses the one property this
+ * typeface was chosen for.
+ */
+const atkinson = Atkinson_Hyperlegible_Next({
+	subsets: ['latin'],
+	variable: '--font-atkinson',
+});
 
 export const metadata: Metadata = {
 	title: WORDMARK,
@@ -16,7 +46,7 @@ export const metadata: Metadata = {
 // typecheck and CI fails on any order that lints before it builds.
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
 	return (
-		<html lang="en">
+		<html lang="en" className={atkinson.variable}>
 			{/* Every route here is a single placeholder line until #12 through #15
 			    fill them. Without the column, the footer would float halfway up the
 			    viewport on all three. */}

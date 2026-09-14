@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import type { Source } from '@/rules/rule';
 import { Landmark, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 
 /**
@@ -25,6 +26,15 @@ const KIND_ICON: Record<Source['kind'], typeof Landmark> = {
 	owner: User,
 };
 
+/**
+ * Extension sources used to take `default`, the primary-action variant, which
+ * resolves to a solid white pill and made provenance the loudest thing in the
+ * app: six of them stacked down the plant sheet outshouting the rule names they
+ * belong to. Provenance is not a primary action. `evidence` marks it with the
+ * one hue that means "this line is cited" and lets the rule name win again. The
+ * icon and the word still carry the distinction on their own, so a reader who
+ * sees no colour loses nothing.
+ */
 export function SourceBadge({ source }: { source: Source }): ReactElement {
 	const Icon = KIND_ICON[source.kind];
 
@@ -38,7 +48,7 @@ export function SourceBadge({ source }: { source: Source }): ReactElement {
 
 	return (
 		<Badge
-			variant={source.kind === 'extension' ? 'default' : 'secondary'}
+			variant={source.kind === 'extension' ? 'evidence' : 'secondary'}
 			className="gap-1.5"
 		>
 			{source.url === null
@@ -50,10 +60,7 @@ export function SourceBadge({ source }: { source: Source }): ReactElement {
 							href={source.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							className={cn(
-								'inline-flex items-center gap-1.5 rounded-sm outline-none',
-								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-							)}
+							className={cn('inline-flex items-center gap-1.5 rounded-sm', FOCUS_RING)}
 						>
 							{content}
 						</a>
