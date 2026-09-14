@@ -92,6 +92,10 @@ describe('seed loading', () => {
 		expect(seedYard.id).toBe('home-yard');
 		expect(seedPlants.length).toBeGreaterThan(0);
 		expect(seedRules.length).toBeGreaterThan(0);
+		// `completedAt` sits outside `fig-spring-compost`'s 03-01 to 04-30 window
+		// on purpose. The Occurrence records the day the compost actually went
+		// down; the Rule records when it should go down next year. Anyone tempted
+		// to bring the two into line should not.
 		expect(seedOccurrences).toEqual([{
 			id: 'fig-spring-compost-2026',
 			ruleId: 'fig-spring-compost',

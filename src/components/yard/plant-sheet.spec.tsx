@@ -199,15 +199,17 @@ describe('plantSheet', () => {
 		expect(applicable.textContent).toContain('Guard · holds work back');
 	});
 
-	// water-in-after-application already carries the chemical tag the lawn's
-	// pre-emergents match, but rendering a copy under its own id keeps this
-	// assertion about the annotate marker itself, not about which seed Rules
-	// happen to share a tag.
+	// The Guard here is a copy under its own id and name rather than the seed's
+	// own `water-in-after-application`. Both reach the lawn and both render the
+	// annotate marker, so asserting the copy's name is what proves the sheet
+	// listed the Guard it was handed instead of one the seed shipped with a
+	// matching tag.
 	it('marks an annotating Guard as adding a note', async () => {
 		const annotating = guardFixture('annotate');
 		const reaching: Rule = {
 			...annotating,
 			id: 'fixture-annotating-guard-reaches-lawn',
+			name: 'Fixture: annotates the lawn',
 			appliesTo: { ...annotating.appliesTo, ruleTags: ['chemical'] },
 		};
 
@@ -215,7 +217,7 @@ describe('plantSheet', () => {
 		await settled();
 
 		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain(annotating.name);
+		expect(applicable.textContent).toContain(reaching.name);
 		expect(applicable.textContent).toContain('Guard · adds a note');
 	});
 
