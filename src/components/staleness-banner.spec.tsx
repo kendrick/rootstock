@@ -34,7 +34,7 @@ describe('stalenessBanner', () => {
 
 	// Age and runner health are separate signals. A run can fail overnight while
 	// yesterday's Artifact is still current, and that is the case the count on
-	// the status record exists to surface — waiting for the file to age out of
+	// the status record exists to surface—waiting for the file to age out of
 	// the fresh band would hold the news back for most of a day.
 	it('names the failed runs on fresh data, without a word about the age', () => {
 		render(

@@ -75,8 +75,8 @@ describe('orderTasks', () => {
 		expect(result.map(item => item.ruleId)).toEqual(['b', 'a']);
 	});
 
-	// Tier 1 (safety): the pair ties on plantId, specificity, and priority —
-	// everything below safety in the tier order — but the ruleId ('a-rule',
+	// Tier 1 (safety): the pair ties on plantId, specificity, and priority—everything
+	// below safety in the tier order—but the ruleId ('a-rule',
 	// 'b-rule') is chosen so ruleId's own ordering would put the *other*
 	// entry first. A same-ruleId pair would tie on tier 4 too and let a
 	// deleted safety check pass on stability alone; giving ruleId the
@@ -95,7 +95,7 @@ describe('orderTasks', () => {
 	});
 
 	// Tier 2 (specificity): the pair ties on safety standing (both
-	// non-safety) and priority — the tiers above specificity — but 'b-rule'
+	// non-safety) and priority—the tiers above specificity—but 'b-rule'
 	// (specificity 3) sorts after 'a-rule' (specificity 2) by ruleId alone.
 	// If specificity were deleted from the comparator, tier 4 would put
 	// 'a-rule' first; the fact that 'b-rule' leads instead proves specificity
@@ -111,8 +111,8 @@ describe('orderTasks', () => {
 		expect(result.map(item => item.tags)).toEqual([['high'], ['low']]);
 	});
 
-	// Tier 3 (priority): the pair ties on safety standing and specificity —
-	// the tiers above priority — but 'b-rule' (priority 3) again sorts after
+	// Tier 3 (priority): the pair ties on safety standing and specificity—the
+	// tiers above priority—but 'b-rule' (priority 3) again sorts after
 	// 'a-rule' by ruleId alone. Same shape as the specificity case above: a
 	// deleted priority tier would fall to ruleId and pick 'a-rule', so
 	// 'b-rule' leading proves priority did the work.
@@ -154,7 +154,7 @@ describe('orderTasks', () => {
 	});
 
 	// Tier 5 (plantId): the pair ties on safety standing, specificity,
-	// priority, and ruleId, and differs only in plantId — one Rule that
+	// priority, and ruleId, and differs only in plantId—one Rule that
 	// produced a whole-yard Task and a named-plant Task, with the null one
 	// sorting last.
 	it('tier 5: sorts a null plantId after a non-null one from the same Rule', () => {
@@ -219,7 +219,7 @@ describe('orderTasks', () => {
 	});
 
 	// Every id below is distinct, so the comparator can never fall back on
-	// input order to break a tie — comparing the two full Task arrays (not
+	// input order to break a tie—comparing the two full Task arrays (not
 	// just their ids) proves the sort is a pure function of the entries, with
 	// nothing left over that a same-id pair could have hidden.
 	it('produces byte-identical output for distinct-id entries handed in two different orders', () => {

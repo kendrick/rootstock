@@ -34,7 +34,7 @@ describe('staleness', () => {
 	});
 
 	// The stale/expired line sits at 7 days, and "expired past 7 days" puts the
-	// boundary instant itself in the stale band, not the expired one — the
+	// boundary instant itself in the stale band, not the expired one—the
 	// exact-168-hours case below is what pins that reading down.
 	it('is still stale at exactly 7 days', () => {
 		expect(staleness(hoursAgo(24 * 7), NOW, status(0)).band).toBe('stale');
@@ -52,7 +52,7 @@ describe('staleness', () => {
 		expect(staleness(hoursAgo(10), NOW, status(0)).ageHours).toBeCloseTo(10);
 	});
 
-	// consecutiveFailures is carried through, not recomputed — the Store owns
+	// consecutiveFailures is carried through, not recomputed—the Store owns
 	// the count (per artifact.ts), and this function only reports it alongside
 	// the age so a banner can read both from one place.
 	it('passes consecutiveFailures through from the status record untouched', () => {

@@ -195,7 +195,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	 * ADR 0003 names this case in as many words: a Rule that reaches past the
 	 * window the Artifact ships produces a Citation the interface cannot draw. An
 	 * empty SVG would present that as a chart with no weather in it, so say what
-	 * happened instead — the fix is to widen the window, and somebody has to be
+	 * happened instead—the fix is to widen the window, and somebody has to be
 	 * able to tell that is what is wanted.
 	 */
 	if (days.length === 0) {
@@ -209,7 +209,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	/*
 	 * The threshold joins the data in setting the vertical extent. Scaling to the
 	 * series alone would push the reference line off the top or bottom of the
-	 * plot exactly when it matters most — a yard sitting well short of 55F is the
+	 * plot exactly when it matters most—a yard sitting well short of 55F is the
 	 * normal February case, and a chart that answers "how close are we" by hiding
 	 * the line answers nothing.
 	 */
@@ -373,8 +373,8 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 
 			<p className="text-xs text-muted-foreground">{provenanceSentence(days)}</p>
 
-			{/* The citation can name a day outside the window the Artifact ships —
-			    ADR 0003's own consequence. Saying so beats a chart that silently
+			{/* The citation can name a day outside the window the Artifact ships—ADR
+			    0003's own consequence. Saying so beats a chart that silently
 			    marks nothing and looks finished. */}
 			{markedDate !== null && marked === null && (
 				<p className="text-xs text-muted-foreground">

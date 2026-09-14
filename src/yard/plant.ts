@@ -74,7 +74,7 @@ export const plantSchema = z.strictObject({
 export type Plant = z.infer<typeof plantSchema>;
 
 /**
- * `overlays` is reserved for shapes drawn on the yard photo later — bed
+ * `overlays` is reserved for shapes drawn on the yard photo later—bed
  * outlines, irrigation coverage. It stays typed as `never[]` and empty
  * because nothing renders them yet, and an empty array is easier to widen
  * than to retrofit. It is not called `zones`: CONTEXT.md's Plant entry lists

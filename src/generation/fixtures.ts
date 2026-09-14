@@ -121,8 +121,8 @@ export const fixturePlants: Plant[] = parseWith(z.array(plantSchema), 'generatio
  * one of each outcome it needs: `fall-checkup` fires on the calendar alone,
  * `soil-cool-down` fires off the Observations below, and `water-fig` fires
  * and is then held back by `hold-fig-watering`. `fall-checkup` and
- * `water-fig` are both authored `delegable: true`; `soil-cool-down` is not —
- * that split is what lets a later test tell the flag apart from a tag,
+ * `water-fig` are both authored `delegable: true`; `soil-cool-down` is not—that
+ * split is what lets a later test tell the flag apart from a tag,
  * since none of the three carries one of `fixtureTagPolicy`'s
  * `neverDelegableTags`.
  */

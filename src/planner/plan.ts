@@ -9,7 +9,7 @@ import { taskSchema } from './task';
  * ADR 0003 fixes the direction of travel on purpose: a Rule that needs more
  * history than this is a reason to raise this constant, not a reason to cap
  * a Rule's own lookback. Nothing here enforces that a Rule stays inside the
- * window — the fix for a Rule that reaches past it is to widen the window.
+ * window—the fix for a Rule that reaches past it is to widen the window.
  */
 export const PLAN_WINDOW_DAYS = 30;
 
@@ -22,7 +22,7 @@ export const PLAN_WINDOW_DAYS = 30;
  * layer could bake in once.
  *
  * `Plan.window` is a run of these, and the soil-temperature sparkline is
- * drawn off them — `basis` is what lets that sparkline show the forecast
+ * drawn off them—`basis` is what lets that sparkline show the forecast
  * days as forecast rather than pretending the whole run was observed.
  */
 export const dailyAggregateSchema = z.strictObject({
@@ -40,7 +40,7 @@ export type DailyAggregate = z.infer<typeof dailyAggregateSchema>;
 
 /**
  * What the Planner returns for one date: every Task it derived (including
- * the deferred ones — see ADR 0002) and the window of DailyAggregates the Rules
+ * the deferred ones—see ADR 0002) and the window of DailyAggregates the Rules
  * evaluated to produce them. The window travels with the Plan rather than
  * being reassembled downstream, because only the Planner run that produced
  * this Plan knows which days those were.

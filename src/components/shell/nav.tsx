@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
  *
  * Not for secrecy. CONTEXT.md is clear that the card renders the same way
  * whether or not anyone is travelling, precisely so that finding it tells a
- * stranger nothing — which means linking it would give nothing away either. It
+ * stranger nothing—which means linking it would give nothing away either. It
  * is simply not a section of the site. The household reaches it by its own
  * link, and a fourth entry here would need the slug in the client bundle to
  * build the href at all.

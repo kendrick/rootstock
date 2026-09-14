@@ -7,7 +7,7 @@ import type { Plant } from '@/yard/plant';
  * order Rules that could otherwise tie, and the concrete Plants to build
  * Tasks from.
  *
- * `plants: null` is not "no Plants matched" — it is the whole-yard case,
+ * `plants: null` is not "no Plants matched"—it is the whole-yard case,
  * which the Planner turns into a single Task carrying a null plantId rather
  * than one Task per Plant. Collapsing that into an empty array would lose the
  * distinction the Planner depends on: a lawn-wide pre-emergent is one Task,
@@ -36,12 +36,12 @@ export interface RuleTargets {
  * `plantIds` and `plantTags` are read as a union rather than each vetoing a
  * Plant the other left out, because that is the only reading under which a
  * null selector truly contributes "no constraint" per `appliesToSchema`'s
- * doc comment — an intersection would make a null `plantIds` silently narrow
+ * doc comment—an intersection would make a null `plantIds` silently narrow
  * a tag match to nothing.
  *
  * A `status: 'planned'` Plant is dropped after matching rather than excluded
  * from the search, so naming one by id still counts toward nothing more than
- * an empty result — never an error — and never changes which specificity the
+ * an empty result—never an error—and never changes which specificity the
  * Rule reports. The Rule named it; the yard just hasn't put it in the ground.
  */
 export function targets(rule: Rule, plants: Plant[]): RuleTargets {

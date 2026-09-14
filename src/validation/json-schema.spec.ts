@@ -75,7 +75,7 @@ describe('walkSchema', () => {
 
 	// This is the shape a real generated artifact schema takes: a property whose schema is a
 	// union, one branch of which is an object with its own nested property. A walker that only
-	// looked at top-level `properties` — or that skipped recursing through `anyOf` — would never
+	// looked at top-level `properties`—or that skipped recursing through `anyOf`—would never
 	// reach `coordinate`, and every downstream test that scans for a coordinate-shaped property
 	// name would pass on a schema that still has one buried three levels down.
 	it('reaches a node nested three levels deep through an anyOf branch', () => {

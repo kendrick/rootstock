@@ -207,7 +207,7 @@ describe('rejections', () => {
 	it('rejects the archive endpoint shape, where the units go missing too', async () => {
 		// Asking the archive for a forecast-endpoint variable answers 200 with
 		// undefined units AND a null column. The unit guard runs first, so this
-		// never reaches the null loop — worth pinning, because the obvious reading
+		// never reaches the null loop—worth pinning, because the obvious reading
 		// of "a column of nulls" credits the wrong guard with catching it.
 		// The key is OMITTED, not set to undefined. Setting it makes `hourly_units`
 		// fail its own parse, and the test then passes on a ZodError while looking

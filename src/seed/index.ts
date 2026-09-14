@@ -15,7 +15,7 @@ import yardJson from './yard.json';
 /**
  * The seed files are the only inventory, rule set, and tag policy this repo
  * ships, so a typo in one of them is not a test failure somebody can shrug
- * off — it is the data the Planner would run on. Parsing them through the
+ * off—it is the data the Planner would run on. Parsing them through the
  * frozen schemas at module scope, rather than lazily on first use, means a
  * malformed file throws the moment anything imports this module instead of
  * surfacing as a confusing failure deep inside the Planner or a build script.
@@ -23,7 +23,7 @@ import yardJson from './yard.json';
  * `plants.json`, `rules.json`, and `occurrences.json` each hold a JSON array
  * of one seed record, so parsing them needs `z.array` of the single-record
  * schema the owning module exports. Composing that here is not an edit to
- * the frozen schema — `plantSchema` still describes exactly one Plant — it is
+ * the frozen schema—`plantSchema` still describes exactly one Plant—it is
  * just the shape the file itself is in.
  */
 export const seedYard: Yard = parseWith(yardSchema, 'yard.json')(yardJson);
@@ -34,7 +34,7 @@ export const seedTagPolicy: TagPolicy = parseWith(tagPolicySchema, 'tag-policy.j
 
 /**
  * Each of `plantSchema`, `ruleSchema`, and `occurrenceSchema` only enforces
- * that ids are shaped like a kebab id — none of them can see the other two
+ * that ids are shaped like a kebab id—none of them can see the other two
  * lists to check against. A plant and a rule sharing an id would still parse
  * cleanly on their own, and would only surface as a bug the day something
  * looks a record up by bare id and gets the wrong kind of thing back. This
@@ -56,7 +56,7 @@ export function findDuplicateIds(plants: Plant[], rules: Rule[], occurrences: Oc
  * `appliesToSchema`, `cadenceRuleSchema`, and `occurrenceSchema` each store an
  * id as a plain kebab-string, by design (occurrence.ts is explicit that it
  * stays dependency-free rather than importing Rule or Plant). That means
- * nothing at parse time can tell a real reference from a typo — a
+ * nothing at parse time can tell a real reference from a typo—a
  * `plantIds` entry, an `after.ruleId`, or an Occurrence's `ruleId`/`plantId`
  * all resolve only by looking them up against the other seed lists, which is
  * what this does.
@@ -120,7 +120,7 @@ export function findRulesPastWindow(rules: Rule[], windowDays: number): string[]
 }
 
 // Requires the digits to sit directly after `:`, `,`, or `[` (only whitespace
-// between) and directly before `,`, `]`, or `}` — the positions a bare JSON
+// between) and directly before `,`, `]`, or `}`—the positions a bare JSON
 // numeric literal can occupy. A decimal buried inside a quoted string (a URL,
 // a product label name) sits behind a `"` instead, which this never matches.
 const LONG_DECIMAL = /(?<=[:,[]\s*)-?\d+\.\d{3,}(?=\s*[,\]}])/g;

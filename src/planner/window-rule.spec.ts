@@ -7,7 +7,7 @@ import { evaluateWindowRule } from './window-rule';
  * A minimal, schema-shaped Window Rule with every field a real one would
  * carry except `start`/`end`, which each test sets to the range it means to
  * exercise. Building it by hand rather than importing one from
- * `fixtures.ts` keeps this spec's ranges under its own control — the fixture
+ * `fixtures.ts` keeps this spec's ranges under its own control—the fixture
  * file's `fall-pre-emergent` and `winter-mulch-refresh` are shaped around
  * September 2026, not around the boundary and wrap dates this file needs to
  * pin exactly.

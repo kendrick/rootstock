@@ -4,8 +4,8 @@ export type JsonSchema = Record<string, unknown>;
  * Walks a JSON Schema depth-first, visiting the root and every nested subschema reachable through
  * `properties`, `items`, `anyOf`, `oneOf`, `allOf`, `$defs` and `definitions`. A schema generator
  * nests object and array shapes under any of these keywords, and downstream checks that assert
- * something holds "everywhere in the schema" — every object closing over `additionalProperties`,
- * every property listed in `required`, no property name that looks like a coordinate — are only as
+ * something holds "everywhere in the schema"—every object closing over `additionalProperties`,
+ * every property listed in `required`, no property name that looks like a coordinate—are only as
  * good as this traversal: skip one nesting form here and those checks pass on a schema that
  * silently violates the rule three levels down.
  */

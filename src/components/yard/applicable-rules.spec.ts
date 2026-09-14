@@ -81,7 +81,7 @@ describe('rulesFor', () => {
 	// Plant at all and reaches the lawn purely through ruleTags: ['chemical'],
 	// which the lawn's three pre-emergent Rules carry. It is the Guard actually
 	// holding the herbicide back, and ADR 0002 is explicit that held work stays
-	// visible with the reason attached — so hiding it here defeats the point of
+	// visible with the reason attached—so hiding it here defeats the point of
 	// deferring rather than deleting.
 	it('reaches a plant through a Guard that names no plant but matches a Rule tag', () => {
 		expect(rulesFor(frontLawn, seedRules, seedPlants).map(rule => rule.id)).toContain('rain-expected');

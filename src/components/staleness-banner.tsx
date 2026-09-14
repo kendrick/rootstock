@@ -92,8 +92,8 @@ export function StalenessBanner({
 	//
 	// A mount flag rather than the instant itself, because storing the instant
 	// would freeze it: the band would then be whatever it was when the tab
-	// opened, and the tab left open over a weekend — the case CONTEXT.md's
-	// Staleness entry exists for — would never change band at all.
+	// opened, and the tab left open over a weekend—the case CONTEXT.md's
+	// Staleness entry exists for—would never change band at all.
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => {
 		// eslint-disable-next-line react/set-state-in-effect -- the prerender has to run once with no clock at all, so the extra render is the point

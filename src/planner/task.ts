@@ -80,7 +80,7 @@ export const deferralSchema = z.strictObject({
 export type Deferral = z.infer<typeof deferralSchema>;
 
 /**
- * A note a Guard attached to a Task without deferring it — the Guard ran,
+ * A note a Guard attached to a Task without deferring it—the Guard ran,
  * had something to say, but did not hold the work back.
  */
 export const annotationSchema = z.strictObject({
@@ -93,11 +93,11 @@ export type Annotation = z.infer<typeof annotationSchema>;
  * One piece of work the Planner derived from exactly one Rule. `ruleId` and
  * `plantId` are the same pair an Occurrence is keyed by, but they are
  * carried as plain strings rather than a reference to `@/rules/`, because
- * this module is not allowed to know that package exists — a Task can be
+ * this module is not allowed to know that package exists—a Task can be
  * validated and rendered long before the Rule that produced it loads.
  *
  * `title` is the mechanical sentence the Planner writes for every Task,
- * whether or not Narration ever runs over the Plan — it is not a fallback
+ * whether or not Narration ever runs over the Plan—it is not a fallback
  * for a missing model pass, it is the thing the interface renders by
  * default.
  *

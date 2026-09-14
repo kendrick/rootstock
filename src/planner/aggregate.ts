@@ -6,7 +6,7 @@ import { localDate } from './dates';
  * One group's worth of Observations sharing a variable, depth, and local day,
  * plus the day itself. Keyed on a string rather than the triple directly
  * because a `Map` needs a comparable key, and `depthCm` being nullable means
- * the natural key isn't a primitive on its own — see `groupKey` below.
+ * the natural key isn't a primitive on its own—see `groupKey` below.
  */
 interface Group {
 	date: string;
@@ -18,7 +18,7 @@ interface Group {
 /**
  * `depthCm` is `null` for a variable like precipitation that has no depth at
  * all, and `null` has to be its own group rather than collapsing into 0 or
- * into whatever depth happens to be first — two Observations at different
+ * into whatever depth happens to be first—two Observations at different
  * depths (or no depth) are never the same series. Template-literal joining
  * turns the nullable field into a stable string without a sentinel value that
  * could collide with a real depth.
@@ -81,7 +81,7 @@ function compareDepth(left: number | null, right: number | null): number {
  * produced the readings.
  *
  * `timeZone` exists because an Observation's `observedAt` is a UTC instant
- * and a Rule is written about local days — a soil reading taken at 7pm in
+ * and a Rule is written about local days—a soil reading taken at 7pm in
  * North Texas is already tomorrow in UTC, and bucketing on the instant's own
  * date would silently shift every evening reading onto the wrong day.
  */

@@ -234,8 +234,8 @@ export const nothingDelegableAwayArtifact: Artifact = {
 /**
  * The single-Task Plan whose status is `approaching`. CONTEXT.md's
  * Approaching Task entry is why it renders apart from fired work and why
- * counting it would be wrong: there is no work to do yet. Spread untouched —
- * `approachingArtifact` already carries a Citation whose projected day this
+ * counting it would be wrong: there is no work to do yet. Spread untouched—`approachingArtifact`
+ * already carries a Citation whose projected day this
  * file has no reason to relitigate.
  */
 export const approachingAwayArtifact: Artifact = {

@@ -188,7 +188,7 @@ describe('plantSheet', () => {
 	// `rain-expected` names no Plant and reaches the lawn only because its
 	// ruleTags find `chemical` on the pre-emergents. It is the Guard actually
 	// holding the herbicide, so the lawn's own page is where a reader has to
-	// meet it — ADR 0002 keeps held work visible with its reason attached, and a
+	// meet it—ADR 0002 keeps held work visible with its reason attached, and a
 	// sheet that dropped the Guard would leave the reason nowhere.
 	it('marks a deferring Guard as holding work back, on the plant it holds it on', async () => {
 		renderSheet(lawnPlant);

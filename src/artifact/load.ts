@@ -11,7 +11,7 @@ import status from '../../data/status.json';
  * JSON literals above. That inferred type always matches the file, and matching
  * the file is the problem: it is a description of the bytes on disk, and it
  * carries none of the invariants the schemas enforce. `narrated` agreeing with
- * `narration`, a Citation's discriminant, an ISO instant that parses — a
+ * `narration`, a Citation's discriminant, an ISO instant that parses—a
  * structural type accepts a file that breaks all three, and hands a caller
  * field access that looks checked.
  *

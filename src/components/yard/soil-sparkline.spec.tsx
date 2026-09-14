@@ -67,7 +67,7 @@ describe('soilSparkline', () => {
 	/*
 	 * The failure this component exists to avoid. A threshold scaled to the
 	 * series alone leaves the plot the moment every reading sits on one side of
-	 * it, which is the normal February case — and a reference line nobody can
+	 * it, which is the normal February case—and a reference line nobody can
 	 * see answers "how close are we" with silence.
 	 */
 	it('puts the threshold line on the same scale as the series', () => {

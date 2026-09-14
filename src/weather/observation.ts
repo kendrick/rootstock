@@ -19,7 +19,7 @@ export type Unit = z.infer<typeof unitSchema>;
 /**
  * How the Planner collapses a run of hourly Observations into one daily
  * figure. Lives here because it is a small closed vocabulary the
- * rules and the Planner both read, but the daily figure itself — the aggregate value — is the Planner's
+ * rules and the Planner both read, but the daily figure itself—the aggregate value—is the Planner's
  * type, not this module's.
  */
 export const aggregateSchema = z.enum(['mean', 'min', 'max', 'sum']);
@@ -41,7 +41,7 @@ export const provenanceSchema = z.enum(['modeled', 'measured']);
 export const sourceSchema = z.enum(['open-meteo', 'manual']);
 
 /**
- * One hourly reading at one moment — never a daily figure. Daily aggregation
+ * One hourly reading at one moment—never a daily figure. Daily aggregation
  * reduces many Observations to one number and belongs to the Planner, which
  * decides mean vs. min vs. sum per Rule; baking that choice in here would
  * throw away the hourly readings a different Rule might need aggregated a

@@ -200,8 +200,8 @@ describe('toDailyAggregates', () => {
 		expect(measuredLast.source).toBe('manual');
 	});
 
-	// The only case in this file that reads America/Chicago instead of UTC —
-	// every other case would pass with a naive UTC-date bucketing, and that's
+	// The only case in this file that reads America/Chicago instead of UTC—every
+	// other case would pass with a naive UTC-date bucketing, and that's
 	// exactly the bug this one exists to catch. 2026-03-08 is the day Chicago
 	// skips from 02:00 to 03:00 (DST), so it holds only 23 local hours; the
 	// grouping has to bucket by local calendar day regardless.
@@ -213,7 +213,7 @@ describe('toDailyAggregates', () => {
 			'2026-03-07T20:00:00Z', // 14:00 CST, Mar 7
 			'2026-03-08T00:00:00Z', // 18:00 CST, Mar 7
 			'2026-03-08T04:00:00Z', // 22:00 CST, Mar 7
-			'2026-03-08T08:00:00Z', // 03:00 CDT, Mar 8 — the skipped hour is 02:00-03:00
+			'2026-03-08T08:00:00Z', // 03:00 CDT, Mar 8—the skipped hour is 02:00-03:00
 			'2026-03-08T12:00:00Z', // 07:00 CDT, Mar 8
 			'2026-03-08T16:00:00Z', // 11:00 CDT, Mar 8
 			'2026-03-08T20:00:00Z', // 15:00 CDT, Mar 8
@@ -227,7 +227,7 @@ describe('toDailyAggregates', () => {
 		const result = toDailyAggregates(observations, chicago, 'sum');
 
 		// Three local days, the middle one holding all six hours that fall on
-		// either side of the skipped 02:00-03:00 gap — proof the 23-hour day
+		// either side of the skipped 02:00-03:00 gap—proof the 23-hour day
 		// is still one bucket rather than split at the transition.
 		expect(result.map(record => record.date)).toEqual(['2026-03-07', '2026-03-08', '2026-03-09']);
 		expect(result.map(record => record.value)).toEqual([15, 51, 25]);

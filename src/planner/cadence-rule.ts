@@ -6,7 +6,7 @@ import { daysBetween, isWithinMonthDayRange, localDate } from './dates';
 /**
  * The Occurrence a Cadence Rule counts from: the most recent one matching the
  * anchor Rule id and the Plant this evaluation is for. "Most recent" means
- * greatest `completedAt`, not greatest `recordedAt` — a backfilled record
+ * greatest `completedAt`, not greatest `recordedAt`—a backfilled record
  * written days late still counts from when the work actually happened, per
  * `occurrence.ts`'s doc comment on why the two timestamps are kept apart.
  *
@@ -50,7 +50,7 @@ function findAnchor(anchorRuleId: string, plantId: string | null, occurrences: O
  * The season check runs before the anchor search rather than after, because
  * `isWithinMonthDayRange` is cheap and unconditional, while `findAnchor` is
  * the one piece of this function whose cost scales with the size of the
- * yard's whole Occurrence history — there is no reason to walk that history
+ * yard's whole Occurrence history—there is no reason to walk that history
  * for a date the season fence would reject anyway.
  */
 export function evaluateCadenceRule(
@@ -81,8 +81,8 @@ export function evaluateCadenceRule(
 	}
 
 	// `completedAt` is a UTC instant and `rule.everyDays` is written about local
-	// days, so the anchor is converted to a local date before the subtraction —
-	// otherwise a late-evening Occurrence would read as a day later than the
+	// days, so the anchor is converted to a local date before the subtraction—otherwise
+	// a late-evening Occurrence would read as a day later than the
 	// yard's own calendar shows.
 	const elapsed = daysBetween(localDate(anchor.completedAt, timeZone), asOf);
 

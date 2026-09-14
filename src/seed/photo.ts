@@ -55,7 +55,7 @@ function byteAt(bytes: Uint8Array, index: number): number {
  * (APP1, SOF) sits before it. This exists so ADR 0004 (coordinates never enter the repository) has evidence
  * independent of the tool that stripped the file: ImageMagick reporting
  * `-strip` ran is not proof the output is clean, only a real walk of the
- * resulting bytes is. Takes no dependency for the same reason — a library's
+ * resulting bytes is. Takes no dependency for the same reason—a library's
  * own parser is exactly the kind of untested claim this is meant to replace.
  */
 export function jpegSegments(bytes: Uint8Array): JpegSegment[] {
@@ -123,7 +123,7 @@ export function readFrameDimensions(bytes: Uint8Array, segment: JpegSegment): Fr
 		throw new Error(`segment at offset ${segment.offset} is marker 0x${segment.marker.toString(16)}, not a SOF`);
 	}
 	// Payload after the two length bytes: 1 byte precision, then height and
-	// width as big-endian u16s, in that order — JPEG writes height first.
+	// width as big-endian u16s, in that order—JPEG writes height first.
 	const payload = segment.offset + 2;
 	const height = (byteAt(bytes, payload + 1) << 8) + byteAt(bytes, payload + 2);
 	const width = (byteAt(bytes, payload + 3) << 8) + byteAt(bytes, payload + 4);

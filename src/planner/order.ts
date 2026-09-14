@@ -14,7 +14,7 @@ export interface OrderableTask {
 /**
  * Whether a Task counts as safety work: any of its own tags appears in the
  * TagPolicy's `safetyTags`. Reads `safetyTags` alone and never
- * `neverDelegableTags` — the two lists answer different questions about the
+ * `neverDelegableTags`—the two lists answer different questions about the
  * same tag, and letting this sort consult the delegability list would make a
  * Task's place in the Plan depend on who is allowed to do it rather than on
  * how dangerous it is to leave undone.
@@ -54,15 +54,15 @@ function compareNullableLast(left: string | null, right: string | null): number 
  * safety tag is not supposed to be something a low `priority` number can
  * accidentally outrank.
  *
- * `task.ruleId` breaks a tie left after specificity and priority both agree —
- * two Rules that happen to target the yard with the same rank and share a
+ * `task.ruleId` breaks a tie left after specificity and priority both agree—two
+ * Rules that happen to target the yard with the same rank and share a
  * priority number. The comparison is arbitrary, but it only has to be stable,
  * and a Rule's own id is the one string every Task already carries for it.
  *
  * The final `task.plantId` tier is what makes the sort total rather than
  * merely well-ordered by the tiers above it: two Tasks that still tie once
- * `ruleId` agrees — the several Tasks one tag-targeted Rule produces, one per
- * Plant it reached — would otherwise compare equal, and a comparator that
+ * `ruleId` agrees—the several Tasks one tag-targeted Rule produces, one per
+ * Plant it reached—would otherwise compare equal, and a comparator that
  * returns zero for two distinct Tasks lets the underlying sort fall back to
  * whichever order they happened to arrive in. That is exactly the dependence
  * on input order this function exists to remove, so the sort cannot stop
