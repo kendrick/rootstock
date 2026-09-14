@@ -123,12 +123,18 @@ test('hands over the delegable work and withholds the rest', async ({ page }) =>
 	}
 });
 
-test('names no date and says nothing about anyone being away', async ({ page }) => {
+test('names only its own generation date and says nothing about anyone being away', async ({ page }) => {
 	await page.clock.setFixedTime(FRESH);
 	await page.goto(`away/${slug}`);
 	await waitForHydration(page);
 
-	await expect(page.locator('time')).toHaveCount(0);
+	// Exactly one <time>: the card's own always-on generation line. #63 added
+	// it; StalenessBanner stays silent in the fresh band this spec pins, so it
+	// contributes none of its own.
+	const time = page.locator('time');
+	await expect(time).toHaveCount(1);
+	await expect(time).toHaveAttribute('datetime', artifact.generatedAt);
+
 	await expect(page.locator('body')).not.toContainText(TRAVEL_WORDS);
 });
 
