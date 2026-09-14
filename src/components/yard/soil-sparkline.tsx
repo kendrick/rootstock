@@ -260,14 +260,17 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	const sideWords = rule.comparison === 'gte' ? 'at or above it' : 'at or below it';
 
 	/*
-	 * ADR 0005: a directed Rule only counts a run once the day before it sat on
-	 * the far side of the value, so that day—not the day count—is what fired
-	 * it. The undirected sentence is left exactly as it read before that ADR,
-	 * since `direction: null` is still judged on the run alone.
+	 * ADR 0005 counts a directed Rule's run only where the day before it sat
+	 * strictly on the far side of the value, so that day—not the day count—is
+	 * what fired the Rule. "Strictly" is load-bearing and stays in the sentence:
+	 * a description that reads inclusive states a looser firing condition than
+	 * the Planner applies, which is the mismatch ADR 0003 ships this window to
+	 * let a reader catch. A Rule naming no direction is still judged on the run
+	 * alone, so its sentence is untouched.
 	 */
 	const thresholdSentence = rule.direction === null
 		? `The rule's threshold is ${thresholdText} held for ${rule.consecutiveDays} consecutive days; ${meetingCount} of these ${days.length} days sit ${sideWords}.`
-		: `The rule fires on a crossing ${DIRECTION_TEXT[rule.direction]} ${thresholdText}: a run of ${rule.consecutiveDays} consecutive days follows a day that sat on the far side of it. For context, ${meetingCount} of these ${days.length} days sit ${sideWords}.`;
+		: `The rule fires on a crossing, so a run of ${rule.consecutiveDays} consecutive days ${DIRECTION_TEXT[rule.direction]} ${thresholdText} counts only where the day before it sat strictly on the far side. For context, ${meetingCount} of these ${days.length} days sit ${sideWords}.`;
 
 	const description = [
 		`${observedCount} observed ${observedCount === 1 ? 'day' : 'days'} and ${forecastCount} forecast, running from ${amount(Math.min(...values), rule.unit)} to ${amount(Math.max(...values), rule.unit)}.`,

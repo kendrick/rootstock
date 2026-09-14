@@ -45,76 +45,14 @@ const bareThreshold: Rule = {
 	appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
 };
 
-// ADR 0005 threshold fixtures: a directed Rule pairs 'rising' with 'gte' and
-// 'falling' with 'lte' (the schema refine forbids the other two pairings), and
-// carries a season on the same seasonSchema the cadence kind uses.
-const risingThreshold: Rule = {
-	id: 'rising-threshold-fixture',
-	kind: 'threshold',
-	name: 'Rising threshold fixture',
-	region: { name: 'Southwest Fort Worth, Texas', hardinessZone: '8b' },
-	variable: 'soil-temperature',
-	depthCm: null,
-	aggregate: 'mean',
-	comparison: 'gte',
-	value: 55,
-	unit: 'F',
-	consecutiveDays: 3,
-	direction: 'rising',
-	season: null,
-	published: null,
-	tags: [],
-	productLabel: null,
-	source: { kind: 'owner', label: 'Owner\'s own practice', url: null },
-	delegable: true,
-	priority: 40,
-	appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
-};
-
+// The seed set's one Threshold Rule rises, so a falling one has to be built.
+// ADR 0005's schema refine pairs 'falling' with 'lte', which bareThreshold
+// already compares by, so this only has to name the direction.
 const fallingThreshold: Rule = {
-	id: 'falling-threshold-fixture',
-	kind: 'threshold',
-	name: 'Falling threshold fixture',
-	region: { name: 'Southwest Fort Worth, Texas', hardinessZone: '8b' },
-	variable: 'soil-temperature',
-	depthCm: null,
-	aggregate: 'mean',
-	comparison: 'lte',
-	value: 70,
-	unit: 'F',
-	consecutiveDays: 3,
+	...bareThreshold,
+	id: 'late-season-cooldown',
+	name: 'Late season cooldown',
 	direction: 'falling',
-	season: null,
-	published: null,
-	tags: [],
-	productLabel: null,
-	source: { kind: 'owner', label: 'Owner\'s own practice', url: null },
-	delegable: true,
-	priority: 40,
-	appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
-};
-
-const seasonedThreshold: Rule = {
-	id: 'seasoned-threshold-fixture',
-	kind: 'threshold',
-	name: 'Seasoned threshold fixture',
-	region: { name: 'Southwest Fort Worth, Texas', hardinessZone: '8b' },
-	variable: 'soil-temperature',
-	depthCm: null,
-	aggregate: 'mean',
-	comparison: 'gte',
-	value: 55,
-	unit: 'F',
-	consecutiveDays: 3,
-	direction: null,
-	season: { start: '03-01', end: '06-30' },
-	published: null,
-	tags: [],
-	productLabel: null,
-	source: { kind: 'owner', label: 'Owner\'s own practice', url: null },
-	delegable: true,
-	priority: 40,
-	appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
 };
 
 const fixedInterval: Rule = {
@@ -318,14 +256,12 @@ describe('ruleSummary', () => {
 		}
 	});
 
-	// ADR 0005: a directed Rule is evidenced by a Crossing, and the sentence
-	// says "rising through" rather than the undirected "at or above".
-	it('names a rising Crossing instead of "at or above"', () => {
-		render(<RuleSummary rule={risingThreshold} />);
+	// ADR 0005: a directed Rule is evidenced by a Crossing, so the undirected
+	// "at or above" has to leave rather than sit beside the new wording. Two
+	// sentences describing one Rule is the defect this replaced.
+	it('drops "at or above" once a Rule names a rising Crossing', () => {
+		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
 
-		expect(
-			screen.getByText('Daily mean soil temperature, rising through 55°F for 3 consecutive days'),
-		).toBeDefined();
 		expect(screen.queryByText(/at or above/)).toBeNull();
 	});
 
@@ -333,34 +269,33 @@ describe('ruleSummary', () => {
 		render(<RuleSummary rule={fallingThreshold} />);
 
 		expect(
-			screen.getByText('Daily mean soil temperature, falling through 70°F for 3 consecutive days'),
+			screen.getByText('Daily minimum soil temperature, falling through 36°F for one day'),
 		).toBeDefined();
 		expect(screen.queryByText(/at or below/)).toBeNull();
 	});
 
-	// Same shape as a cadence Rule's season row (CadenceRows), because ADR 0005
-	// fences a threshold Rule to part of the year the same way.
+	// Same row, same formatMonthDay, same "through" as CadenceRows, because ADR
+	// 0005 fences a threshold Rule to part of the year through the identical
+	// seasonSchema. The term is asserted beside the dates: a `dd` that lost its
+	// `dt` still matches the date string, and the term is the half a screen
+	// reader announces first.
 	it('renders a threshold Rule\'s season in the same form as a cadence Rule\'s', () => {
-		render(<RuleSummary rule={seasonedThreshold} />);
+		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
 
-		expect(screen.getByText('March 1 through June 30')).toBeDefined();
+		expect(screen.getByText('Season')).toBeDefined();
+		expect(screen.getByText('February 1 through April 30')).toBeDefined();
 	});
 
-	it('omits the season row when a threshold Rule carries none', () => {
-		render(<RuleSummary rule={bareThreshold} />);
-
-		expect(screen.queryByText('Season')).toBeNull();
-	});
-
-	// The regression gate for ADR 0005: a Rule naming neither direction nor
-	// season keeps rendering the exact sentence main renders today. Not
-	// `spring-pre-emergent`—the seed set already gives that one a direction—so
-	// this reaches for the one seed-shaped fixture that still names neither.
-	it('renders the undirected sentence unchanged when direction and season are both null', () => {
+	// The regression gate for ADR 0005: a Rule naming neither field renders the
+	// sentence and the rows main renders today. Not `spring-pre-emergent`—the
+	// seed set already gives that one both—so this reaches for the one
+	// seed-shaped fixture that still names neither.
+	it('renders the undirected sentence and no Season row when both fields are null', () => {
 		render(<RuleSummary rule={bareThreshold} />);
 
 		expect(
 			screen.getByText('Daily minimum soil temperature, at or below 36°F for one day'),
 		).toBeDefined();
+		expect(screen.queryByText('Season')).toBeNull();
 	});
 });

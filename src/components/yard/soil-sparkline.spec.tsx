@@ -281,8 +281,11 @@ describe('soilSparkline', () => {
 		expect(caption.textContent).toBe(desc.textContent);
 
 		for (const text of [desc.textContent, caption.textContent]) {
-			expect(text).toContain('The rule fires on a crossing rising through 55°F');
-			expect(text).toContain('a run of 3 consecutive days follows a day that sat on the far side of it');
+			expect(text).toContain('The rule fires on a crossing, so a run of 3 consecutive days rising through 55°F');
+			// "Strictly" is the whole difference between a crossing and a spell
+			// already under way (ADR 0005), so it is pinned by name rather than
+			// left to ride along inside a longer phrase.
+			expect(text).toContain('counts only where the day before it sat strictly on the far side');
 			expect(text).toContain('For context,');
 			expect(text).toContain('sit at or above it');
 			// The undirected framing this rule used before ADR 0005 gave it a
@@ -296,6 +299,11 @@ describe('soilSparkline', () => {
 		const { container } = render(<SoilSparkline window={planWindow} rule={undirected} citation={null} />);
 
 		const desc = container.querySelector('svg desc')!;
+		const caption = container.querySelector('table caption')!;
+		// The undirected case is the one that regresses silently, so the caption
+		// is held to the desc here too rather than only in the directed test.
+		expect(caption.textContent).toBe(desc.textContent);
+
 		expect(desc.textContent).toContain(`The rule's threshold is 55°F held for ${thresholdRule.consecutiveDays} consecutive days;`);
 		expect(desc.textContent).toContain('sit at or above it');
 		expect(desc.textContent).not.toContain('crossing');

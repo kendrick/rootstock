@@ -18,8 +18,8 @@ const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
 // so in those words rather than the undirected "at or above"/"at or below",
 // which describes a level with no claim about which way the series got there.
 const DIRECTION_TEXT: Record<NonNullable<ThresholdRule['direction']>, string> = {
-	rising: 'rising through',
 	falling: 'falling through',
+	rising: 'rising through',
 };
 
 /**
@@ -58,10 +58,16 @@ function thresholdSentence(rule: ThresholdRule): string {
 	const run = rule.consecutiveDays === 1
 		? 'for one day'
 		: `for ${rule.consecutiveDays} consecutive days`;
-	const comparison = rule.direction === null ? COMPARISON_TEXT[rule.comparison] : DIRECTION_TEXT[rule.direction];
+	// Named for the slot it fills rather than for either branch, because a
+	// directed Rule puts a Crossing here where an undirected one puts a bare
+	// comparison. CONTEXT.md's Threshold Rule entry rules out calling it the
+	// condition.
+	const valueWords = rule.direction === null
+		? COMPARISON_TEXT[rule.comparison]
+		: DIRECTION_TEXT[rule.direction];
 
 	return `Daily ${AGGREGATE_TEXT[rule.aggregate]} ${VARIABLE_TEXT[rule.variable]}${depth}, `
-		+ `${comparison} ${formatValue(rule.value, rule.unit)} ${run}`;
+		+ `${valueWords} ${formatValue(rule.value, rule.unit)} ${run}`;
 }
 
 function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
