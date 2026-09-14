@@ -1,7 +1,7 @@
 import type { DailyAggregate } from './plan';
 import type { RuleVerdict } from './planner';
 import type { ThresholdRule } from '@/rules/rule';
-import { daysBetween } from './dates';
+import { daysBetween, isWithinMonthDayRange } from './dates';
 
 /** The first and last day of one run that satisfied a Rule. Only the ends travel onward: a Citation names a span, never the days inside it. */
 interface Run {
@@ -16,6 +16,52 @@ interface Run {
  */
 function satisfies(day: DailyAggregate, rule: ThresholdRule): boolean {
 	return rule.comparison === 'gte' ? day.value >= rule.value : day.value <= rule.value;
+}
+
+/**
+ * Whether the day before a candidate run proves the series arrived from the
+ * far side of `value`. An undirected Rule asks for no such proof.
+ *
+ * `before` is whichever day sits in front of the candidate in the scanned
+ * series, and that is not always the calendar day before the run opens. A
+ * series that opens on the run, or that skips the day in front of it, hands
+ * over nothing or hands over a day from further back. Neither proves a
+ * crossing.
+ *
+ * The comparison is strict on purpose. A prior day reading exactly `value`
+ * already satisfies the Rule, so it would have been inside the run rather than
+ * in front of it, and counting it would let a spell already underway pass as a
+ * crossing.
+ */
+function crossedFrom(from: DailyAggregate, before: DailyAggregate | null, rule: ThresholdRule): boolean {
+	if (rule.direction === null) {
+		return true;
+	}
+
+	if (before === null || daysBetween(before.date, from.date) !== 1) {
+		return false;
+	}
+
+	return rule.direction === 'rising' ? before.value < rule.value : before.value > rule.value;
+}
+
+/** Whether one day falls in the part of the year the Rule speaks about. A Rule with no season speaks about the whole year. */
+function insideSeason(day: DailyAggregate, rule: ThresholdRule): boolean {
+	return rule.season === null || isWithinMonthDayRange(day.date, rule.season.start, rule.season.end);
+}
+
+/**
+ * `noUncheckedIndexedAccess` types every index read as possibly absent, and
+ * the run counter's arithmetic keeps the index it passes in range. Like
+ * `first` in `aggregate.ts`, the impossible case throws here rather than
+ * leaking an `undefined` into a Citation that would then name no dates.
+ */
+function dayAt(days: DailyAggregate[], index: number): DailyAggregate {
+	const found = days[index];
+	if (found === undefined) {
+		throw new Error(`threshold run counter reached index ${index}, which is outside the series it was counting`);
+	}
+	return found;
 }
 
 /**
@@ -42,8 +88,9 @@ function seriesFor(rule: ThresholdRule, window: DailyAggregate[]): DailyAggregat
 }
 
 /**
- * The earliest run of `consecutiveDays` days that all satisfy the Rule and sit
- * on adjacent calendar dates, or null when the days hold no such run.
+ * The earliest run of `consecutiveDays` days that all satisfy the Rule, sit on
+ * adjacent calendar dates, and clear what `direction` and `season` ask of
+ * them, or null when the days hold no such run.
  *
  * Adjacency is asked of `daysBetween` rather than of the array positions,
  * because a missing day is invisible to an index. A series that skips
@@ -55,31 +102,49 @@ function seriesFor(rule: ThresholdRule, window: DailyAggregate[]): DailyAggregat
  * A series shorter than `consecutiveDays` returns null, however close it came.
  * ADR 0003 fixes the direction of the repair: widen the window the Planner
  * carries, never shorten the Rule to fit the days on hand.
+ *
+ * A spell longer than `consecutiveDays` holds more than one candidate, so the
+ * scan tests the trailing `consecutiveDays` on every day the run is long
+ * enough, and a rejected candidate leaves the run standing. Both of those
+ * matter to a Rule carrying a season. Days from January 30th through February
+ * 3rd, all satisfying, hold a run inside a season that opens on the 1st, even
+ * though the candidate the spell opens with starts two days early. A scan that
+ * stopped at the first candidate would answer "no run" for a series that
+ * plainly holds one.
  */
 function firstRun(days: DailyAggregate[], rule: ThresholdRule): Run | null {
-	let start: DailyAggregate | null = null;
 	let length = 0;
 	let previous: DailyAggregate | null = null;
 
-	for (const day of days) {
+	for (const [index, day] of days.entries()) {
 		const adjacent = previous !== null && daysBetween(previous.date, day.date) === 1;
 
 		if (!satisfies(day, rule)) {
-			start = null;
 			length = 0;
 		}
-		else if (start !== null && adjacent) {
+		else if (length > 0 && adjacent) {
 			length += 1;
 		}
 		else {
-			start = day;
 			length = 1;
 		}
 
 		previous = day;
 
-		if (start !== null && length === rule.consecutiveDays) {
-			return { from: start, to: day };
+		if (length < rule.consecutiveDays) {
+			continue;
+		}
+
+		// A run is a contiguous stretch of the array, so the candidate closing here
+		// opens `consecutiveDays` positions back and the position before that holds
+		// whatever the series has in front of it. Reading that neighbour out of the
+		// array, rather than tracking a pointer alongside the run, leaves
+		// `crossedFrom` to judge adjacency for itself.
+		const from = dayAt(days, index - rule.consecutiveDays + 1);
+		const before = days[index - rule.consecutiveDays] ?? null;
+
+		if (crossedFrom(from, before, rule) && insideSeason(from, rule) && insideSeason(day, rule)) {
+			return { from, to: day };
 		}
 	}
 
@@ -110,13 +175,38 @@ function firstRun(days: DailyAggregate[], rule: ThresholdRule): Run | null {
  * and the earliest is the one cited. Soil that sat at or below 70F for three
  * days in early September did not un-cross it because the following week ran
  * warm, and citing the latest run instead would keep re-dating a crossing that
- * happened once.
+ * happened once. That argument is about the fall, where it holds. Autumn cools
+ * steadily enough that a warm week behind the crossing is noise.
+ *
+ * Spring is not the mirror image. North Texas warms in a sawtooth—a February
+ * spell, a front, another spell—and crabgrass germinates on sustained warmth
+ * rather than on the first spike to touch the number, so in the rising
+ * direction a crossing really can be un-crossed. A pre-emergent put down on
+ * the February spell lands weeks early, which is the failure the timing exists
+ * to prevent.
+ *
+ * `direction` and `season` answer the spring case without taking the
+ * permanence back. `direction` asks a run for evidence that the series arrived
+ * from the far side of `value`, so the declining tail of a spell already
+ * underway does not read as a crossing. `season` fences two things. One is the
+ * dates a qualifying run may carry, which tells a January warm spell from a
+ * spring one. The other is the dates the Rule speaks on at all. That is the
+ * `asOf` check below, and it keeps a March crossing off the Plan in July.
+ *
+ * Neither field revokes a crossing that already qualified. They decide which
+ * runs qualify in the first place, and a Task that fired stays fired. ADR
+ * 0005 carries the argument in full, including the three shapes it turned
+ * down.
  */
 export function evaluateThresholdRule(
 	rule: ThresholdRule,
 	window: DailyAggregate[],
 	asOf: string,
 ): RuleVerdict {
+	if (rule.season !== null && !isWithinMonthDayRange(asOf, rule.season.start, rule.season.end)) {
+		return { fires: false };
+	}
+
 	const series = seriesFor(rule, window);
 
 	const evidence = series.filter(day => day.basis === 'observed' && day.date <= asOf);

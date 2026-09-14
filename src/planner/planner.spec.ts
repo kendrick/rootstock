@@ -732,6 +732,24 @@ describe('plan window', () => {
 		}))).toBe(shiftDate(asOf, -(PLAN_WINDOW_DAYS + 9)));
 	});
 
+	// `thresholdLookbackDays` adds the crossing day only once `direction` is
+	// set, so a rule reading exactly the standard span still has to widen the
+	// window by one day rather than fitting inside it unchanged.
+	it('widens by one extra day for a directed threshold rule at the standard span', () => {
+		const directed = thresholdRule({
+			id: 'directed-run',
+			name: 'Directed run',
+			comparison: 'gte',
+			consecutiveDays: PLAN_WINDOW_DAYS,
+			direction: 'rising',
+		});
+
+		expect(oldestWindowDate(inputWith({
+			rules: [...rules, directed],
+			observations: [...observations, ...olderSoil],
+		}))).toBe(shiftDate(asOf, -PLAN_WINDOW_DAYS));
+	});
+
 	/*
 	 * A Guard's horizon widens the span the same way a Threshold Rule's run
 	 * does. Sizing the window under it would mean a Guard whose week happened

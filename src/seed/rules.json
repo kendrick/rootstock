@@ -66,6 +66,11 @@
 		"value": 55,
 		"unit": "F",
 		"consecutiveDays": 3,
+		"direction": "rising",
+		"season": {
+			"start": "02-01",
+			"end": "04-30"
+		},
 		"published": {
 			"low": 50,
 			"high": 55,

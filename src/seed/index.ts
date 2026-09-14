@@ -3,7 +3,7 @@ import type { Rule, TagPolicy } from '@/rules/rule';
 import type { Plant, Yard } from '@/yard/plant';
 import { z } from 'zod';
 import { occurrenceSchema } from '@/planner/occurrence';
-import { ruleSchema, tagPolicySchema } from '@/rules/rule';
+import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { parseWith } from '@/validation/parse';
 import { plantSchema, yardSchema } from '@/yard/plant';
 import occurrencesJson from './occurrences.json';
@@ -92,18 +92,25 @@ export function findUnresolvedReferences(plants: Plant[], rules: Rule[], occurre
 /**
  * ADR 0003 fixes the window as a budget the Rules must fit inside, not a
  * ceiling the Rules get clipped to: "the fix is to widen the window rather
- * than to shorten the Rule." It also names the gap left open — nothing
- * detects a Rule that already reaches past the window it ships with. This is
- * that detector: a Threshold Rule's `consecutiveDays` and a `no-rain-within`
- * Guard's `days` both read backward from today, and either one exceeding
+ * than to shorten the Rule." It also names the gap left open—nothing
+ * detects a Rule that already reaches past the window it ships with. This
+ * is that detector: a Threshold Rule's lookback (`consecutiveDays`, plus
+ * one more day once `direction` is set) and a `no-rain-within` Guard's
+ * `days` both read backward from today, and either one exceeding
  * `windowDays` would ask the Planner to cite a day the Artifact never
  * carried.
  */
 export function findRulesPastWindow(rules: Rule[], windowDays: number): string[] {
 	const problems: string[] = [];
 	for (const rule of rules) {
-		if (rule.kind === 'threshold' && rule.consecutiveDays > windowDays) {
-			problems.push(`threshold rule '${rule.id}' needs ${rule.consecutiveDays} consecutive days, past the ${windowDays}-day window`);
+		if (rule.kind === 'threshold') {
+			const lookback = thresholdLookbackDays(rule);
+			if (lookback > windowDays) {
+				const need = rule.direction === null
+					? `${rule.consecutiveDays} consecutive days`
+					: `${rule.consecutiveDays} consecutive days plus the extra day its direction reads`;
+				problems.push(`threshold rule '${rule.id}' needs ${need}, past the ${windowDays}-day window`);
+			}
 		}
 		if (rule.kind === 'guard' && rule.condition.kind === 'no-rain-within' && rule.condition.days > windowDays) {
 			problems.push(`guard rule '${rule.id}' no-rain-within needs ${rule.condition.days} days, past the ${windowDays}-day window`);

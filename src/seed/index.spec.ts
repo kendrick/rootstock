@@ -3,7 +3,8 @@ import type { Plant } from '@/yard/plant';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PLAN_WINDOW_DAYS } from '@/planner/plan';
+import { dailyAggregateSchema, PLAN_WINDOW_DAYS } from '@/planner/plan';
+import { evaluateThresholdRule } from '@/planner/threshold-rule';
 import {
 	findCoordinateKeys,
 	findCoordinatePairs,
@@ -57,6 +58,8 @@ function thresholdRule(overrides: Partial<ThresholdRule> = {}): ThresholdRule {
 		value: 55,
 		unit: 'F',
 		consecutiveDays: 3,
+		direction: null,
+		season: null,
 		published: null,
 		...overrides,
 	};
@@ -90,6 +93,51 @@ describe('seed loading', () => {
 		expect(seedRules.length).toBeGreaterThan(0);
 		expect(seedOccurrences).toEqual([]);
 		expect(seedTagPolicy.neverDelegableTags).toContain('chemical');
+	});
+
+	// Spring pre-emergent goes down on a warming soil, not merely a warm one:
+	// the crossing is the agronomic event, which is why this rule is the one
+	// that should carry a direction and the season fencing it to spring.
+	it('ships spring-pre-emergent as a directed threshold rule fenced to a season', () => {
+		const rule = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
+
+		expect(rule?.kind).toBe('threshold');
+		expect(rule && rule.kind === 'threshold' ? rule.direction : null).toBe('rising');
+		expect(rule && rule.kind === 'threshold' ? rule.season : null).not.toBeNull();
+	});
+
+	/**
+	 * The shipped Rule driven through the real evaluator, rather than a local
+	 * Rule that merely shares its shape. Soil in Southwest Fort Worth passes
+	 * 55F twice a year, so the October reading is the one a spring
+	 * pre-emergent must not answer, and the two series below differ only in
+	 * the month they carry.
+	 */
+	it('does not fire the shipped spring-pre-emergent on an autumn crossing of the same shape', () => {
+		const springPreEmergent = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
+		if (springPreEmergent === undefined || springPreEmergent.kind !== 'threshold') {
+			throw new Error('rules.json no longer ships spring-pre-emergent as a Threshold Rule');
+		}
+
+		// Arriving from below the value, so `direction` is satisfied and the
+		// season is the only thing left to reject it.
+		const crossing = (month: string): ReturnType<typeof dailyAggregateSchema.parse>[] =>
+			[52, 56, 57, 58].map((value, index) => dailyAggregateSchema.parse({
+				variable: 'soil-temperature',
+				depthCm: 6,
+				aggregate: 'mean',
+				unit: 'F',
+				basis: 'observed',
+				provenance: 'modeled',
+				source: 'open-meteo',
+				date: `2026-${month}-0${index + 5}`,
+				value,
+			}));
+
+		expect(evaluateThresholdRule(springPreEmergent, crossing('10'), '2026-10-08')).toEqual({ fires: false });
+
+		const spring = evaluateThresholdRule(springPreEmergent, crossing('03'), '2026-03-08');
+		expect(spring).toMatchObject({ fires: true, status: 'fired' });
 	});
 });
 
@@ -171,6 +219,19 @@ describe('window reach (ADR 0003)', () => {
 		expect(findRulesPastWindow(rules, PLAN_WINDOW_DAYS)).toEqual([
 			`threshold rule 'reaches-too-far' needs ${PLAN_WINDOW_DAYS + 1} consecutive days, past the ${PLAN_WINDOW_DAYS}-day window`,
 		]);
+	});
+
+	// A directed rule's extra lookback day (thresholdLookbackDays) is what
+	// tips a run reading exactly the window past it; the same consecutiveDays
+	// fits with no direction set, so this is the day the direction added.
+	it('flags a threshold rule at the window\'s edge only once a direction adds the extra day', () => {
+		const directed = thresholdRule({ id: 'direction-adds-a-day', consecutiveDays: PLAN_WINDOW_DAYS, direction: 'rising' });
+		const undirected = thresholdRule({ id: 'direction-adds-a-day', consecutiveDays: PLAN_WINDOW_DAYS });
+
+		expect(findRulesPastWindow([directed], PLAN_WINDOW_DAYS)).toEqual([
+			`threshold rule 'direction-adds-a-day' needs ${PLAN_WINDOW_DAYS} consecutive days plus the extra day its direction reads, past the ${PLAN_WINDOW_DAYS}-day window`,
+		]);
+		expect(findRulesPastWindow([undirected], PLAN_WINDOW_DAYS)).toEqual([]);
 	});
 
 	it('reports a no-rain-within guard whose days reaches past the window', () => {
