@@ -3,6 +3,7 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
+import { PERMANENCE_NOTE } from './permanence';
 import { TaskItem } from './task-item';
 
 export interface DeferredSectionProps {
@@ -73,6 +74,19 @@ export function DeferredSection({
 				<p className="max-w-prose text-sm text-muted-foreground">
 					{tasks.length > 0 ? SOMETHING_HELD : NOTHING_HELD}
 				</p>
+
+				{/*
+				 * ADR 0002 makes a Deferral advice rather than a lock, so a held
+				 * Task keeps its box: somebody who watered the fig anyway has a
+				 * right to record it. That box writes the same permanent Occurrence
+				 * every other box writes, so the warning `TaskGroup` carries over
+				 * the ready work has to reach this list as well. Without it a
+				 * reader could only be told by the live region, which says nothing
+				 * to anyone looking at the screen.
+				 */}
+				{tasks.length > 0 && (
+					<p className="max-w-prose text-sm text-muted-foreground">{PERMANENCE_NOTE}</p>
+				)}
 			</div>
 
 			{tasks.length > 0 && (

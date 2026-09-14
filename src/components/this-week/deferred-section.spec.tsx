@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeferredSection } from './deferred-section';
 import { combinedNarratedArtifact, plantsById, rulesById } from './fixtures';
+import { PERMANENCE_NOTE } from './permanence';
 
 /**
  * The one deferred Task the fixture Artifact carries, read off it rather than
@@ -141,6 +142,27 @@ describe('deferredSection', () => {
 		expect(section?.className).not.toContain('bg-muted');
 		expect(section?.className).not.toContain('bg-card');
 		expect(container.querySelector('li')?.className).toContain('bg-card');
+	});
+
+	/*
+	 * ADR 0002 keeps the box on a held Task, because a Deferral is advice rather
+	 * than a lock. That box writes the same permanent Occurrence every other box
+	 * writes, so #62's "before or as it is written" criterion reaches this list
+	 * too. A warning that only sat over 'Ready now' would leave a reader ticking
+	 * held work with nothing on screen to tell them it sticks.
+	 */
+	it('warns that a tick cannot be taken back, over held work that can be ticked', () => {
+		render(<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />);
+
+		expect(screen.getByRole('checkbox')).toBeDefined();
+		expect(screen.getByText(PERMANENCE_NOTE)).toBeDefined();
+	});
+
+	it('drops the warning when there is no held work to tick', () => {
+		render(<DeferredSection tasks={[]} rulesById={rulesById} plantsById={plantsById} />);
+
+		expect(screen.queryByRole('checkbox')).toBeNull();
+		expect(screen.queryByText(PERMANENCE_NOTE)).toBeNull();
 	});
 
 	it('opens the evidence on the Task the caller named', () => {
