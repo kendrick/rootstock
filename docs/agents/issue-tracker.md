@@ -18,7 +18,7 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 **Relationships are always native GitHub objects. Never a line of body text.**
 
-Sub-issues and dependencies are real records: they render in the issue sidebar, drive the parent's progress bar, gate the "blocked" state in the UI, and are queryable. A `Blocked by: #12` line in a body is none of those things — it is a comment that looks like a relationship, and it silently rots when the blocker closes. If an endpoint below fails, **stop and report the failure**. Do not write the text form as a fallback; a run that degrades quietly produces exactly the fake graph this section exists to prevent.
+Sub-issues and dependencies are real records: they render in the issue sidebar, drive the parent's progress bar, gate the "blocked" state in the UI, and are queryable. A `Blocked by: #12` line in a body is none of those things—it is a comment that looks like a relationship, and it silently rots when the blocker closes. If an endpoint below fails, **stop and report the failure**. Do not write the text form as a fallback; a run that degrades quietly produces exactly the fake graph this section exists to prevent.
 
 ### Numbers vs database IDs
 
@@ -40,7 +40,7 @@ gh api --method POST repos/:owner/:repo/issues/<parent-number>/sub_issues \
 -F sub_issue_id=<child-db-id>
 ```
 
-Returns 201. Use `-F` (typed) rather than `-f` (string) — these fields must serialize as integers.
+Returns 201. Use `-F` (typed) rather than `-f` (string)—these fields must serialize as integers.
 
 List children: `gh api repos/:owner/:repo/issues/<parent-number>/sub_issues`
 
@@ -67,7 +67,7 @@ Read edges in both directions:
 - Blocked by: `gh api repos/:owner/:repo/issues/<n>/dependencies/blocked_by`
 - Blocking: `gh api repos/:owner/:repo/issues/<n>/dependencies/blocking`
 
-Remove an edge: `DELETE .../issues/<blocked-number>/dependencies/blocked_by/<blocker-db-id>` — note the id goes in the **path** here, not the body, unlike the POST.
+Remove an edge: `DELETE .../issues/<blocked-number>/dependencies/blocked_by/<blocker-db-id>`—note the id goes in the **path** here, not the body, unlike the POST.
 
 The live gate is `issue_dependencies_summary.blocked_by` on the issue object, which counts **open** blockers only. A ticket is unblocked when that reaches zero; do not compute this by reading bodies.
 
@@ -93,9 +93,9 @@ Any ticket you intended to gate that reports an empty list did not get its edge 
 
 **Every spec is a milestone. Every issue belonging to that spec carries it.**
 
-The spec itself stays a GitHub issue — downstream skills reference it by number (`/to-spec #<issue>`, sub-issue parentage, dependency edges), and a milestone has no comment thread or relationship graph to hang those on. The milestone is the container and the progress surface, not the spec body.
+The spec itself stays a GitHub issue—downstream skills reference it by number (`/to-spec #<issue>`, sub-issue parentage, dependency edges), and a milestone has no comment thread or relationship graph to hang those on. The milestone is the container and the progress surface, not the spec body.
 
-**Milestone title** is the spec slug: lowercase, hyphenated, derived from the spec title (`cwe-staffing-filters`, not `CWE Staffing Filters`). It is the join key — every skill derives it from the parent spec rather than being told it.
+**Milestone title** is the spec slug: lowercase, hyphenated, derived from the spec title (`cwe-staffing-filters`, not `CWE Staffing Filters`). It is the join key—every skill derives it from the parent spec rather than being told it.
 
 **Creating one.** `gh` has no native milestone commands; use the REST API:
 
@@ -108,7 +108,7 @@ gh api --method POST /repos/:owner/:repo/milestones \
 
 `due_on` is optional; set it when the spec has a real delivery date, omit the flag otherwise.
 
-**Checking whether one exists** (do this before creating — the API returns 422 on a duplicate title):
+**Checking whether one exists** (do this before creating—the API returns 422 on a duplicate title):
 
 ```sh
 gh api /repos/:owner/:repo/milestones --jq '.[].title'
@@ -124,7 +124,7 @@ gh api --method PATCH /repos/:owner/:repo/milestones/<n> -f state='closed'
 
 **Constraints, so you don't design around them by accident:**
 
-- An issue holds exactly **one** milestone, unlike labels. A ticket that genuinely serves two specs has no home — stop and ask rather than picking one silently.
+- An issue holds exactly **one** milestone, unlike labels. A ticket that genuinely serves two specs has no home—stop and ask rather than picking one silently.
 - Milestones **do not nest**. A wayfinder map spanning several specs cannot be a milestone of milestones; it gets its own milestone or none.
 - Milestones are **repo-scoped**. Work spanning repos needs a milestone per repo with a matching title.
 
@@ -158,7 +158,7 @@ Run `gh issue view <number> --comments`.
 
 Used by `/file-issue`. Three things are non-optional for every ticket produced:
 
-1. **Milestone.** Read it from the parent spec issue (`gh issue view <spec> --json milestone --jq .milestone.title`) and pass `--milestone` on create. Do not re-derive the slug from the spec title — read it from the issue, so a renamed milestone stays authoritative.
+1. **Milestone.** Read it from the parent spec issue (`gh issue view <spec> --json milestone --jq .milestone.title`) and pass `--milestone` on create. Do not re-derive the slug from the spec title—read it from the issue, so a renamed milestone stays authoritative.
 2. **Parentage.** Attach the ticket to the spec issue as a native sub-issue, per **Issue relationships** above. The spec is the parent; every ticket is a child.
 3. **Blocking edges.** Every blocking relationship the slicing pass identifies becomes a native dependency, per **Issue relationships** above. A ticket that declares a blocker in prose but carries no edge has not been sliced correctly.
 
@@ -166,7 +166,7 @@ Sequence the whole pass to respect the rate-limit note: create all issues, colle
 
 A ticket created without a milestone, without a parent, or missing an edge it should have is a defect, not a default. If a ticket has no parent spec, stop and ask rather than creating it unattached.
 
-**Verify before ending the session** — both the milestone sweep and the edge sweep:
+**Verify before ending the session**—both the milestone sweep and the edge sweep:
 
 ```sh
 gh issue list --state open --json number,title,milestone \
@@ -177,11 +177,11 @@ Anything returned here that came from this session's slicing needs `gh issue edi
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets. All parentage and blocking uses the native objects described in **Issue relationships** above — that section is the single source of truth for the commands; this one only says which relationships to draw.
+Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets. All parentage and blocking uses the native objects described in **Issue relationships** above—that section is the single source of truth for the commands; this one only says which relationships to draw.
 
 - **Milestone**: the map and all its children share one milestone, named for the map's destination slug. Create it at charting time, alongside the map issue, by the procedure in **Milestones** above. When the map closes and `/to-spec` runs, the spec inherits this milestone rather than opening a new one.
 - **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map --milestone "<destination-slug>"`.
-- **Child ticket**: an issue attached to the map as a native sub-issue, carrying the map's milestone. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev. The map body may also list children for readability, but the sub-issue record is what counts — never the list alone.
+- **Child ticket**: an issue attached to the map as a native sub-issue, carrying the map's milestone. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev. The map body may also list children for readability, but the sub-issue record is what counts—never the list alone.
 - **Blocking**: native dependencies. A ticket is unblocked when `issue_dependencies_summary.blocked_by` is zero.
 - **Frontier query**: list the map's open children (`gh api repos/:owner/:repo/issues/<map-number>/sub_issues`, or `gh issue list --state open --milestone "<destination-slug>"`), drop any with `issue_dependencies_summary.blocked_by > 0` or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.

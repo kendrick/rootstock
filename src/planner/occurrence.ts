@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
+import { kebabIdSchema } from '@/validation/ids';
 
 /**
  * An Occurrence is an append-only record that work happened. Marking a task
@@ -9,9 +8,7 @@ const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
  * history nobody had to design separately. Its `(ruleId, plantId)` pair is
  * the same key a Task is identified by.
  *
- * This module is deliberately dependency-free: rule and plant are referenced
- * by string ID only, so it never imports from `src/rules/`, `src/weather/`,
- * or anywhere else in the project.
+ * A Rule and a Plant are named by string ID alone here, never by a type borrowed from the module that owns either one, which is what keeps `src/rules/` and `src/yard/` out of this module's import graph and out of a cycle with it. Its one project-local import, `@/validation/ids`, carries the id character class and no domain type.
  */
 export const occurrenceSchema = z.strictObject({
 	id: kebabIdSchema,

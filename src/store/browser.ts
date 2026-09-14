@@ -7,7 +7,7 @@ import { createSeedStore } from './seed-store';
 /**
  * The read-only store over the committed seed data, built once at module
  * scope rather than per call. `createSeedStore` only builds Maps over
- * `SeedData` already in hand — it reads no browser global — so nothing here
+ * `SeedData` already in hand—it reads no browser global—so nothing here
  * needs the call-time indirection {@link openBrowserStore} exists to buy.
  * Every caller wanting the seed half of the yard shares this one instance
  * rather than re-parsing the seed JSON's Maps on every render.
@@ -44,7 +44,7 @@ export async function openBrowserStore(indexedDB: IDBFactory = globalThis.indexe
  *
  * Returns bare `Occurrence[]`, not the enveloped `StoredRecord<Occurrence>[]`
  * a `Store.list` hands back. `planner.ts`'s `evaluatePlanInput` takes
- * `occurrences: Occurrence[]` — that is the actual consumer a merged list
+ * `occurrences: Occurrence[]`—that is the actual consumer a merged list
  * exists to feed, and marking a task done reads history only to hand it
  * back to the Planner. The envelope's `id`/`updatedAt`/`source` are storage
  * bookkeeping the Planner has no use for, and unwrapping loses nothing: an
@@ -54,7 +54,7 @@ export async function openBrowserStore(indexedDB: IDBFactory = globalThis.indexe
  *
  * Reads {@link seedStore} itself rather than taking two stores as
  * parameters, because the seed half is fixed for the life of the module and
- * every call site already has exactly one `Store` to plumb through — the
+ * every call site already has exactly one `Store` to plumb through—the
  * browser one a component holds via its defaulted `store` prop.
  */
 export async function listOccurrences(store: Store): Promise<Occurrence[]> {

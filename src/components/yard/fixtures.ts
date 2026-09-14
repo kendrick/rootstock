@@ -14,7 +14,7 @@ import { createFakeStore } from '@/store/fake-store';
  * and shapes a component sees in production instead of a parallel toy yard
  * that happens to typecheck.
  *
- * The seed alone does not cover every shape a component needs to render — it
+ * The seed alone does not cover every shape a component needs to render—it
  * carries no planted plant with a null position, and its Occurrences are shaped
  * for the Planner's cadence math rather than for a history list. The few
  * fixtures built by hand below exist to fill exactly those gaps, typed
@@ -43,8 +43,8 @@ export const figPlant: Plant = findPlant('fig-1');
 export const plannedPlant: Plant = findPlant('crossvine-1');
 
 /*
- * The seed has no planted plant with a null position — every planted record
- * it ships is already sited on the yard photo — so a list view rendering a
+ * The seed has no planted plant with a null position—every planted record
+ * it ships is already sited on the yard photo—so a list view rendering a
  * planted-but-unplaced row needs one built by hand. Spread from esperanza-1
  * rather than assembled field by field, so everything but the three fields
  * that matter here (id, name, position) stays a real, schema-shaped plant.
@@ -78,8 +78,8 @@ export const thresholdRule: ThresholdRule = findThresholdRule('spring-pre-emerge
 
 /*
  * Spread from `approachingArtifact`, never `narratedArtifact`. `narratedArtifact`
- * is September's Plan, whose window falls from 78F to 64F — entirely above
- * `thresholdRule`'s 55F — so a sparkline drawn from that pairing would show the
+ * is September's Plan, whose window falls from 78F to 64F—entirely above
+ * `thresholdRule`'s 55F—so a sparkline drawn from that pairing would show the
  * threshold line sitting under every point in the series, as if the work had
  * already fired. `approachingArtifact` is the spring run: its window climbs
  * toward 55F, the observed days fall short of three consecutive at-or-above,

@@ -1,15 +1,9 @@
 import type { JsonSchema } from '@/validation/json-schema';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { walkSchema } from '@/validation/json-schema';
+import { nodes, walkSchema } from '@/validation/json-schema';
 import { artifactSchema, parseArtifact, parseStatusRecord, safeParseArtifact } from './artifact';
 import { narratedArtifact, unnarratedArtifact } from './fixtures';
-
-function nodes(schema: JsonSchema): Array<{ path: string; node: JsonSchema }> {
-	const visited: Array<{ path: string; node: JsonSchema }> = [];
-	walkSchema(schema, (node, path) => visited.push({ path, node }));
-	return visited;
-}
 
 function isRecord(value: unknown): value is JsonSchema {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

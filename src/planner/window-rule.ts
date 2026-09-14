@@ -4,7 +4,7 @@ import { isWithinMonthDayRange } from './dates';
 
 /**
  * A Window Rule reads only the calendar, never a reading, so there is no
- * partial evidence for it to report on the way there — the range either
+ * partial evidence for it to report on the way there—the range either
  * contains today or it doesn't. That is what rules out 'approaching' here
  * even though `RuleVerdict` allows it: the status exists for a Threshold
  * Rule's trend line, and a Window Rule has no trend to be approaching.

@@ -1,11 +1,9 @@
 import { z } from 'zod';
 import { occurrenceSchema } from '@/planner/occurrence';
 import { ruleSchema, tagPolicySchema } from '@/rules/rule';
+import { kebabIdSchema } from '@/validation/ids';
 import { parseWith } from '@/validation/parse';
 import { plantSchema, yardSchema } from '@/yard/plant';
-
-/** The id shape every collection files records under. Matches the kebab ids the domain schemas already validate. */
-const storedIdSchema = z.string().regex(/^[a-z0-9-]+$/);
 
 /*
  * `id` mirrors `record.id`, so the check is written once here rather than
@@ -39,7 +37,7 @@ export function envelopeSchema<T extends z.ZodType>(recordSchema: T) {
 	const record = recordSchema as z.ZodType<z.output<T>, z.input<T>>;
 
 	return z.strictObject({
-		id: storedIdSchema,
+		id: kebabIdSchema,
 		updatedAt: z.iso.datetime(),
 		source: z.enum(['seed', 'browser']),
 		record,

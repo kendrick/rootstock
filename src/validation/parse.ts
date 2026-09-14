@@ -43,7 +43,7 @@ function composeMessage(label: string, value: unknown, error: z.ZodError): strin
 
 // Zod's own `issue.message` already names what was expected (its default messages read like
 // "Invalid input: expected string, received number"), but it does not carry the actual value that
-// failed — that has to be recovered by walking the original input along the issue's own path.
+// failed—that has to be recovered by walking the original input along the issue's own path.
 function describeIssue(value: unknown, issue: z.core.$ZodIssue): string {
 	const path = formatPath(issue.path);
 	const received = describeValue(getAtPath(value, issue.path));

@@ -30,7 +30,7 @@ function reachesPlant(rule: Rule, plant: Plant, plants: Plant[]): boolean {
  * across them, so `plantIds`/`plantTags` choose the Plants and `ruleTags` then
  * narrows to the Rules the Guard has an opinion on. Checking only the plant
  * half hides `rain-expected`, which names no Plant at all and is the Guard
- * holding the lawn's herbicide until the rain passes — the one a reader most
+ * holding the lawn's herbicide until the rain passes—the one a reader most
  * needs, on the Plant it acts on. Checking only `plantIds` also lists
  * `fig-fertilizer-until-spring` on a fig that no fertilizer Rule reaches, so
  * the Guard sits there holding nothing.

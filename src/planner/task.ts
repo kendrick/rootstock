@@ -1,13 +1,10 @@
 import { z } from 'zod';
+import { KEBAB_ID_PATTERN, kebabIdSchema } from '@/validation/ids';
 import { aggregateSchema, variableSchema } from '@/weather/observation';
 
-/**
- * A lowercase-kebab identifier, shared by every entity id this module
- * refers to. Defined locally rather than imported: this module speaks only
- * to `@/weather/observation`, so a Rule or Plant id is just a string shape
- * here, never a type borrowed from the module that owns it.
+/*
+ * This module names a Rule and a Plant by string id alone, never by a type borrowed from the module that owns either one, which is what keeps `@/rules/` and `@/yard/` out of its import graph. `@/validation/ids` carries the id character class and no domain type, so the shared shape arrives without a Rule or a Plant arriving with it.
  */
-const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
 
 /**
  * A Task's id is derived, never authored, so the Planner, the store, and the
@@ -25,7 +22,7 @@ export function taskId(ruleId: string, plantId: string | null): string {
 }
 
 /** Matches exactly what {@link taskId} produces: a kebab rule id, optionally `@`-joined to a kebab plant id. */
-export const taskIdSchema = z.string().regex(/^[a-z0-9-]+(@[a-z0-9-]+)?$/);
+export const taskIdSchema = z.string().regex(new RegExp(`^${KEBAB_ID_PATTERN}(@${KEBAB_ID_PATTERN})?$`));
 export type TaskId = z.infer<typeof taskIdSchema>;
 
 /**
@@ -83,7 +80,7 @@ export const deferralSchema = z.strictObject({
 export type Deferral = z.infer<typeof deferralSchema>;
 
 /**
- * A note a Guard attached to a Task without deferring it — the Guard ran,
+ * A note a Guard attached to a Task without deferring it—the Guard ran,
  * had something to say, but did not hold the work back.
  */
 export const annotationSchema = z.strictObject({
@@ -96,11 +93,11 @@ export type Annotation = z.infer<typeof annotationSchema>;
  * One piece of work the Planner derived from exactly one Rule. `ruleId` and
  * `plantId` are the same pair an Occurrence is keyed by, but they are
  * carried as plain strings rather than a reference to `@/rules/`, because
- * this module is not allowed to know that package exists — a Task can be
+ * this module is not allowed to know that package exists—a Task can be
  * validated and rendered long before the Rule that produced it loads.
  *
  * `title` is the mechanical sentence the Planner writes for every Task,
- * whether or not Narration ever runs over the Plan — it is not a fallback
+ * whether or not Narration ever runs over the Plan—it is not a fallback
  * for a missing model pass, it is the thing the interface renders by
  * default.
  *

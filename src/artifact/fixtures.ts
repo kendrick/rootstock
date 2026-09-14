@@ -155,7 +155,7 @@ export const narratedArtifact: Artifact = {
 			 * instead of the flag would produce the same output and pass. Telling
 			 * those two apart needs an undelegable Task with no safety tag on it,
 			 * and the seed has no Rule shaped that way. CONTEXT.md's Delegable
-			 * entry is what makes the distinction matter — tag policy narrows
+			 * entry is what makes the distinction matter—tag policy narrows
 			 * delegability and never widens it, so the flag is already the
 			 * narrowed answer and a view that re-derives it from tags is doing
 			 * the Planner's job a second time, with a second chance to get it

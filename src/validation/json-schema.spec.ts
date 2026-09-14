@@ -1,18 +1,13 @@
 import type { JsonSchema } from './json-schema';
 import { describe, expect, it } from 'vitest';
-import { walkSchema } from './json-schema';
+import { nodes } from './json-schema';
 
-function collect(schema: JsonSchema): Array<{ path: string; node: JsonSchema }> {
-	const visited: Array<{ path: string; node: JsonSchema }> = [];
-	walkSchema(schema, (node, path) => visited.push({ path, node }));
-	return visited;
-}
-
+// The traversal cases read the walk through `nodes`, which is `walkSchema` with its visits collected. Re-declaring that collector here would put a third copy of it in the repo, and one copy is what `nodes` is exported for.
 describe('walkSchema', () => {
 	it('visits the root even when it has no nested subschemas', () => {
 		const schema: JsonSchema = { type: 'string' };
 
-		const visited = collect(schema);
+		const visited = nodes(schema);
 
 		expect(visited).toEqual([{ path: '#', node: schema }]);
 	});
@@ -26,7 +21,7 @@ describe('walkSchema', () => {
 			},
 		};
 
-		const paths = collect(schema).map(entry => entry.path);
+		const paths = nodes(schema).map(entry => entry.path);
 
 		expect(paths).toEqual(['#', '#/properties/name', '#/properties/age']);
 	});
@@ -41,8 +36,8 @@ describe('walkSchema', () => {
 			items: [{ type: 'string' }, { type: 'number' }],
 		};
 
-		expect(collect(listSchema).map(entry => entry.path)).toEqual(['#', '#/items']);
-		expect(collect(tupleSchema).map(entry => entry.path)).toEqual([
+		expect(nodes(listSchema).map(entry => entry.path)).toEqual(['#', '#/items']);
+		expect(nodes(tupleSchema).map(entry => entry.path)).toEqual([
 			'#',
 			'#/items/0',
 			'#/items/1',
@@ -56,7 +51,7 @@ describe('walkSchema', () => {
 			allOf: [{ type: 'null' }],
 		};
 
-		const paths = collect(schema).map(entry => entry.path);
+		const paths = nodes(schema).map(entry => entry.path);
 
 		expect(paths).toEqual([
 			'#',
@@ -73,14 +68,14 @@ describe('walkSchema', () => {
 			definitions: { gadget: { type: 'number' } },
 		};
 
-		const paths = collect(schema).map(entry => entry.path);
+		const paths = nodes(schema).map(entry => entry.path);
 
 		expect(paths).toEqual(['#', '#/$defs/widget', '#/definitions/gadget']);
 	});
 
 	// This is the shape a real generated artifact schema takes: a property whose schema is a
 	// union, one branch of which is an object with its own nested property. A walker that only
-	// looked at top-level `properties` — or that skipped recursing through `anyOf` — would never
+	// looked at top-level `properties`—or that skipped recursing through `anyOf`—would never
 	// reach `coordinate`, and every downstream test that scans for a coordinate-shaped property
 	// name would pass on a schema that still has one buried three levels down.
 	it('reaches a node nested three levels deep through an anyOf branch', () => {
@@ -101,11 +96,11 @@ describe('walkSchema', () => {
 			},
 		};
 
-		const paths = collect(schema).map(entry => entry.path);
+		const paths = nodes(schema).map(entry => entry.path);
 
 		expect(paths).toContain('#/properties/observation/anyOf/1/properties/coordinate');
 
-		const found = collect(schema).find(
+		const found = nodes(schema).find(
 			entry => entry.path === '#/properties/observation/anyOf/1/properties/coordinate',
 		);
 		expect(found?.node).toEqual({ type: 'string' });
@@ -117,8 +112,28 @@ describe('walkSchema', () => {
 			enum: ['a', 'b', 'c'],
 		};
 
-		const paths = collect(schema).map(entry => entry.path);
+		const paths = nodes(schema).map(entry => entry.path);
 
 		expect(paths).toEqual(['#']);
+	});
+});
+
+describe('nodes', () => {
+	it('walks a small schema with object properties and an array items, returning visited paths and nodes', () => {
+		const schema: JsonSchema = {
+			type: 'object',
+			properties: {
+				name: { type: 'string' },
+				tags: {
+					type: 'array',
+					items: { type: 'string' },
+				},
+			},
+		};
+
+		const visited = nodes(schema);
+		const paths = visited.map(entry => entry.path);
+
+		expect(paths).toEqual(['#', '#/properties/name', '#/properties/tags', '#/properties/tags/items']);
 	});
 });

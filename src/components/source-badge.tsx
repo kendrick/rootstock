@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
  * The word for each `kind`, rendered on the page rather than left to an
  * aria-label. A sighted reader never hears an aria-label, and a reader with a
  * colour-vision deficiency (or one squinting at a phone in the yard) still
- * needs to tell an extension recommendation from the owner's own practice —
- * see the `sourceSchema` docblock in rule.ts for why the two carry different
+ * needs to tell an extension recommendation from the owner's own practice—see
+ * the `sourceSchema` docblock in rule.ts for why the two carry different
  * weight.
  */
 const KIND_TEXT: Record<Source['kind'], string> = {

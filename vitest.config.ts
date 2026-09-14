@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	// tsconfig sets `jsx: 'preserve'` so the Next compiler owns the transform in
-	// the app build, and Vite reads that same setting here — which leaves JSX
+	// the app build, and Vite reads that same setting here—which leaves JSX
 	// untransformed at the test boundary, where every `.spec.tsx` then dies at
 	// parse. The fix belongs in this file rather than in tsconfig: changing it
 	// there would take the transform away from Next and break the build.

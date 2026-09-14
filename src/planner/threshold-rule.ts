@@ -9,13 +9,14 @@ interface Run {
 	to: DailyAggregate;
 }
 
-/**
- * Both comparisons include the boundary, so a Rule written at 70F counts the
- * day soil temperature reads exactly 70. That is the off-by-one a reader is
- * most likely to assume the other way round.
- */
-function satisfies(day: DailyAggregate, rule: ThresholdRule): boolean {
-	return rule.comparison === 'gte' ? day.value >= rule.value : day.value <= rule.value;
+/** Both comparisons include the boundary, so a Rule written at 70F counts the day soil temperature reads exactly 70. That is the off-by-one a reader is most likely to assume the other way round. */
+export function meetsThreshold(value: number, rule: ThresholdRule): boolean {
+	return rule.comparison === 'gte' ? value >= rule.value : value <= rule.value;
+}
+
+/** The Planner's call shape for `meetsThreshold`, which the sparkline reaches with a bare number off `values` instead. One boundary rule under two names beats two hand copies of it, which drift in exactly the case nobody tests. */
+export function satisfies(day: DailyAggregate, rule: ThresholdRule): boolean {
+	return meetsThreshold(day.value, rule);
 }
 
 /**

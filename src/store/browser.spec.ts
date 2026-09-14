@@ -3,8 +3,8 @@
 /*
  * Node, not this file's jsdom default (see vitest.config.ts). jsdom already
  * supplies a `globalThis.indexedDB`, so importing browser.ts under it would
- * prove nothing about whether the import itself reached for that global —
- * every module-scope read would quietly succeed. Node is also the process
+ * prove nothing about whether the import itself reached for that global—every
+ * module-scope read would quietly succeed. Node is also the process
  * `next build` actually prerenders every route in, per the docblocks on
  * `openBrowserStore` and on `OpenStoreOptions.indexedDB` in
  * indexeddb-store.ts, so a module that misbehaves here is a module that
@@ -72,9 +72,9 @@ describe('browser store: module-scope safety', () => {
 
 	it('imports without reading globalThis.indexedDB', async () => {
 		// A getter that throws stands in for the global lib.dom declares:
-		// nothing under Node provides it, so any code that reads it — a
+		// nothing under Node provides it, so any code that reads it—a
 		// module-scope `openStore` call, or a bare `globalThis.indexedDB`
-		// assigned to a module-scope constant — fires this the instant the
+		// assigned to a module-scope constant—fires this the instant the
 		// module body runs, before the import can resolve. A `next build`
 		// prerender hits the same absence; this getter is what turns that into
 		// a test failure pointing at the read, instead of a deploy failure
@@ -123,7 +123,7 @@ describe('browser store: openBrowserStore', () => {
 		// through a dynamic `import()` (a bare side-effect `import` gets away
 		// with it; a value-producing one does not). The named exports here
 		// come from the package's main entry, which is typed. `indexedDB`
-		// itself is deliberately left off this list — the store below only
+		// itself is deliberately left off this list—the store below only
 		// ever sees it as the explicit argument below, which is the thing this
 		// test is actually proving.
 		Object.assign(globalThis, {

@@ -27,9 +27,9 @@ import { plan, planInputSchema } from './planner';
 
 /*
  * The assertions in the first block guard the fixture file rather than the
- * Planner. Each one names a case some later spec leans on being there — a
+ * Planner. Each one names a case some later spec leans on being there—a
  * planned Plant, a window that wraps the year end, a Cadence Rule with no
- * history behind it — and a tidy-up would delete any of them without noticing
+ * history behind it—and a tidy-up would delete any of them without noticing
  * what went with it.
  *
  * The schema round-trip sits with `planInputSchema` below instead, because
@@ -328,7 +328,7 @@ describe('plan', () => {
 	 * Comparing two calls alone would be a check that cannot fail, since a
 	 * function with no clock and no randomness repeats itself by construction.
 	 * What can actually go wrong is the Planner writing through one of its own
-	 * arguments — sorting `rules` in place would do it — and that shows up on
+	 * arguments—sorting `rules` in place would do it—and that shows up on
 	 * the second call or on whoever holds the array next. So the input is
 	 * compared against a copy taken before the first call, which is the half
 	 * of purity a repeat test cannot see.
