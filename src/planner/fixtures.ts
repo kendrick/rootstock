@@ -147,6 +147,19 @@ export const rules: Rule[] = parseWith(z.array(ruleSchema), 'planner fixtures: r
 		start: '12-01',
 		end: '02-28',
 	},
+	/*
+	 * A Threshold Rule the seed will never carry. It stays because the guard pass and the threshold
+	 * evaluator both need a falling crossing to exercise, and this is the only one.
+	 *
+	 * #33 asked whether the seed should gain it. The answer is no, and the reason is the rule kind
+	 * rather than the data: a pre-emergent lays a barrier before seeds germinate, while a Threshold
+	 * Rule reads observed days only, so it cannot speak until the crossing it exists to beat has
+	 * already happened. North Texas soil does not ease down to 70F either. It drops through on a
+	 * front, so a three-day run qualifies well past the number. The seed's `fall-pre-emergent` is a
+	 * Window Rule because a calendar window is the correct kind for prophylactic work, not because
+	 * nobody got around to keying it to soil yet. #48 carries the same reasoning applied to
+	 * `spring-pre-emergent`, which is a Threshold Rule doing prophylactic work today.
+	 */
 	{
 		id: 'fall-pre-emergent-soil',
 		name: 'Fall pre-emergent once soil temperature settles at 70F',
