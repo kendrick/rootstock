@@ -29,8 +29,12 @@ A Rule that fires while a date falls inside a range. Fall pre-emergent in mid-Se
 _Avoid_: Calendar rule, seasonal rule, date rule
 
 **Threshold Rule**:
-A Rule that fires when an observed series holds at or past a value for a required number of consecutive days. It reads observed days only, so a forecast can never fire one.
+A Rule that fires when an observed series holds at or past a value for a required number of consecutive days. It reads observed days only, so a forecast can never fire one. A Rule may also name the direction it crosses from and the season it watches; one naming neither is judged on the run alone.
 _Avoid_: Sensor rule, condition, trigger
+
+**Crossing**:
+The arrival of a series at a Threshold Rule's value from the far side of it. A Rule naming a direction counts a run only where the calendar day before it sat strictly on the far side, so a spell already under way when the window opened is not one. Nothing revokes a Crossing that qualified, though the Rule stops speaking once its season ends.
+_Avoid_: Trigger, event, transition, breach, threshold met
 
 **Cadence Rule**:
 A Rule that fires when an interval has elapsed since the most recent Occurrence, or when there is no Occurrence to measure from.
