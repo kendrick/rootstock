@@ -63,12 +63,6 @@ export const appliesToSchema = z.strictObject({
 export type AppliesTo = z.infer<typeof appliesToSchema>;
 
 /**
- * Tags that narrow delegability yard-wide. CONTEXT.md is explicit that tag
- * policy only narrows: a rule tagged `chemical` stays undelegable however its
- * own `delegable` field is set, and nothing here can widen a rule that already
- * said no.
- */
-/**
  * The tag that marks work involving a pesticide or herbicide.
  *
  * Fertilizer sits outside it deliberately. Seed data tags feeding work
@@ -83,6 +77,12 @@ export type AppliesTo = z.infer<typeof appliesToSchema>;
  */
 export const CHEMICAL_TAG = 'chemical';
 
+/**
+ * Tags that narrow delegability yard-wide. CONTEXT.md is explicit that tag
+ * policy only narrows: a rule tagged `chemical` stays undelegable however its
+ * own `delegable` field is set, and nothing here can widen a rule that already
+ * said no.
+ */
 export const tagPolicySchema = z.strictObject({
 	neverDelegableTags: z.array(z.string()),
 	safetyTags: z.array(z.string()),

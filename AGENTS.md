@@ -26,6 +26,12 @@ Specs live beside the code they exercise, named for it: `rule.ts` and `rule.spec
 
 `tests/integration/` is the one exception and is not a unit-test tree: it holds Playwright specs that drive the built static export rather than importing a module.
 
+## Invariants the file tree does not show
+
+Only the Planner authors a Task. A Rule module returns a `RuleVerdict`, `createTasks` in `src/planner/planner.ts` is the one place a Task is built, and `validateNarration` in `src/generation/narrator.ts` throws on a narrated id the Plan does not hold (ADR 0001). A Guard never deletes a Task. `applyGuards` in `src/planner/guards.ts` returns a Task for every Task it took, and `guards.spec.ts` pins the count and the id order to its input (ADR 0002). `Task.delegable` is stamped at authoring time, never derived in a view. `stampDelegability` in `src/planner/planner.ts` applies `isDelegable` once per Task, and `rule-summary.tsx` reads that stamp where a Task supplied one, computing its own answer only for a Rule that authored no Task.
+
+The Artifact carries no coordinates. `src/validation/no-coordinates.spec.ts` walks the generated JSON Schema for the Artifact, Plant, Yard, and Rule, and fails on a property named for a latitude or longitude (ADR 0004). The shell's name string lives in one place. `header.tsx` and the metadata title in `src/app/layout.tsx` both import `WORDMARK` from `src/components/shell/name.ts`, and `header.spec.tsx` asserts the rendered banner's whole text is that constant. `data/` is generated output. `pnpm generate` writes `artifact.json` and `status.json`, `scripts/daily-run.sh` commits them, and `eslint.config.mjs` ignores the directory so `eslint --fix` never reformats what the generator wrote.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
