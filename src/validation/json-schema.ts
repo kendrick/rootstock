@@ -63,3 +63,12 @@ function visitNode(node: JsonSchema, path: string, visit: (node: JsonSchema, pat
 function isJsonSchema(value: unknown): value is JsonSchema {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+/**
+ * `walkSchema`'s visits collected into an array, in visit order, for a caller that has to assert over the whole walk rather than react to one node at a time. Both specs under `src/artifact/` read it, and a private copy in either of them drifts the moment the walker's path format changes.
+ */
+export function nodes(schema: JsonSchema): Array<{ path: string; node: JsonSchema }> {
+	const visited: Array<{ path: string; node: JsonSchema }> = [];
+	walkSchema(schema, (node, path) => visited.push({ path, node }));
+	return visited;
+}

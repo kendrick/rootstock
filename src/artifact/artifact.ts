@@ -13,7 +13,7 @@ import { narrationSchema } from './narration';
  *
  * There are no coordinates either, in any field, at any depth. ADR 0004 keeps
  * the property's latitude and longitude in the generation environment, and
- * this file is published to a public site. `tests/unit/no-coordinates.spec.ts`
+ * this file is published to a public site. `src/validation/no-coordinates.spec.ts`
  * walks the generated JSON Schema to keep a later field from drifting one in.
  *
  * `narrated` duplicates what `narration !== null` already says, and it stays
@@ -50,6 +50,8 @@ export type Artifact = z.infer<typeof artifactSchema>;
  * forward itself, reading the previous record and adding one. That is what
  * lets the site say "the last four runs failed" instead of only "this data is
  * old", and only the first of those tells a reader to go look at the box.
+ *
+ * It lives beside the Artifact rather than in a module of its own because the Artifact gate parses both at one boundary before anything below it renders, and a reader asks one question of the pair: how old this data is, and whether the run that should have replaced it got that far. Two modules would split a boundary whose whole value is being a single one.
  */
 export const statusRecordSchema = z.strictObject({
 	attemptedAt: z.iso.datetime(),

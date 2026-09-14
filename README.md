@@ -99,6 +99,7 @@ Decisions with consequences live in [docs/adr/](docs/adr/), one file each, and e
 - [ADR 0002: a guard holds a task back and says why, instead of removing it](docs/adr/0002-guards-defer-rather-than-delete.md)
 - [ADR 0003: the artifact carries the readings the rules looked at](docs/adr/0003-the-artifact-ships-the-evaluated-window.md)
 - [ADR 0004: exact coordinates live in the generation environment and nowhere else](docs/adr/0004-coordinates-never-enter-the-repository.md)
+- [ADR 0005: a threshold rule says which way it crosses, and a crossing stays crossed](docs/adr/0005-a-threshold-crossing-names-its-direction.md)
 
 ## Licence
 

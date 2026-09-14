@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysBetween, isWithinMonthDayRange, localDate } from './dates';
+import { daysBetween, isWithinMonthDayRange, localDate, MONTHS } from './dates';
 
 describe('isWithinMonthDayRange', () => {
 	it('matches a date inside a non-wrapping range', () => {
@@ -66,5 +66,15 @@ describe('daysBetween', () => {
 
 	it('returns zero for the same date', () => {
 		expect(daysBetween('2026-09-11', '2026-09-11')).toBe(0);
+	});
+});
+
+describe('the MONTHS table', () => {
+	it('has one entry per calendar month', () => {
+		expect(MONTHS).toHaveLength(12);
+	});
+
+	it('lines up with a one-based MM string via Number(mm) - 1', () => {
+		expect(MONTHS[Number('09') - 1]).toBe('September');
 	});
 });

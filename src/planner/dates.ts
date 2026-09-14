@@ -62,3 +62,21 @@ export function daysBetween(from: string, to: string): number {
 
 	return Math.round((toMillis - fromMillis) / millisPerDay);
 }
+
+/**
+ * A caller indexes this with `Number(monthDay.slice(0, 2)) - 1`, so the array's zero-based position has to line up with a one-based MM string rather than with a calendar the reader carries in their head.
+ */
+export const MONTHS = [
+	'January',
+	'February',
+	'March',
+	'April',
+	'May',
+	'June',
+	'July',
+	'August',
+	'September',
+	'October',
+	'November',
+	'December',
+];

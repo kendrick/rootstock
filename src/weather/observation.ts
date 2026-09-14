@@ -26,24 +26,26 @@ export const aggregateSchema = z.enum(['mean', 'min', 'max', 'sum']);
 export type Aggregate = z.infer<typeof aggregateSchema>;
 
 /**
+ * Separates a reading already recorded (`observed`) from one still predicted (`forecast`)—this is what lets a Threshold Rule refuse to fire on forecast data, since CONTEXT.md requires it read observed days only.
+ */
+export const basisSchema = z.enum(['observed', 'forecast']);
+
+/**
+ * Separates a modeled grid-cell estimate (`modeled`) from an actual probe reading (`measured`)—this is what stops a modeled value from ever being displayed as a measurement, regardless of how confident the model providing it is.
+ */
+export const provenanceSchema = z.enum(['modeled', 'measured']);
+
+/**
+ * An enum rather than free text so the Planner can prefer a manual probe reading over a modeled one by comparing a fixed set of values, not by string-matching an open-ended provider name. This is the Observation's provider; `src/rules/rule.ts` exports an unrelated `sourceSchema` for a Rule's Source.
+ */
+export const sourceSchema = z.enum(['open-meteo', 'manual']);
+
+/**
  * One hourly reading at one moment — never a daily figure. Daily aggregation
  * reduces many Observations to one number and belongs to the Planner, which
  * decides mean vs. min vs. sum per Rule; baking that choice in here would
  * throw away the hourly readings a different Rule might need aggregated a
  * different way.
- *
- * `basis` separates a reading already recorded (`observed`) from one still
- * predicted (`forecast`) — this is what lets a Threshold Rule refuse to fire
- * on forecast data, since CONTEXT.md requires it read observed days only.
- *
- * `provenance` separates a modeled grid-cell estimate (`modeled`) from an
- * actual probe reading (`measured`) — this is what stops a modeled value from
- * ever being displayed as a measurement, regardless of how confident the
- * model providing it is.
- *
- * `source` is an enum rather than free text so the Planner can prefer a
- * manual probe reading over a modeled one by comparing a fixed set of values,
- * not by string-matching an open-ended provider name.
  *
  * `depthCm` and `station` are `.nullable()`, not `.optional()`: a soil
  * reading has both, a precipitation reading has neither, and the parsed type
@@ -60,9 +62,9 @@ export const observationSchema = z.strictObject({
 	depthCm: z.number().nullable(),
 	value: z.number(),
 	unit: unitSchema,
-	basis: z.enum(['observed', 'forecast']),
-	provenance: z.enum(['modeled', 'measured']),
-	source: z.enum(['open-meteo', 'manual']),
+	basis: basisSchema,
+	provenance: provenanceSchema,
+	source: sourceSchema,
 	station: z.string().nullable(),
 });
 export type Observation = z.infer<typeof observationSchema>;
