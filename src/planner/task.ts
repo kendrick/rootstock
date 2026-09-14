@@ -3,7 +3,7 @@ import { KEBAB_ID_PATTERN, kebabIdSchema } from '@/validation/ids';
 import { aggregateSchema, variableSchema } from '@/weather/observation';
 
 /*
- * Every entity id here is a string shape, never a type borrowed from the module that owns the entity, which is what keeps `@/rules/` and `@/yard/` out of this module's import graph. `@/validation/ids` carries the id character class and no domain type, so the shared shape arrives without a Rule or a Plant arriving with it.
+ * This module names a Rule and a Plant by string id alone, never by a type borrowed from the module that owns either one, which is what keeps `@/rules/` and `@/yard/` out of its import graph. `@/validation/ids` carries the id character class and no domain type, so the shared shape arrives without a Rule or a Plant arriving with it.
  */
 
 /**

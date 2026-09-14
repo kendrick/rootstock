@@ -1,6 +1,6 @@
 import type { Aggregate, Unit, Variable } from '@/weather/observation';
 
-/**
+/*
  * The prose spellings of a series, in a module that imports nothing at runtime. `soil-sparkline.tsx` is a client chart, and `rule-summary.tsx` reaches `seedTagPolicy` and `isDelegable` to do its own job, so a chart reading the words off the summary would hang itself on the planner and the seed data. The other failure available here is two copies of `soil-temperature`'s prose spelling, where a fix to one copy always leaves the other wrong.
  */
 

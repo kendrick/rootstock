@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { aggregateSchema, basisSchema, provenanceSchema, sourceSchema, unitSchema, variableSchema } from '@/weather/observation';
+import { aggregateSchema, basisSchema, observationSourceSchema, provenanceSchema, unitSchema, variableSchema } from '@/weather/observation';
 import { taskSchema } from './task';
 
 /**
@@ -34,7 +34,7 @@ export const dailyAggregateSchema = z.strictObject({
 	unit: unitSchema,
 	basis: basisSchema,
 	provenance: provenanceSchema,
-	source: sourceSchema,
+	source: observationSourceSchema,
 });
 export type DailyAggregate = z.infer<typeof dailyAggregateSchema>;
 

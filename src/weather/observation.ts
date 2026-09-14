@@ -36,9 +36,9 @@ export const basisSchema = z.enum(['observed', 'forecast']);
 export const provenanceSchema = z.enum(['modeled', 'measured']);
 
 /**
- * An enum rather than free text so the Planner can prefer a manual probe reading over a modeled one by comparing a fixed set of values, not by string-matching an open-ended provider name. This is the Observation's provider; `src/rules/rule.ts` exports an unrelated `sourceSchema` for a Rule's Source.
+ * Where a reading came from, as an enum rather than free text, so the Planner can prefer a manual probe reading over a modeled one by comparing a fixed set of values instead of string-matching an open-ended name. Named for the Observation it belongs to because `src/rules/rule.ts` exports its own unrelated `sourceSchema`, for the Source a Rule cites, and eight files import from both modules.
  */
-export const sourceSchema = z.enum(['open-meteo', 'manual']);
+export const observationSourceSchema = z.enum(['open-meteo', 'manual']);
 
 /**
  * One hourly reading at one moment—never a daily figure. Daily aggregation
@@ -64,7 +64,7 @@ export const observationSchema = z.strictObject({
 	unit: unitSchema,
 	basis: basisSchema,
 	provenance: provenanceSchema,
-	source: sourceSchema,
+	source: observationSourceSchema,
 	station: z.string().nullable(),
 });
 export type Observation = z.infer<typeof observationSchema>;
