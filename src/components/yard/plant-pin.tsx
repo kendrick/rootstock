@@ -26,7 +26,7 @@ const PIN_TREATMENT: Record<Plant['status'], PinTreatment> = {
 
 export function PlantPin({ plant, onSelect }: {
 	plant: Plant;
-	onSelect: (plant: Plant) => void;
+	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
 	const { position } = plant;
 
@@ -42,7 +42,7 @@ export function PlantPin({ plant, onSelect }: {
 	return (
 		<button
 			type="button"
-			onClick={() => onSelect(plant)}
+			onClick={event => onSelect(plant, event.currentTarget)}
 			// Percentages of the wrapper, never pixels derived from
 			// photo.width/height. Issue #29 swaps public/yard.jpg for an edited
 			// image at a different resolution, and a fraction is the only offset

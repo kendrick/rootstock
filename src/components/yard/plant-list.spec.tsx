@@ -65,7 +65,7 @@ describe('plantList', () => {
 		fireEvent.click(screen.getByRole('button', { name: new RegExp(lawnPlant.name) }));
 
 		expect(onSelect).toHaveBeenCalledTimes(1);
-		expect(onSelect).toHaveBeenCalledWith(lawnPlant);
+		expect(onSelect).toHaveBeenCalledWith(lawnPlant, expect.any(HTMLElement));
 	});
 
 	// A `<ul>`/`<li>` structure, not a stack of divs, so assistive tech

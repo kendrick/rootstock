@@ -36,7 +36,7 @@ describe('plantPin', () => {
 
 		// The DOM click a native button fires on Enter and on Space.
 		pin.click();
-		expect(onSelect).toHaveBeenCalledWith(figPlant);
+		expect(onSelect).toHaveBeenCalledWith(figPlant, expect.any(HTMLElement));
 	});
 
 	// Position is a fraction because issue #29 replaces the photo at another

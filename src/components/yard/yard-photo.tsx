@@ -10,7 +10,7 @@ import { PlantPin } from './plant-pin';
 export function YardPhoto({ yard, plants, onSelect }: {
 	yard: Yard;
 	plants: Plant[];
-	onSelect: (plant: Plant) => void;
+	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
 	const { photo } = yard;
 

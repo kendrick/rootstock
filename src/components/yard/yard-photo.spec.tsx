@@ -106,7 +106,7 @@ describe('yardPhoto', () => {
 
 		screen.getByRole('button', { name: figPlant.name }).click();
 
-		expect(onSelect).toHaveBeenCalledWith(figPlant);
+		expect(onSelect).toHaveBeenCalledWith(figPlant, expect.any(HTMLElement));
 	});
 
 	// The 404 that motivated this fix raised no console error and left the pins

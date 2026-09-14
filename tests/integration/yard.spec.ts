@@ -37,8 +37,14 @@ test('the yard photo loads from the built export', async ({ page }) => {
 	const photo = page.getByRole('img', { name: /seen from above/ });
 	await expect(photo).toBeVisible();
 
-	const naturalWidth = await photo.evaluate((image: HTMLImageElement) => image.naturalWidth);
-	expect(naturalWidth).toBeGreaterThan(0);
+	// An <img> reserves its box and reports visible the moment it's in the DOM,
+	// well before the bytes behind a 404'd src would have failed to arrive.
+	// naturalWidth is the one signal that the fetch actually resolved to image
+	// data, so this polls it rather than reading it once right after goto.
+	await expect(async () => {
+		const naturalWidth = await photo.evaluate((image: HTMLImageElement) => image.naturalWidth);
+		expect(naturalWidth).toBeGreaterThan(0);
+	}).toPass();
 });
 
 test('a photo pin takes focus and opens its sheet on Enter', async ({ page }) => {

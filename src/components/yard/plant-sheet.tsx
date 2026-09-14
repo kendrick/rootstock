@@ -7,7 +7,7 @@ import type { Citation } from '@/planner/task';
 import type { GuardRule, Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Irrigation, Plant } from '@/yard/plant';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SourceBadge } from '@/components/source-badge';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -85,6 +85,13 @@ export interface PlantSheetProps {
 	 */
 	store?: Store;
 	onOpenChange: (open: boolean) => void;
+	/**
+	 * Radix restores focus to whatever it recorded as the trigger, but this
+	 * sheet has two: a photo pin and a list row can both open it for the same
+	 * Plant. Only the caller knows which one actually fired, so it supplies
+	 * this instead of the sheet guessing.
+	 */
+	onCloseAutoFocus?: (event: Event) => void;
 }
 
 function Detail({ label, children }: { label: string; children: ReactNode }): ReactElement {
@@ -255,8 +262,16 @@ export function PlantSheet({
 	artifact,
 	store,
 	onOpenChange,
+	onCloseAutoFocus,
 }: PlantSheetProps): ReactElement {
 	const [history, setHistory] = useState<History | null>(null);
+
+	// The critique measured focus landing on the fourth of five focusables on
+	// open, roughly 500px below the fold with nothing on screen to say focus
+	// had moved at all. The heading is the one thing every opening of this
+	// sheet has in common, sighted or not, so onOpenAutoFocus is overridden to
+	// land there instead of wherever Radix's own tab-order scan happens to stop.
+	const titleRef = useRef<HTMLHeadingElement>(null);
 
 	// The id and not the record: a parent that rebuilt an equal Plant object on
 	// every render would otherwise re-read the store on every render with it.
@@ -335,9 +350,23 @@ export function PlantSheet({
 	return (
 		<Sheet open={plant !== null} onOpenChange={onOpenChange}>
 			{plant !== null && (
-				<SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+				<SheetContent
+					className="w-full overflow-y-auto sm:max-w-lg"
+					aria-modal="true"
+					onOpenAutoFocus={(event) => {
+						event.preventDefault();
+						titleRef.current?.focus();
+					}}
+					onCloseAutoFocus={onCloseAutoFocus}
+				>
 					<SheetHeader>
-						<SheetTitle>{plant.name}</SheetTitle>
+						{/*
+							tabIndex makes an h2 focusable without adding it to the tab
+							order: nothing needs to reach it by Tab, but onOpenAutoFocus
+							above needs somewhere to send focus that isn't a random control
+							several sections down.
+						*/}
+						<SheetTitle ref={titleRef} tabIndex={-1}>{plant.name}</SheetTitle>
 						<SheetDescription>{KIND_TEXT[plant.kind]}</SheetDescription>
 					</SheetHeader>
 
