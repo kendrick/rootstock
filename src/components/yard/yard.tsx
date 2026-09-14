@@ -5,7 +5,7 @@ import type { Artifact } from '@/artifact/artifact';
 import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant, Yard as YardRecord } from '@/yard/plant';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
 import { YardPhoto } from './yard-photo';
@@ -36,10 +36,21 @@ export interface YardProps {
 export function Yard({ yard, plants, rules, artifact, store }: YardProps): ReactElement {
 	const [selected, setSelected] = useState<Plant | null>(null);
 
+	// A pin and a list row can both open the sheet for the same Plant, so
+	// Radix's own trigger-tracking (built for a single Trigger component) has
+	// nothing to restore to. This is the one whichever of the two actually
+	// fired, kept outside state so recording it never causes a render.
+	const triggerRef = useRef<HTMLElement | null>(null);
+
+	function handleSelect(plant: Plant, trigger: HTMLElement): void {
+		triggerRef.current = trigger;
+		setSelected(plant);
+	}
+
 	return (
 		<div className="space-y-6">
-			<YardPhoto yard={yard} plants={plants} onSelect={setSelected} />
-			<PlantList plants={plants} onSelect={setSelected} />
+			<YardPhoto yard={yard} plants={plants} onSelect={handleSelect} />
+			<PlantList plants={plants} onSelect={handleSelect} />
 			<PlantSheet
 				plant={selected}
 				rules={rules}
@@ -53,6 +64,10 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 					if (!open) {
 						setSelected(null);
 					}
+				}}
+				onCloseAutoFocus={(event) => {
+					event.preventDefault();
+					triggerRef.current?.focus();
 				}}
 			/>
 		</div>

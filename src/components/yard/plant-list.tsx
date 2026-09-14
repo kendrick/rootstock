@@ -31,12 +31,15 @@ const KIND_TEXT: Record<Plant['kind'], string> = {
  * aria-label so a sighted reader on a phone in the yard sees the same thing a
  * screen reader announces, matching the house rule from `SourceBadge`.
  */
-function PlantRow({ plant, onSelect }: { plant: Plant; onSelect: (plant: Plant) => void }): ReactElement {
+function PlantRow({ plant, onSelect }: {
+	plant: Plant;
+	onSelect: (plant: Plant, trigger: HTMLElement) => void;
+}): ReactElement {
 	return (
 		<li className="border-b border-border last:border-b-0">
 			<button
 				type="button"
-				onClick={() => onSelect(plant)}
+				onClick={event => onSelect(plant, event.currentTarget)}
 				className="flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<span className="flex flex-wrap items-center gap-2">
@@ -61,7 +64,7 @@ function PlantRow({ plant, onSelect }: { plant: Plant; onSelect: (plant: Plant) 
  */
 export function PlantList({ plants, onSelect }: {
 	plants: Plant[];
-	onSelect: (plant: Plant) => void;
+	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement {
 	return (
 		<ul aria-label="Plants" className="flex flex-col rounded-md border border-border">

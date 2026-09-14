@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactElement } from 'react';
-import type { Plant } from '@/yard/plant';
+import type { Plant, Position } from '@/yard/plant';
 import { Circle, CircleDashed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +24,18 @@ const PIN_TREATMENT: Record<Plant['status'], PinTreatment> = {
 	planned: { Icon: CircleDashed, fill: 'fill-none', suffix: ', planned' },
 };
 
-export function PlantPin({ plant, onSelect }: {
+export function PlantPin({ plant, position: positionOverride, onSelect }: {
 	plant: Plant;
-	onSelect: (plant: Plant) => void;
+	/**
+	 * Where to draw the pin, if it differs from `plant.position`. `pin-layout.ts`
+	 * uses this to spread a crowded cluster apart for rendering without
+	 * touching the Plant record, so onSelect still hands its caller the Plant
+	 * exactly as the inventory carries it.
+	 */
+	position?: Position;
+	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
-	const { position } = plant;
+	const position = positionOverride ?? plant.position;
 
 	// No position means there is nowhere on the photo to put this Plant. The
 	// list view is where an unsited Plant gets seen, so the photo stays silent
@@ -42,28 +49,32 @@ export function PlantPin({ plant, onSelect }: {
 	return (
 		<button
 			type="button"
-			onClick={() => onSelect(plant)}
+			onClick={event => onSelect(plant, event.currentTarget)}
+			// `plant-list.tsx` reaches every Plant, sited or not, and a pin tabbed
+			// to on its own carries no sense of where on the photo it sits anyway.
+			// Without this, a keyboard or screen-reader user met the same nine
+			// Plants twice, as two independent button sets with near-identical
+			// labels. Pointer and touch interaction are unaffected by either
+			// attribute, so the pin still opens the sheet on click exactly as
+			// before.
+			tabIndex={-1}
+			aria-hidden="true"
 			// Percentages of the wrapper, never pixels derived from
 			// photo.width/height. Issue #29 swaps public/yard.jpg for an edited
 			// image at a different resolution, and a fraction is the only offset
 			// that survives that swap without every pin having to be re-sited.
 			style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
+			// A hover title rather than the accessible name it used to be: aria-hidden
+			// takes the button out of the accessible-name computation entirely, so a
+			// sighted mouse user still gets to know what they're pointing at.
+			title={`${plant.name}${suffix}`}
 			className={cn(
 				'absolute -translate-x-1/2 -translate-y-1/2 rounded-full',
 				'bg-background/70 p-1 text-foreground shadow-sm ring-1 ring-border',
 				'transition-colors hover:bg-background',
-				'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-				'focus-visible:ring-offset-2 focus-visible:ring-offset-background',
 			)}
 		>
 			<Icon aria-hidden="true" className={cn('size-4 shrink-0', fill)} />
-			{/*
-				Hidden rather than drawn: the seed already sites six plants, and six
-				names printed across one photo would overlap into mush. The name still
-				has to exist somewhere, so it goes in the button's own text, which is
-				where a button's accessible name comes from.
-			*/}
-			<span className="sr-only">{`${plant.name}${suffix}`}</span>
 		</button>
 	);
 }

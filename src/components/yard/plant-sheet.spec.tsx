@@ -103,6 +103,41 @@ describe('plantSheet', () => {
 		expect(screen.getByText('Lawn')).toBeDefined();
 	});
 
+	// The critique measured focus landing on the fourth of five focusables, the
+	// "days as a table" summary, roughly 500px below the fold with no visual
+	// cue that anything had happened. The heading is always the first thing a
+	// reader of any kind meets in the sheet, so it is where focus belongs.
+	it('puts focus on the heading when it opens', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		expect(document.activeElement).toBe(screen.getByRole('heading', { name: lawnPlant.name }));
+	});
+
+	// Radix's Dialog primitive never sets this on its own in the version this
+	// repo pins, though it already does everything else a modal dialog does:
+	// traps focus, blocks the body, disables outside pointer events.
+	it('marks the sheet as a modal dialog', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true');
+	});
+
+	// The critique measured this control last in DOM and tab order, after
+	// three citation links, at a 16x16 hit target with no padding around it.
+	it('puts the Close control first among the sheet\'s focusable elements, at a 24px hit target', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const dialog = screen.getByRole('dialog');
+		const focusable = dialog.querySelectorAll('button, a[href], summary, [tabindex]:not([tabindex="-1"])');
+		const close = screen.getByRole('button', { name: 'Close' });
+
+		expect(focusable[0]).toBe(close);
+		expect(close.className).toContain('size-6');
+	});
+
 	// The lawn is the one Plant carrying detail of its own, and every field of
 	// it is something a person would otherwise have to remember.
 	it('shows the lawn its grass, area, soil and irrigation schedule', async () => {

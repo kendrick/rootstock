@@ -59,7 +59,7 @@ describe('yard', () => {
 	it('opens the sheet for the Plant whose pin was clicked', async () => {
 		renderYard();
 
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
@@ -73,7 +73,7 @@ describe('yard', () => {
 	 */
 	it('opens the same sheet from a pin and from a list row', async () => {
 		const fromPin = renderYard();
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 		const pinSheet = screen.getByRole('dialog').textContent;
 		fromPin.unmount();
@@ -111,7 +111,7 @@ describe('yard', () => {
 	// from it and never changed.
 	it('clears the selection when the sheet is closed, and reopens on the same Plant', async () => {
 		renderYard();
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -119,9 +119,48 @@ describe('yard', () => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
 
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
+	});
+
+	// The critique found `document.activeElement` at `body` after every close,
+	// by Escape and by the Close button alike: the triggering pin or row never
+	// got focus back. Radix restores focus to whatever it recorded as the
+	// trigger on its own, but nothing here uses a Radix Trigger component, since
+	// a pin and a row are two different elements for the one Plant, so Yard has
+	// to track and restore it itself.
+	it('returns focus to the pin that opened the sheet, once it closes', async () => {
+		renderYard();
+
+		const pin = screen.getByTitle(figPlant.name);
+		fireEvent.click(pin);
+		await settled();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		await waitFor(() => {
+			expect(screen.queryByRole('dialog')).toBeNull();
+		});
+
+		expect(document.activeElement).toBe(pin);
+	});
+
+	// The list row is the other trigger the same sheet can open from, and the
+	// fix has to restore to whichever one actually fired rather than always
+	// preferring the pin.
+	it('returns focus to the list row that opened the sheet, once it closes', async () => {
+		renderYard();
+
+		const row = listRowFor(plannedPlant.name);
+		fireEvent.click(row);
+		await settled();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		await waitFor(() => {
+			expect(screen.queryByRole('dialog')).toBeNull();
+		});
+
+		expect(document.activeElement).toBe(row);
 	});
 });
