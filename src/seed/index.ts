@@ -90,6 +90,45 @@ export function findUnresolvedReferences(plants: Plant[], rules: Rule[], occurre
 }
 
 /**
+ * `appliesToSchema` stores a Guard's `ruleTags` as a plain string array, and a
+ * Zod refine sees only the one Rule object it is validating—the same limit
+ * {@link findUnresolvedReferences} names above, applied to a tag instead of
+ * an id. That means nothing at parse time can tell a Guard whose
+ * `appliesTo.ruleTags` still reaches a task-creating Rule from one that no
+ * longer does; only a pass over the whole parsed Rule list can, which is what
+ * this does.
+ *
+ * A Guard whose `appliesTo.ruleTags` intersects no task-creating Rule's
+ * `tags` can never defer or annotate anything—it is dormant. Only the
+ * Guard's own `appliesTo.ruleTags` is checked against that set. A Guard's
+ * `tags` is never matched against, on either side: a Guard creates no work
+ * (CONTEXT.md), so one Guard selecting another Guard's tags still has
+ * nothing to hold.
+ */
+export function findDormantGuards(rules: Rule[]): string[] {
+	const taskCreatingTags = new Set<string>();
+	for (const rule of rules) {
+		if (rule.kind !== 'guard') {
+			for (const tag of rule.tags) {
+				taskCreatingTags.add(tag);
+			}
+		}
+	}
+
+	const problems: string[] = [];
+	for (const rule of rules) {
+		if (rule.kind !== 'guard' || rule.appliesTo.ruleTags === null) {
+			continue;
+		}
+		const reaches = rule.appliesTo.ruleTags.some(tag => taskCreatingTags.has(tag));
+		if (!reaches) {
+			problems.push(`guard '${rule.id}' appliesTo.ruleTags names no task-creating rule's tag: ${rule.appliesTo.ruleTags.join(', ')}`);
+		}
+	}
+	return problems;
+}
+
+/**
  * ADR 0003 fixes the window as a budget the Rules must fit inside, not a
  * ceiling the Rules get clipped to: "the fix is to widen the window rather
  * than to shorten the Rule." It also names the gap left open—nothing

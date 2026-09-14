@@ -31,9 +31,9 @@ function reachesPlant(rule: Rule, plant: Plant, plants: Plant[]): boolean {
  * narrows to the Rules the Guard has an opinion on. Checking only the plant
  * half hides `rain-expected`, which names no Plant at all and is the Guard
  * holding the lawn's herbicide until the rain passes—the one a reader most
- * needs, on the Plant it acts on. Checking only `plantIds` also lists
- * `fig-fertilizer-until-spring` on a fig that no fertilizer Rule reaches, so
- * the Guard sits there holding nothing.
+ * needs, on the Plant it acts on. Skipping the `ruleTags` half instead lists
+ * `water-in-after-application` on the esperanza, which carries no Rule tagged
+ * `chemical`, so the Guard would sit there holding nothing.
  *
  * `guardTargets()` answers this same question against a Plan's Tasks, and this
  * is its Plant-shaped sibling. The difference is deliberate rather than a

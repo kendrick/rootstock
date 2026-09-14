@@ -199,13 +199,15 @@ describe('plantSheet', () => {
 		expect(applicable.textContent).toContain('Guard · holds work back');
 	});
 
-	// No seed Rule carries `pesticide`, so both annotating Guards speak to
-	// nothing in this yard. Retagging one onto the tag the lawn's pre-emergents
-	// really carry is what puts the other half of the marker on screen.
+	// water-in-after-application already carries the chemical tag the lawn's
+	// pre-emergents match, but rendering a copy under its own id keeps this
+	// assertion about the annotate marker itself, not about which seed Rules
+	// happen to share a tag.
 	it('marks an annotating Guard as adding a note', async () => {
 		const annotating = guardFixture('annotate');
 		const reaching: Rule = {
 			...annotating,
+			id: 'fixture-annotating-guard-reaches-lawn',
 			appliesTo: { ...annotating.appliesTo, ruleTags: ['chemical'] },
 		};
 
@@ -217,16 +219,25 @@ describe('plantSheet', () => {
 		expect(applicable.textContent).toContain('Guard · adds a note');
 	});
 
-	// The other direction of the same rule. `fig-fertilizer-until-spring` names
-	// fig-1 outright, and still does not belong here: its ruleTags is
-	// ['fertilizer'] and nothing reaching the fig asks for fertilizer, so the
-	// Guard is holding nothing and listing it would be noise on the one screen
-	// meant to say what governs this plant.
+	// The other direction of the same rule. Neither seed Guard names fig-1 while
+	// holding none of its work, so proving the case needs one built for it: a
+	// Guard naming fig-1 outright, tagged for a Rule tag ('pesticide') that
+	// neither of the fig's Rules carries. It has no work to hold, and listing it
+	// anyway would be noise on the one screen meant to say what governs this
+	// plant.
 	it('leaves off a Guard that names the plant but has no work of its to hold', async () => {
-		renderSheet(figPlant);
+		const annotating = guardFixture('annotate');
+		const holdingNothing: Rule = {
+			...annotating,
+			id: 'fixture-fig-guard-holding-nothing',
+			name: 'Fixture: holds nothing on the fig',
+			appliesTo: { plantIds: ['fig-1'], plantTags: null, ruleTags: ['pesticide'] },
+		};
+
+		renderSheet(figPlant, { rules: [...ruleFixtures, holdingNothing] });
 		await settled();
 
-		expect(screen.queryByText('No fig fertilizer until spring')).toBeNull();
+		expect(screen.queryByText(holdingNothing.name)).toBeNull();
 	});
 
 	// `targets()` drops a planned Plant until it is in the ground, so this is the
@@ -267,8 +278,15 @@ describe('plantSheet', () => {
 		renderSheet(figPlant);
 		await settled();
 
+		// occurrenceFixtures never names fig-1, so the one row this section shows
+		// has to be the seed's own recorded compost application rather than a leak
+		// of the esperanza history the same store also carries.
 		expect(occurrenceFixtures.every(occurrence => occurrence.plantId !== figPlant.id)).toBe(true);
-		expect(section('Recorded work').querySelectorAll('time')).toHaveLength(0);
+
+		const recorded = section('Recorded work');
+		expect(recorded.querySelectorAll('time')).toHaveLength(1);
+		expect(recorded.textContent).toContain('Compost the fig');
+		expect(recorded.textContent).not.toContain('Feed the Esperanza');
 	});
 
 	it('shows an empty state for a Plant nothing has been recorded against', async () => {
