@@ -12,23 +12,40 @@ if (slug === undefined || slug.trim() === '') {
 
 /**
  * #63's acceptance criteria ask that print output be verified by rendering to
- * PDF, not by eye in a print preview. `page.pdf()` drives Chromium's actual
- * print pipeline rather than the on-screen preview overlay, which is the
- * distinction that sentence draws—so this is the one spec in the suite that
- * calls it. Only headless Chromium implements it, so every other project
- * skips rather than fails.
+ * PDF, not by eye in a print preview. `page.emulateMedia({ media: 'print' })`
+ * puts the page in the exact CSS state Chromium's print pipeline reads from,
+ * so the assertions below are reading the same cascade the PDF is built out
+ * of. A bare byte count would still pass on an invisible wordmark, a nav that
+ * never hid, or a missing date, so this checks each of #63's specific claims
+ * before treating a non-trivial PDF as proof of anything.
  */
-test('renders the printable route to a real PDF without error', async ({ page, browserName }) => {
+test('prints the wordmark in ink, hides the nav, and carries a date and a box to tick', async ({ page, browserName }) => {
 	test.skip(browserName !== 'chromium', 'page.pdf() is only implemented in headless Chromium');
 
 	const response = await page.goto(`away/${slug}`);
 	expect(response?.status()).toBe(200);
-
 	await page.emulateMedia({ media: 'print' });
-	const pdf = await page.pdf({ format: 'Letter' });
 
+	await expect(page.getByText('rootstock', { exact: true })).toHaveCSS('color', 'rgb(0, 0, 0)');
+	await expect(page.locator('nav[aria-label="Main"]')).toBeHidden();
+	await expect(page.getByRole('button', { name: /print/i })).toBeHidden();
+
+	const time = page.locator('time');
+	await expect(time).toBeVisible();
+	await expect(time).toHaveCSS('color', 'rgb(0, 0, 0)');
+
+	// One empty box per task line, drawn in the same ink as the text beside
+	// it—see away-card.tsx's border-current comment for why the two never
+	// drift apart.
+	const boxes = page.locator('li span[aria-hidden="true"]');
+	expect(await boxes.count()).toBeGreaterThan(0);
+	await expect(boxes.first()).toHaveCSS('border-color', 'rgb(0, 0, 0)');
+
+	await expect(page.getByText('The yard needs more this week than this page shows.')).toBeVisible();
+
+	const pdf = await page.pdf({ format: 'Letter' });
 	// A blank or truncated page would still satisfy a bare "did not throw", so
-	// the byte count is the floor that catches a print pipeline that rendered
-	// nothing.
+	// the byte count is a floor beneath the assertions above, not a
+	// replacement for them.
 	expect(pdf.length).toBeGreaterThan(1000);
 });
