@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { AwayCard } from '@/components/away/away-card';
+import './print.css';
 
 /**
  * The Away Card, at a path only someone who was told it can reach. The slug

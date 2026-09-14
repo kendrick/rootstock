@@ -1,0 +1,9 @@
+/*
+ * `@page` has no Tailwind utility and no `print:` variant, so it lands here
+ * rather than in away-card.tsx. Route-based code splitting keeps this rule out
+ * of every bundle but this one, which is what makes it safe to leave unscoped:
+ * only the Away Card ever loads it, so no other route's print output changes.
+ */
+@page {
+	margin: 0.75in;
+}

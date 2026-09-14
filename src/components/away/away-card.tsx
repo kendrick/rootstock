@@ -3,8 +3,11 @@
 import type { ReactElement } from 'react';
 import type { Narration } from '@/artifact/narration';
 import type { Task } from '@/planner/task';
+import { Printer } from 'lucide-react';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { StalenessBanner } from '@/components/staleness-banner';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
 import { WithheldCount } from './withheld-count';
 
 /**
@@ -85,6 +88,19 @@ function taskText(task: Task, narration: Narration | null): string {
 	return narration?.tasks.find(entry => entry.taskId === task.id)?.text ?? task.title;
 }
 
+/**
+ * Spelled out for a reader holding paper rather than a device with its own
+ * clock in the corner. `en-US` is pinned for the same reason StalenessBanner
+ * pins it: every other string on this card is English by hand.
+ */
+const GENERATED_ON = new Intl.DateTimeFormat('en-US', {
+	weekday: 'long',
+	month: 'long',
+	day: 'numeric',
+	hour: 'numeric',
+	minute: '2-digit',
+});
+
 export interface AwayCardProps {
 	artifact: unknown;
 	status: unknown;
@@ -97,17 +113,22 @@ export interface AwayCardProps {
  *
  * What it must never say comes from ADR 0004 and CONTEXT.md's Away Card entry:
  * that anyone is travelling, or when. The card renders the same either way,
- * which is what makes a discovered link harmless, so the heading names the yard
- * and nothing below it renders a date.
+ * which is what makes a discovered link harmless, so the heading names the
+ * yard rather than the reason anyone is reading it. The one date on the page
+ * is when the plan was generated, which says nothing about who is home; #63
+ * is the record of why that line used to be missing entirely, on the mistaken
+ * belief that any date at all would be a trip date.
  *
  * The count under the list is here because a household that works the card to
  * the bottom and reads a finished list as a finished yard is how a pre-emergent
  * window closes. The card says how much it is keeping back before anyone walks
  * away from it.
  *
- * Nothing here takes input. #15 rules out shared state, and a checkbox that
- * silently fails to sync is worse than a sheet of paper—which is what this card
- * becomes most weeks.
+ * Nothing here takes input toward the Plan. #15 rules out shared state, and a
+ * checkbox that silently fails to sync is worse than a sheet of paper—which is
+ * what this card becomes most weeks, complete with an empty box beside each
+ * line for a pen to fill in rather than a click. The one button on the page
+ * opens the print dialog and reads nothing back from it.
  *
  * A deferred Task arrives here as an anonymous number, which is narrower than
  * CONTEXT.md's Deferred Task entry describes. That entry and ADR 0002 both say
@@ -129,9 +150,41 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 					// are not this component's to change. A reader who prints the card
 					// and carries it into the yard gets ink on white either way.
 					<div className="space-y-6 print:space-y-4 print:text-black">
-						<h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl print:text-black">
-							Yard tasks this week
-						</h1>
+						<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+							<h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl print:text-black">
+								Yard tasks this week
+							</h1>
+							{/* The one control a read-only card gets to carry: it opens the
+							    browser's own print dialog and touches nothing else. It
+							    disappears from the page it produces, since a printed sheet
+							    has no use for a button asking it to print. */}
+							<button
+								type="button"
+								onClick={() => window.print()}
+								className={cn(
+									'inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-card print:hidden',
+									FOCUS_RING,
+								)}
+							>
+								<Printer aria-hidden="true" className="size-4" />
+								Print
+							</button>
+						</div>
+
+						{/* The only date this card is allowed to carry, and the fix #63
+						    exists for: a printed sheet with no date is indistinguishable
+						    from one three weeks old, the same failure WithheldCount's
+						    sentence below guards against. Rendered unconditionally, unlike
+						    StalenessBanner, which goes silent on a fresh Artifact—this line
+						    is what stays behind when that one has nothing to say. */}
+						<p className="text-sm text-muted-foreground print:text-black">
+							Generated
+							{' '}
+							<time dateTime={validated.artifact.generatedAt}>
+								{GENERATED_ON.format(Date.parse(validated.artifact.generatedAt))}
+							</time>
+							.
+						</p>
 
 						{/* Above the first item, and louder than anywhere else on the
 						    site. Every other route is read in front of the machine that
@@ -157,9 +210,16 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 											// sheets, which is the one way a printed line gets missed.
 											<li
 												key={task.id}
-												className="px-4 py-3 text-base sm:text-lg print:break-inside-avoid print:py-2 print:text-black"
+												className="flex items-start gap-3 px-4 py-3 text-base sm:text-lg print:break-inside-avoid print:py-2 print:text-black"
 											>
-												{taskText(task, validated.artifact.narration)}
+												{/* Empty on purpose: a helper's own pen is what marks this,
+												    never a click. This card has no digital way to mark work
+												    done, because CONTEXT.md's Occurrence entry makes that
+												    record the owner's alone. border-current rather than a
+												    named colour so the box always matches the text beside
+												    it, on screen and on paper. */}
+												<span aria-hidden="true" className="mt-1 size-4 shrink-0 border border-current" />
+												<span>{taskText(task, validated.artifact.narration)}</span>
 											</li>
 										))}
 									</ul>

@@ -240,10 +240,46 @@ describe('awayCard', () => {
 		expect(text).not.toMatch(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\b/i);
 	});
 
-	it('carries no input, button, or checkbox for anyone to tick', () => {
+	// The only button on the card is the print trigger, and it is a control
+	// over the browser rather than over the Plan: it cannot mark a Task done,
+	// which stays true even though #63 adds it. The squares beside each task are
+	// a border on an empty span, not a `[type="checkbox"]`, exactly so a helper's
+	// pen is what fills them in rather than a click this card would have to sync.
+	it('carries no input, checkbox, or link for anyone to tick, only a control to print', () => {
 		const container = renderCard(awayArtifact, awayStatus, FRESH);
 
-		expect(container.querySelectorAll('input, button, [type="checkbox"], a')).toHaveLength(0);
+		expect(container.querySelectorAll('input, [type="checkbox"], a')).toHaveLength(0);
+
+		const buttons = container.querySelectorAll('button');
+		expect(buttons).toHaveLength(1);
+		expect(buttons[0]?.textContent).toMatch(/print/i);
+	});
+
+	// One box per shown Task, matching the count the earlier partition test
+	// already pins, and none of them a real checkbox—see the test above.
+	it('draws an empty box beside every shown Task for a pen to fill in', () => {
+		renderCard(awayArtifact, awayStatus, FRESH);
+
+		const items = screen.getAllByRole('listitem');
+		for (const item of items) {
+			const box = item.querySelector('[aria-hidden="true"]');
+			expect(box).not.toBeNull();
+			expect(box?.textContent).toBe('');
+		}
+	});
+
+	// #63's fix: a printed sheet with no date is indistinguishable from one
+	// three weeks old. Checked across bands, because the line has to survive
+	// even the one render—fresh, no failures—where StalenessBanner says nothing
+	// at all.
+	it('carries a generation date on every render, fresh or not', () => {
+		for (const now of [FRESH, STALE]) {
+			const container = renderCard(awayArtifact, awayStatus, now);
+			const time = container.querySelector('time');
+
+			expect(time).not.toBeNull();
+			expect(time?.getAttribute('dateTime')).toBe(awayArtifact.generatedAt);
+		}
 	});
 
 	it('puts the staleness banner above the first task', () => {

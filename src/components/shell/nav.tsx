@@ -36,7 +36,10 @@ export function Nav(): ReactElement {
 	const pathname = usePathname();
 
 	return (
-		<nav aria-label="Main">
+		// print:hidden because a paper reader cannot follow a link. #63 is the one
+		// route this rule actually reaches: This Week, Yard and Rules have no print
+		// path today, so the nav they carry never meets it.
+		<nav aria-label="Main" className="print:hidden">
 			<ul className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
 				{ROUTES.map(({ href, label }) => {
 					const isCurrent = pathname === href;
