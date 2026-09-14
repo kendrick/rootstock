@@ -12,7 +12,10 @@ export function Footer(): ReactElement {
 	return (
 		<footer className="border-t border-border bg-background">
 			<div className="mx-auto max-w-3xl px-4 py-4">
-				<p className="text-xs text-muted-foreground">{OPEN_METEO_ATTRIBUTION}</p>
+				{/* print:text-black: --muted-foreground is tuned for a dark surface, so
+				    the licence line would print as pale grey noise rather than ink a
+				    reader can actually read. */}
+				<p className="text-xs text-muted-foreground print:text-black">{OPEN_METEO_ATTRIBUTION}</p>
 			</div>
 		</footer>
 	);

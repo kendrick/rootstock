@@ -20,7 +20,10 @@ export function Header(): ReactElement {
 				 * is not a content line, and This Week renders every citation
 				 * collapsed, so without this the landing route shows no hue at all.
 				 */}
-				<span className="text-lg font-medium tracking-tight text-evidence">{WORDMARK}</span>
+				{/* print:text-black because --evidence is tuned against --background, a
+				    dark surface print never reproduces; on paper the token has no
+				    contrast guarantee against the white the page actually prints on. */}
+				<span className="text-lg font-medium tracking-tight text-evidence print:text-black">{WORDMARK}</span>
 				<Nav />
 			</div>
 		</header>
