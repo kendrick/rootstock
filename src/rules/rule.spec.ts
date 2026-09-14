@@ -263,6 +263,8 @@ describe('ruleSchema seed rules', () => {
 		expect(rule.depthCm).toBeNull();
 		expect(rule.published).toBeNull();
 		expect(rule.appliesTo).toEqual(wholeYard);
+		expect(rule.direction).toBeNull();
+		expect(rule.season).toBeNull();
 	});
 });
 
@@ -347,6 +349,45 @@ describe('consecutiveDays', () => {
 
 	it('rejects a run of zero days', () => {
 		expect(() => thresholdRuleSchema.parse({ ...springPreEmergent, consecutiveDays: 0 })).toThrow();
+	});
+});
+
+describe('direction and season', () => {
+	it('accepts direction: rising paired with comparison: gte', () => {
+		const rule = thresholdRuleSchema.parse({ ...springPreEmergent, direction: 'rising' });
+		expect(rule.direction).toBe('rising');
+	});
+
+	it('accepts direction: falling paired with comparison: lte', () => {
+		const rule = thresholdRuleSchema.parse({ ...springPreEmergent, comparison: 'lte', direction: 'falling' });
+		expect(rule.direction).toBe('falling');
+	});
+
+	it('rejects a direction outside the pair', () => {
+		expect(() => thresholdRuleSchema.parse({ ...springPreEmergent, direction: 'sideways' })).toThrow();
+	});
+
+	it('rejects rising paired with comparison: lte', () => {
+		expect(() =>
+			thresholdRuleSchema.parse({ ...springPreEmergent, comparison: 'lte', direction: 'rising' }),
+		).toThrow(/must pair with comparison/);
+	});
+
+	it('rejects falling paired with comparison: gte', () => {
+		expect(() =>
+			thresholdRuleSchema.parse({ ...springPreEmergent, direction: 'falling' }),
+		).toThrow(/must pair with comparison/);
+	});
+
+	it('parses a season in the same shape as a cadence rule\'s season', () => {
+		const rule = thresholdRuleSchema.parse({ ...springPreEmergent, season: { start: '03-01', end: '06-01' } });
+		expect(rule.season).toEqual({ start: '03-01', end: '06-01' });
+	});
+
+	it('rejects a season missing its end', () => {
+		expect(() =>
+			thresholdRuleSchema.parse({ ...springPreEmergent, season: { start: '03-01' } }),
+		).toThrow();
 	});
 });
 

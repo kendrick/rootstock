@@ -153,6 +153,19 @@ export type WindowRule = z.infer<typeof windowRuleSchema>;
  * 0003, widen the artifact's observation window when a rule reaches past it,
  * rather than shortening the rule. A `.max()` here would invert that and let
  * the payload budget overrule the agronomy.
+ *
+ * `direction` names which way the series has to move for the run to count.
+ * `null` judges the run on its own, matching today's behavior. `'rising'` or
+ * `'falling'` ties itself to `comparison` (enforced by the refine below) and
+ * requires the day just before the run to sit on the far side of `value`, so
+ * a crossing is evidenced rather than assumed—a run already past `value`
+ * before the window opened proves no trend at all.
+ *
+ * `season` fences the reading to part of the year, the same shape as
+ * `cadenceRuleSchema.season` above. A soil-temperature threshold with no
+ * season fires on a freak January warm spell exactly as readily as an actual
+ * spring one; season is what lets a rule restrict a crossing to the part of
+ * the year it's agronomically meaningful.
  */
 export const thresholdRuleSchema = z.strictObject({
 	...ruleBaseShape,
@@ -164,6 +177,11 @@ export const thresholdRuleSchema = z.strictObject({
 	value: z.number(),
 	unit: unitSchema,
 	consecutiveDays: z.number().int().min(1),
+	direction: z.enum(['rising', 'falling']).nullable().default(null),
+	season: z.strictObject({
+		start: monthDaySchema,
+		end: monthDaySchema,
+	}).nullable().default(null),
 	published: z.strictObject({
 		low: z.number(),
 		high: z.number(),
@@ -174,9 +192,30 @@ export const thresholdRuleSchema = z.strictObject({
 	.refine(
 		rule => rule.published === null || rule.published.low <= rule.published.high,
 		{ message: 'published.low must not exceed published.high', path: ['published'] },
+	)
+	.refine(
+		rule =>
+			rule.direction === null
+			|| (rule.direction === 'rising' && rule.comparison === 'gte')
+			|| (rule.direction === 'falling' && rule.comparison === 'lte'),
+		{
+			message: 'direction \'rising\' must pair with comparison \'gte\', and \'falling\' with \'lte\': the other pairing is a run that could never open, since a prior day already on the far side of value would have satisfied the comparison itself',
+			path: ['direction'],
+		},
 	);
 
 export type ThresholdRule = z.infer<typeof thresholdRuleSchema>;
+
+/**
+ * The one place `+ 1` is written for a directed threshold rule's lookback.
+ * A directed rule reads the calendar day immediately before the run, in
+ * addition to the run itself, because that day is what proves the series
+ * crossed from the far side of `value` instead of having sat past it all
+ * along.
+ */
+export function thresholdLookbackDays(rule: ThresholdRule): number {
+	return rule.consecutiveDays + (rule.direction === null ? 0 : 1);
+}
 
 /**
  * Fires when an interval has elapsed since the most recent Occurrence, or when

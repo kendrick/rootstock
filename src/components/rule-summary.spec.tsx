@@ -34,6 +34,8 @@ const bareThreshold: Rule = {
 	value: 36,
 	unit: 'F',
 	consecutiveDays: 1,
+	direction: null,
+	season: null,
 	published: null,
 	tags: ['container'],
 	productLabel: null,

@@ -57,6 +57,8 @@ function thresholdRule(overrides: Partial<ThresholdRule> = {}): ThresholdRule {
 		value: 55,
 		unit: 'F',
 		consecutiveDays: 3,
+		direction: null,
+		season: null,
 		published: null,
 		...overrides,
 	};
