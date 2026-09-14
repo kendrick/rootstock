@@ -139,7 +139,7 @@ export const narratedArtifact: Artifact = {
 				citation: { kind: 'window', date: ASOF },
 				deferrals: [],
 				annotations: [
-					{ guardId: 'water-in-after-application', text: 'Water in with a quarter inch within 48 hours.' },
+					{ guardId: 'water-in-after-application', text: 'Irrigate after spreading, following the product label.' },
 				],
 				delegable: false,
 				tags: ['lawn', 'chemical'],
@@ -160,6 +160,11 @@ export const narratedArtifact: Artifact = {
 			 * narrowed answer and a view that re-derives it from tags is doing
 			 * the Planner's job a second time, with a second chance to get it
 			 * wrong.
+			 *
+			 * #33 tracks that gap and stays open on it. Closing it needs an
+			 * undelegable Rule carrying no safety tag, and the seed gains one
+			 * when the yard calls for it rather than when a fixture does.
+			 * Authoring one here would be fitting the yard to the test.
 			 */
 			{
 				id: delegableTaskId,
