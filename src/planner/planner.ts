@@ -5,7 +5,7 @@ import type { CadenceRule, GuardCondition, Rule, TagPolicy, ThresholdRule, Windo
 import type { Aggregate, Variable } from '@/weather/observation';
 import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
-import { ruleSchema, tagPolicySchema } from '@/rules/rule';
+import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
 import { toDailyAggregates } from './aggregate';
@@ -146,7 +146,7 @@ function windowSpan(rules: Rule[]): number {
 	for (const rule of rules) {
 		const rain = rainForecastGuard(rule);
 		if (rule.kind === 'threshold') {
-			days = Math.max(days, rule.consecutiveDays);
+			days = Math.max(days, thresholdLookbackDays(rule));
 		}
 		else if (rain !== null) {
 			days = Math.max(days, rain.days);

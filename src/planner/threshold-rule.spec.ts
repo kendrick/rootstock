@@ -84,6 +84,31 @@ function fixtureRule(): ThresholdRule {
 	return found;
 }
 
+/**
+ * The shipped `spring-pre-emergent` reduced to the fields the evaluator reads:
+ * 55F at 6cm over three days, rising. Passing `direction: null` back gives
+ * what a seed Rule that names no direction parses to, so the specs below can
+ * vary that one field and hold the series still.
+ */
+function springRule(fields: Partial<ThresholdRule> = {}): ThresholdRule {
+	return rule({ comparison: 'gte', value: 55, direction: 'rising', ...fields });
+}
+
+/**
+ * A February warm spell peaking at 58F, declining on every day of its own run,
+ * and collapsing into the low 40s behind a front. Three days hold at or above
+ * 55F, which is why a Rule asking only for a threshold reads a crossing in a
+ * series that never climbed through one.
+ */
+const februaryWarmSpell = [
+	day('2026-02-08', 58),
+	day('2026-02-09', 56),
+	day('2026-02-10', 55),
+	day('2026-02-11', 47),
+	day('2026-02-12', 43),
+	day('2026-02-13', 41),
+];
+
 describe('evaluateThresholdRule', () => {
 	it('fires on the committed fixture series and cites the three days that crossed', () => {
 		/*
@@ -368,5 +393,256 @@ describe('evaluateThresholdRule', () => {
 
 		expect(citationOf(fired).kind).toBe('threshold');
 		expect(citationOf(approaching).kind).toBe('threshold-projection');
+	});
+
+	describe('with a crossing direction', () => {
+		it('does not fire a rising Rule on a spell that declines through its own run', () => {
+			expect(evaluateThresholdRule(springRule(), februaryWarmSpell, '2026-02-13')).toEqual({ fires: false });
+		});
+
+		it('fires that same spell for a Rule naming no direction', () => {
+			// The same spell judged on the threshold alone. Pairing the two verdicts
+			// shows `direction` doing the work, rather than some other property of a
+			// series the evaluator was already unhappy with.
+			const verdict = evaluateThresholdRule(springRule({ direction: null }), februaryWarmSpell, '2026-02-13');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-02-08', to: '2026-02-10' });
+		});
+
+		it('fires a rising Rule on a run the day before it sat below the value', () => {
+			const window = [
+				day('2026-03-01', 52),
+				day('2026-03-02', 55),
+				day('2026-03-03', 57),
+				day('2026-03-04', 58),
+			];
+
+			const verdict = evaluateThresholdRule(springRule(), window, '2026-03-04');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-03-02', to: '2026-03-04' });
+		});
+
+		it('does not fire a directed Rule on a run that opens the series', () => {
+			// The window opens on soil already warm, so nothing in it says whether
+			// the series climbed through 55F yesterday or settled there a fortnight
+			// ago. The undirected verdict on the same days pins the missing evidence
+			// as the reason.
+			const window = [day('2026-03-01', 56), day('2026-03-02', 57), day('2026-03-03', 58)];
+
+			expect(evaluateThresholdRule(springRule(), window, '2026-03-03')).toEqual({ fires: false });
+
+			const verdict = evaluateThresholdRule(springRule({ direction: null }), window, '2026-03-03');
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-03-01', to: '2026-03-03' });
+		});
+
+		it('does not fire a directed Rule on a run that opens after a gap in the dates', () => {
+			// The 1st reads below the value and would be the crossing if the 2nd
+			// were in the series. The 2nd is missing, so the nearest day behind the
+			// run sits two days out and proves nothing about the day it opened.
+			const window = [
+				day('2026-03-01', 52),
+				day('2026-03-03', 56),
+				day('2026-03-04', 57),
+				day('2026-03-05', 58),
+			];
+
+			expect(evaluateThresholdRule(springRule(), window, '2026-03-05')).toEqual({ fires: false });
+
+			const verdict = evaluateThresholdRule(springRule({ direction: null }), window, '2026-03-05');
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-03-03', to: '2026-03-05' });
+		});
+
+		it('does not fire a rising Rule when the day before the run was already past the value', () => {
+			// A spell in progress rather than a crossing. The run from the 2nd to
+			// the 4th does have a day behind it to read, and that day already sits
+			// above 55F.
+			const window = [
+				day('2026-03-01', 56),
+				day('2026-03-02', 57),
+				day('2026-03-03', 58),
+				day('2026-03-04', 59),
+			];
+
+			expect(evaluateThresholdRule(springRule(), window, '2026-03-04')).toEqual({ fires: false });
+		});
+
+		it('keeps a rising crossing fired after the series reverses', () => {
+			// `direction` decides which runs qualify, not how long a qualified one
+			// stands. The front on the 5th reverses the series, and the crossing on
+			// the 2nd still happened.
+			const window = [
+				day('2026-03-01', 52),
+				day('2026-03-02', 55),
+				day('2026-03-03', 57),
+				day('2026-03-04', 58),
+				day('2026-03-05', 44),
+				day('2026-03-06', 41),
+			];
+
+			const verdict = evaluateThresholdRule(springRule(), window, '2026-03-06');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-03-02', to: '2026-03-04' });
+		});
+
+		it('still cites the fixture crossing once the fall Rule names its falling direction', () => {
+			// The fall case the permanence argument was written about. The fixture's
+			// soil reads above 70F the day before the run and at or below it for all
+			// three days, so spelling out `falling` costs the Rule nothing.
+			const falling = thresholdRuleSchema.parse({ ...fixtureRule(), direction: 'falling' });
+			const window = toDailyAggregates(observations, timeZone, 'mean');
+
+			const verdict = evaluateThresholdRule(falling, window, fixtureAsOf);
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-09-09', to: '2026-09-11' });
+		});
+
+		it('does not project a run the forecast joins from the near side', () => {
+			// Approaching claims a crossing is coming. Soil already above the line
+			// when the window opens is a spell nobody watched begin, and a forecast
+			// that it stays there promises no crossing.
+			const window = [
+				day('2026-03-08', 56),
+				day('2026-03-09', 57),
+				forecast('2026-03-10', 58),
+				forecast('2026-03-11', 59),
+			];
+
+			expect(evaluateThresholdRule(springRule(), window, '2026-03-09')).toEqual({ fires: false });
+		});
+
+		it('projects a run the forecast joins from the far side', () => {
+			// The day before the run is observed and below the value, so the forecast
+			// covers the crossing itself. A forecast day may serve as that prior day
+			// too, since `approaching` claims nothing as fact.
+			const window = [
+				day('2026-03-08', 52),
+				day('2026-03-09', 55),
+				forecast('2026-03-10', 57),
+				forecast('2026-03-11', 58),
+			];
+
+			const verdict = evaluateThresholdRule(springRule(), window, '2026-03-09');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'approaching' });
+			expect(citationOf(verdict)).toMatchObject({ projectedDate: '2026-03-11' });
+		});
+	});
+
+	describe('with a season', () => {
+		it('says nothing on an as-of date outside the season, whatever the series did', () => {
+			const spring = springRule({ season: { start: '02-15', end: '04-30' } });
+			const window = [
+				day('2026-03-01', 52),
+				day('2026-03-02', 55),
+				day('2026-03-03', 57),
+				day('2026-03-04', 58),
+			];
+
+			expect(evaluateThresholdRule(spring, window, '2026-07-04')).toEqual({ fires: false });
+
+			// Same Rule, same days, an as-of date the season holds. The crossing is
+			// there to be found either way, and the as-of date is the only thing
+			// that changed.
+			expect(evaluateThresholdRule(spring, window, '2026-03-04')).toMatchObject({ fires: true, status: 'fired' });
+		});
+
+		it('does not count a run that closes before the season opens', () => {
+			const winterSpell = [
+				day('2026-01-28', 56),
+				day('2026-01-29', 57),
+				day('2026-01-30', 58),
+			];
+			const asOf = '2026-02-05';
+
+			const fenced = springRule({ direction: null, season: { start: '02-01', end: '04-30' } });
+			expect(evaluateThresholdRule(fenced, winterSpell, asOf)).toEqual({ fires: false });
+
+			// The same three days against a season that opens early enough to hold
+			// them. The as-of date sits inside both, so the run's own dates are the
+			// only thing either verdict turns on.
+			const early = springRule({ direction: null, season: { start: '01-01', end: '04-30' } });
+			const verdict = evaluateThresholdRule(early, winterSpell, asOf);
+
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-01-28', to: '2026-01-30' });
+		});
+
+		it('fires a crossing on the first day of the season, reading the day before it from outside', () => {
+			// Why the series is never pre-filtered to in-season days. The day that
+			// proves the crossing is evidence for the run rather than part of it,
+			// and fencing it out would leave the run looking like it opened the
+			// series.
+			const spring = springRule({ season: { start: '03-01', end: '05-31' } });
+			const window = [
+				day('2026-02-28', 52),
+				day('2026-03-01', 55),
+				day('2026-03-02', 57),
+				day('2026-03-03', 58),
+			];
+
+			const verdict = evaluateThresholdRule(spring, window, '2026-03-03');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-03-01', to: '2026-03-03' });
+		});
+
+		it('finds a run inside the season within a spell that began before it', () => {
+			// A season needs this scan and a direction never does. The scan tests
+			// every candidate the spell holds, so it finds the run from the 1st
+			// through the 3rd even though the candidate the spell opens with starts
+			// in January. A scan that stopped at that first candidate would answer
+			// "no run".
+			const fenced = springRule({ direction: null, season: { start: '02-01', end: '04-30' } });
+			const window = [
+				day('2026-01-30', 56),
+				day('2026-01-31', 57),
+				day('2026-02-01', 58),
+				day('2026-02-02', 59),
+				day('2026-02-03', 60),
+			];
+
+			const verdict = evaluateThresholdRule(fenced, window, '2026-02-03');
+
+			expect(verdict).toMatchObject({ fires: true, status: 'fired' });
+			expect(citationOf(verdict)).toMatchObject({ from: '2026-02-01', to: '2026-02-03' });
+		});
+
+		it('reads a season that wraps the year boundary', () => {
+			// '11-15' through '02-15' has its end before its start, which
+			// `isWithinMonthDayRange` reads as a wrap rather than as an error.
+			// January is inside that range and March is not, so the same three
+			// values answer two different ways.
+			const overwinter = rule({ season: { start: '11-15', end: '02-15' } });
+			const january = [day('2026-01-20', 68), day('2026-01-21', 67), day('2026-01-22', 66)];
+			const march = [day('2026-03-20', 68), day('2026-03-21', 67), day('2026-03-22', 66)];
+
+			expect(citationOf(evaluateThresholdRule(overwinter, january, '2026-01-22'))).toMatchObject({
+				from: '2026-01-20',
+				to: '2026-01-22',
+			});
+			expect(evaluateThresholdRule(overwinter, march, '2026-03-22')).toEqual({ fires: false });
+		});
+
+		it('does not project a run dated past the end of the season', () => {
+			const window = [
+				day('2026-02-25', 52),
+				day('2026-02-26', 55),
+				forecast('2026-02-27', 57),
+				forecast('2026-02-28', 58),
+			];
+			const asOf = '2026-02-26';
+
+			const fenced = springRule({ direction: null, season: { start: '02-01', end: '02-27' } });
+			expect(evaluateThresholdRule(fenced, window, asOf)).toEqual({ fires: false });
+
+			// A season one day longer holds the same forecast run. An Approaching
+			// Task promises a day the Rule would fire on, so a run closing outside
+			// the season is not one to promise.
+			const wider = springRule({ direction: null, season: { start: '02-01', end: '02-28' } });
+			expect(citationOf(evaluateThresholdRule(wider, window, asOf))).toMatchObject({ projectedDate: '2026-02-28' });
+		});
 	});
 });

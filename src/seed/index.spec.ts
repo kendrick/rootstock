@@ -93,6 +93,17 @@ describe('seed loading', () => {
 		expect(seedOccurrences).toEqual([]);
 		expect(seedTagPolicy.neverDelegableTags).toContain('chemical');
 	});
+
+	// Spring pre-emergent goes down on a warming soil, not merely a warm one:
+	// the crossing is the agronomic event, which is why this rule is the one
+	// that should carry a direction and the season fencing it to spring.
+	it('ships spring-pre-emergent as a directed threshold rule fenced to a season', () => {
+		const rule = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
+
+		expect(rule?.kind).toBe('threshold');
+		expect(rule && rule.kind === 'threshold' ? rule.direction : null).toBe('rising');
+		expect(rule && rule.kind === 'threshold' ? rule.season : null).not.toBeNull();
+	});
 });
 
 describe('id uniqueness across plants, rules, and occurrences', () => {
@@ -173,6 +184,19 @@ describe('window reach (ADR 0003)', () => {
 		expect(findRulesPastWindow(rules, PLAN_WINDOW_DAYS)).toEqual([
 			`threshold rule 'reaches-too-far' needs ${PLAN_WINDOW_DAYS + 1} consecutive days, past the ${PLAN_WINDOW_DAYS}-day window`,
 		]);
+	});
+
+	// A directed rule's extra lookback day (thresholdLookbackDays) is what
+	// tips a run reading exactly the window past it; the same consecutiveDays
+	// fits with no direction set, so this is the day the direction added.
+	it('flags a threshold rule at the window\'s edge only once a direction adds the extra day', () => {
+		const directed = thresholdRule({ id: 'direction-adds-a-day', consecutiveDays: PLAN_WINDOW_DAYS, direction: 'rising' });
+		const undirected = thresholdRule({ id: 'direction-adds-a-day', consecutiveDays: PLAN_WINDOW_DAYS });
+
+		expect(findRulesPastWindow([directed], PLAN_WINDOW_DAYS)).toEqual([
+			`threshold rule 'direction-adds-a-day' needs ${PLAN_WINDOW_DAYS} consecutive days plus the extra day its direction reads, past the ${PLAN_WINDOW_DAYS}-day window`,
+		]);
+		expect(findRulesPastWindow([undirected], PLAN_WINDOW_DAYS)).toEqual([]);
 	});
 
 	it('reports a no-rain-within guard whose days reaches past the window', () => {
