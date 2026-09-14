@@ -3,10 +3,13 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
-import { CalendarClock, CirclePause, Info } from 'lucide-react';
-import { useId } from 'react';
+import { CalendarClock, Check, CirclePause, Info, Lock } from 'lucide-react';
+import { useId, useState } from 'react';
 import { CitationDisclosure } from '@/components/citation';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
+import { UNDO_REFUSAL } from './permanence';
+import { taskText } from './task-text';
 
 export interface TaskItemProps {
 	task: Task;
@@ -18,7 +21,15 @@ export interface TaskItemProps {
 	/** `Plan.window`, passed through so a threshold Citation can show the readings it cites. */
 	window?: DailyAggregate[];
 	checked?: boolean;
+	/** Opens this Task's evidence on load. The caller picks which Task gets it. */
+	citationOpen?: boolean;
 	onComplete?: (task: Task) => void;
+	/**
+	 * Fired when a reader clicks a box that is already ticked. There is nothing
+	 * to send, and that is the point: the caller owns the live region, so it is
+	 * the only thing that can say so out loud.
+	 */
+	onUndoAttempt?: (task: Task) => void;
 }
 
 /**
@@ -52,12 +63,26 @@ function GuardNote({
 }
 
 /**
- * One Task as a `<li>`, with the check-off box beside the evidence rather than
- * inside it. The caller owns the `<ul>`.
+ * One Task as a `<li>` on the raised surface, with the check-off box beside
+ * the task text and the evidence in a drawer under both. The caller owns the
+ * `<ul>`.
+ *
+ * The Task carries `bg-card` and the 4.12:1 `--card-border`; the Deferred and
+ * Advisory sections carry neither. Raise those two sections instead and the
+ * page argues against itself, which is measurable: with the Tasks flat, #50
+ * found the LCP element on This Week to be an Advisory span, the one block on
+ * the page carrying no Citation.
+ *
+ * The box sits inside a `<label>` holding the task text, so the hit target is
+ * the whole row rather than a 16px box. #50 measured that box at 27% of the
+ * 44pt minimum, for a control used one-handed and outdoors, against a 56px
+ * disclosure row beside it. The task text cannot sit in a `<summary>` and in
+ * this label at once: a label inside a summary fights the disclosure for the
+ * same click.
  *
  * No heading anywhere below. The route owns the page's only h1 and every
  * section heading under it is an h2, so a heading here would land at whatever
- * depth its section happened to sit at, and `tests/integration/smoke.spec.ts`
+ * depth its section happened to sit at, and `tests/integration/this-week.spec.ts`
  * runs axe over the rendered page.
  *
  * The Deferrals and Annotations render outside the disclosure rather than in
@@ -73,24 +98,30 @@ export function TaskItem({
 	narrationText = null,
 	window,
 	checked = false,
+	citationOpen = false,
 	onComplete,
+	onUndoAttempt,
 }: TaskItemProps): ReactElement {
-	// Names the visible task text so the check-off box can point at it. An
-	// aria-label would satisfy an axe run too, and leave two copies of the same
-	// sentence to keep in step.
+	// Names the visible task text so the check-off box can point at it. The
+	// wrapping label is what makes the row clickable; this is what keeps the
+	// box's accessible name down to the sentence itself, rather than the whole
+	// row including the Plant name and the recorded badge.
 	const textId = useId();
+
+	// Ephemeral, and deliberately not lifted. Whether this reader has tried to
+	// untick this Task is a fact about one click on one screen, and the Store
+	// has nothing to say about it.
+	const [refused, setRefused] = useState(false);
 
 	const rule = rulesById.get(task.ruleId) ?? null;
 	const plantName = task.plantId === null
 		? null
 		: (plantsById.get(task.plantId)?.name ?? task.plantId);
 
-	// Contract 14. The Planner writes `title` for every Task whether or not the
-	// model ever ran, so the fallback is the mechanical prose ADR 0001 calls a
-	// real deliverable rather than a hole in the page. An empty narration string
-	// counts as no narration, since rendering it would leave the Task with no
-	// words on it at all.
-	const text = narrationText !== null && narrationText.trim() !== '' ? narrationText : task.title;
+	// Shared with `ThisWeek`, which speaks the same sentence into the live region
+	// after a write. `task-text.ts` carries the reason that has to be one
+	// function rather than the same expression written out in two places.
+	const text = taskText(task.title, narrationText);
 
 	// Nothing has called for this work yet, so there is nothing to record having
 	// done. `isCompleted` never returns true for an approaching Task, so a box
@@ -98,27 +129,47 @@ export function TaskItem({
 	const approaching = task.status === 'approaching';
 
 	function handleChange(event: ChangeEvent<HTMLInputElement>): void {
-		// An Occurrence is append-only, so unticking has nothing to send. Undoing
-		// one would mean deleting the record that says the work happened. The box
-		// is controlled by `checked`, so React puts it back where the store says
-		// it belongs.
 		if (event.target.checked) {
+			setRefused(false);
 			onComplete?.(task);
+			return;
 		}
+
+		// An Occurrence is append-only, so unticking has nothing to send: undoing
+		// one would mean deleting the record that says the work happened. The box
+		// is controlled by `checked`, so React puts it straight back, and
+		// `refused` is what keeps that snap-back from reading as a broken control.
+		setRefused(true);
+		onUndoAttempt?.(task);
 	}
 
-	const summary = (
-		<span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<span id={textId} className="min-w-0">{text}</span>
+	const body = (
+		<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+			<span id={textId} className={cn('min-w-0', checked && 'text-muted-foreground')}>
+				{text}
+			</span>
 
 			{/*
-			 * A span rather than the Badge primitive, which renders a div.
-			 * citation.tsx wraps everything passed as `summary` in a `<span>`, and
-			 * a span takes phrasing content only.
+			 * Spans rather than the Badge primitive, which renders a div. These sit
+			 * inside a `<label>` and beside phrasing content, so a block element
+			 * here would be invalid markup the browser silently reflows.
 			 */}
 			{approaching && (
 				<span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
 					Approaching
+				</span>
+			)}
+
+			{/*
+			 * The done state has to read as done without the box. A ticked box is
+			 * one cue, it is a colour cue, and it is the cue a reader scanning a
+			 * phone in the sun is least likely to catch. Not amber: that hue
+			 * means "this line is cited" and nothing else.
+			 */}
+			{checked && (
+				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+					<Check aria-hidden="true" className="size-3" />
+					Recorded
 				</span>
 			)}
 
@@ -129,80 +180,117 @@ export function TaskItem({
 	);
 
 	return (
-		<li className="flex items-start gap-3">
+		<li className="rounded-md border border-card-border bg-card">
 			{approaching
 				? (
-						// Holds the column the check-off box would have taken, so an
-						// approaching Task lines up with the work above it. The missing box,
-						// this glyph, and the word beside the task text are three cues for
-						// one distinction, because colour alone fails a reader who cannot
-						// see it. source-badge.tsx already made that case.
-						<CalendarClock
-							aria-hidden="true"
-							className="mt-2.5 size-4 shrink-0 text-muted-foreground"
-						/>
+						<div className="flex min-h-11 items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+							{/*
+							 * Holds the column the check-off box would have taken, so an
+							 * approaching Task lines up with the work above it. The missing box,
+							 * this glyph, and the word beside the task text are three cues for
+							 * one distinction, because colour alone fails a reader who cannot
+							 * see it. source-badge.tsx already made that case.
+							 */}
+							<CalendarClock
+								aria-hidden="true"
+								className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+							/>
+							{body}
+						</div>
 					)
 				: (
-						<input
-							type="checkbox"
-							checked={checked}
-							onChange={handleChange}
-							aria-labelledby={textId}
-							className={cn(
-								'mt-2.5 size-4 shrink-0 cursor-pointer accent-primary',
-								'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-							)}
-						/>
+						// `min-h-11` is the 44px target the box alone never came close to,
+						// and the label is what spends it: the row, the task text and the
+						// Plant name all activate the box.
+						<label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+							{/*
+							 * Drawn from the shell's own tokens rather than left to the UA.
+							 * The page declares no `color-scheme`, so a native box painted
+							 * itself solid white on the card and read as already ticked,
+							 * and `accent-color` could not fix it: Chrome derives the
+							 * unchecked box from the accent, so a near-white accent gives a
+							 * near-white empty box. Dropping the accent hands the checked
+							 * state to the UA's blue, which would be a second hue on a page
+							 * that has exactly one.
+							 *
+							 * Still a real `<input type="checkbox">` under the paint, so
+							 * the label, the keyboard and the accessibility tree are all
+							 * the browser's.
+							 */}
+							<span className="relative mt-0.5 flex size-5 shrink-0 items-center justify-center">
+								<input
+									type="checkbox"
+									checked={checked}
+									onChange={handleChange}
+									aria-labelledby={textId}
+									className={cn(
+										'peer size-5 cursor-pointer appearance-none rounded-sm border border-card-border',
+										'bg-background checked:border-primary checked:bg-primary',
+										FOCUS_RING,
+									)}
+								/>
+								<Check
+									aria-hidden="true"
+									className="pointer-events-none absolute size-3.5 text-primary-foreground opacity-0 peer-checked:opacity-100"
+								/>
+							</span>
+							{body}
+						</label>
 					)}
 
-			<div className="min-w-0 flex-1 space-y-2">
-				<CitationDisclosure
-					summary={summary}
-					citation={task.citation}
-					rule={rule}
-					delegable={task.delegable}
-					window={window}
-				/>
+			{refused && (
+				<p className="flex items-start gap-2 px-3 pb-2.5 text-sm text-muted-foreground">
+					<Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+					<span>{UNDO_REFUSAL}</span>
+				</p>
+			)}
 
-				{(task.deferrals.length > 0 || task.annotations.length > 0) && (
-					<div className="space-y-1.5 px-3">
-						{task.deferrals.map(deferral => (
-							<GuardNote key={`${deferral.guardId}:${deferral.releaseWhen}`} icon={CirclePause}>
-								<span>
-									Held back by
-									{' '}
-									<span className="font-medium text-foreground">
-										{guardName(deferral.guardId, rulesById)}
-									</span>
+			{(task.deferrals.length > 0 || task.annotations.length > 0) && (
+				<div className="space-y-1.5 px-3 pb-2.5">
+					{task.deferrals.map(deferral => (
+						<GuardNote key={`${deferral.guardId}:${deferral.releaseWhen}`} icon={CirclePause}>
+							<span>
+								Held back by
+								{' '}
+								<span className="font-medium text-foreground">
+									{guardName(deferral.guardId, rulesById)}
 								</span>
-								{/*
-								 * Contract 10 hands `releaseWhen` to the interface as the Guard's
-								 * own `release` string. A label and then the string, rather than
-								 * a sentence written here around it, so what a reader acts on is
-								 * what the Guard said.
-								 */}
-								<span className="block">
-									Releases when:
-									{' '}
-									<span className="text-foreground">{deferral.releaseWhen}</span>
-								</span>
-							</GuardNote>
-						))}
+							</span>
+							{/*
+							 * Contract 10 hands `releaseWhen` to the interface as the Guard's
+							 * own `release` string. A label and then the string, rather than
+							 * a sentence written here around it, so what a reader acts on is
+							 * what the Guard said.
+							 */}
+							<span className="block">
+								Releases when:
+								{' '}
+								<span className="text-foreground">{deferral.releaseWhen}</span>
+							</span>
+						</GuardNote>
+					))}
 
-						{task.annotations.map(annotation => (
-							<GuardNote key={`${annotation.guardId}:${annotation.text}`} icon={Info}>
-								<span>
-									<span className="font-medium text-foreground">
-										{guardName(annotation.guardId, rulesById)}
-									</span>
-									{': '}
-									<span className="text-foreground">{annotation.text}</span>
+					{task.annotations.map(annotation => (
+						<GuardNote key={`${annotation.guardId}:${annotation.text}`} icon={Info}>
+							<span>
+								<span className="font-medium text-foreground">
+									{guardName(annotation.guardId, rulesById)}
 								</span>
-							</GuardNote>
-						))}
-					</div>
-				)}
-			</div>
+								{': '}
+								<span className="text-foreground">{annotation.text}</span>
+							</span>
+						</GuardNote>
+					))}
+				</div>
+			)}
+
+			<CitationDisclosure
+				citation={task.citation}
+				rule={rule}
+				delegable={task.delegable}
+				defaultOpen={citationOpen}
+				window={window}
+			/>
 		</li>
 	);
 }

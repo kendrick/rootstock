@@ -16,8 +16,11 @@ import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
+import { PERMANENCE_NOTE, recordedAnnouncement, UNDO_REFUSAL } from './permanence';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
+import { taskText } from './task-text';
+import { WeekSummary } from './week-summary';
 
 export interface ThisWeekProps {
 	artifact: Artifact;
@@ -62,6 +65,33 @@ function completionInstant(asOf: string): string {
 
 function byId<T extends { id: string }>(records: T[]): ReadonlyMap<string, T> {
 	return new Map(records.map(record => [record.id, record]));
+}
+
+/**
+ * Which Task's evidence is already open when the page loads.
+ *
+ * ADR 0001 calls the cited-Task property the architecturally interesting one,
+ * and a page of closed disclosures keeps it fully present in the DOM and
+ * entirely absent from the screen. #50 counted three visible tasks against
+ * zero visible citations, with a 16px chevron the only thing advertising them.
+ * So one panel is open before anybody clicks.
+ *
+ * One, not all. The panel is tall—rule, source, region, window, product label,
+ * delegability, dated evidence—and three of them open would push the task list
+ * off the fold to demonstrate something one of them demonstrates. The order
+ * below is render order, so the open panel is the first one a reader meets
+ * rather than one further down the page.
+ */
+const OPEN_ORDER: readonly Task['status'][] = ['fired', 'approaching', 'deferred'];
+
+function firstCitationToOpen(tasks: Task[]): string | null {
+	for (const status of OPEN_ORDER) {
+		const task = tasks.find(candidate => candidate.status === status);
+		if (task !== undefined) {
+			return task.id;
+		}
+	}
+	return null;
 }
 
 /**
@@ -165,6 +195,7 @@ export function ThisWeek({
 	const expired = asOf !== null && staleness(artifact.generatedAt, asOf, status).band === 'expired';
 
 	const tasks = artifact.plan.tasks;
+	const openCitationId = useMemo(() => firstCitationToOpen(tasks), [tasks]);
 
 	const completedIds = useMemo(
 		() => new Set(
@@ -178,6 +209,18 @@ export function ThisWeek({
 		),
 		[tasks, occurrences, artifact.plan.asOf, rulesById],
 	);
+
+	/*
+	 * What the live region below is currently saying. Empty until a reader acts,
+	 * because the region has to already exist in the document for a screen
+	 * reader to announce what lands in it, and one rendered on demand is one
+	 * nobody hears.
+	 *
+	 * Without this region a write is announced nowhere. The box changes, the
+	 * Occurrence lands in IndexedDB, and a reader who is not watching that one
+	 * box gets no confirmation the yard recorded anything at all.
+	 */
+	const [announcement, setAnnouncement] = useState('');
 
 	function handleComplete(task: Task): void {
 		// A tick that lands before the Store has answered goes nowhere. The box is
@@ -199,7 +242,16 @@ export function ThisWeek({
 			// reload, so the render after a tick comes from the same read the next
 			// mount will do.
 			setOccurrences(await listOccurrences(opened));
+
+			// After the read, not before it. The sentence claims the yard holds the
+			// record, and the only moment that claim is true is once the Store has
+			// been asked again and said so.
+			setAnnouncement(recordedAnnouncement(taskText(task.title, narrationById.get(task.id))));
 		})();
+	}
+
+	function handleUndoAttempt(): void {
+		setAnnouncement(UNDO_REFUSAL);
 	}
 
 	function taskItem(task: Task): ReactElement {
@@ -212,7 +264,9 @@ export function ThisWeek({
 				narrationText={narrationById.get(task.id) ?? null}
 				window={artifact.plan.window}
 				checked={completedIds.has(task.id)}
+				citationOpen={task.id === openCitationId}
 				onComplete={handleComplete}
+				onUndoAttempt={handleUndoAttempt}
 			/>
 		);
 	}
@@ -243,7 +297,17 @@ export function ThisWeek({
 			 * band does not: `asOf` stays null until the mount flag flips.
 			 */}
 			<div className={cn('space-y-8', expired && 'text-muted-foreground [--foreground:var(--muted-foreground)]')}>
-				<TaskGroup heading="Ready now" emptyText={nothingDue}>
+				{/*
+				 * The model's own sentences about the week, which nothing rendered
+				 * until #62: the field was required, generated and committed on
+				 * every run, and read by no one. It sits inside the de-emphasis
+				 * because it describes the Plan and ages with it, and below the
+				 * route's authored purpose copy because the two answer different
+				 * questions.
+				 */}
+				<WeekSummary summary={artifact.narration?.summary ?? null} />
+
+				<TaskGroup heading="Ready now" emptyText={nothingDue} description={PERMANENCE_NOTE}>
 					{tasks.filter(task => task.status === 'fired').map(taskItem)}
 				</TaskGroup>
 
@@ -265,7 +329,9 @@ export function ThisWeek({
 					narrationById={narrationById}
 					window={artifact.plan.window}
 					completedIds={completedIds}
+					openCitationId={openCitationId}
 					onComplete={handleComplete}
+					onUndoAttempt={handleUndoAttempt}
 				/>
 			</div>
 
@@ -275,6 +341,18 @@ export function ThisWeek({
 			 * and `Advisories` renders nothing for an empty list.
 			 */}
 			<Advisories advisories={artifact.narration?.advisories ?? []} />
+
+			{/*
+			 * One region for the page rather than one per Task. Every announcement
+			 * here is about the same append-only log, and a screen reader handed a
+			 * region per row has several places to watch for one kind of news.
+			 *
+			 * No `role="status"`. `StalenessBanner` already owns that role on this
+			 * route, and a second one would give the page two elements answering to
+			 * the same name. `aria-live` alone carries the politeness without the
+			 * role, and `aria-atomic` makes the sentence arrive whole.
+			 */}
+			<div aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
 		</div>
 	);
 }

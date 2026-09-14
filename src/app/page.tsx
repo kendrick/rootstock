@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { StalenessBanner } from '@/components/staleness-banner';
+import { Purpose } from '@/components/this-week/purpose';
 import { ThisWeek } from '@/components/this-week/this-week';
 import { seedPlants, seedRules } from '@/seed';
 
@@ -29,7 +30,21 @@ export default function ThisWeekPage(): ReactElement {
 		<ArtifactGate artifact={artifact} status={status}>
 			{validated => (
 				<div className="space-y-6">
-					<h1 className="text-2xl font-medium tracking-tight text-foreground">This Week</h1>
+					<div className="space-y-3">
+						<h1 className="text-2xl font-medium tracking-tight text-foreground">This Week</h1>
+
+						{/*
+						 * Above the first task and above the banner. #50 graded this
+						 * route against a brief asking that the page say what it is
+						 * before it says what to do, and anything below the first task
+						 * fails that on position however well it is written.
+						 *
+						 * Authored copy, never `narration.summary`, which `ThisWeek`
+						 * renders in a slot below. The model can say what the week
+						 * holds and never what the page is.
+						 */}
+						<Purpose />
+					</div>
 
 					<StalenessBanner
 						generatedAt={validated.artifact.generatedAt}

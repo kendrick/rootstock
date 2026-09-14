@@ -4,6 +4,13 @@ import { useId } from 'react';
 export interface TaskGroupProps {
 	heading: string;
 	emptyText?: string;
+	/**
+	 * A line under the heading, rendered only when the group has Tasks in it.
+	 * The one caller uses it for what ticking a box does, and that is advice
+	 * about work on the screen: over an empty group it would be advice about
+	 * nothing.
+	 */
+	description?: string;
 	children?: ReactNode;
 }
 
@@ -21,7 +28,7 @@ export interface TaskGroupProps {
  * route owns the page's only h1, and `tests/integration/smoke.spec.ts` runs axe
  * over the finished page, where a skipped level is a violation.
  */
-export function TaskGroup({ heading, emptyText, children }: TaskGroupProps): ReactElement | null {
+export function TaskGroup({ heading, emptyText, description, children }: TaskGroupProps): ReactElement | null {
 	// Two groups render on the route, so a hand-written id would appear twice in
 	// one document, which axe reports as a violation. `aria-labelledby` rather
 	// than an `aria-label` carrying the same words, so the region's name and the
@@ -42,6 +49,10 @@ export function TaskGroup({ heading, emptyText, children }: TaskGroupProps): Rea
 	return (
 		<section aria-labelledby={headingId} className="space-y-3">
 			<h2 id={headingId} className="text-base font-semibold text-foreground">{heading}</h2>
+
+			{!empty && description !== undefined && (
+				<p className="max-w-prose text-sm text-muted-foreground">{description}</p>
+			)}
 
 			{empty
 				? <p className="text-sm text-muted-foreground">{emptyText}</p>

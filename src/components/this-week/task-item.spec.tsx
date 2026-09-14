@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { taskId } from '@/planner/task';
 import { combinedNarratedArtifact, plantsById, rulesById, rulesByIdMissingDeepWaterFig } from './fixtures';
+import { UNDO_REFUSAL } from './permanence';
 import { TaskItem } from './task-item';
 
 /**
@@ -107,6 +108,20 @@ describe('taskItem', () => {
 		expect(screen.getByText('front-lawn')).toBeDefined();
 	});
 
+	// #62: the Task is what gets the raised surface, and --card-border is the
+	// 4.12:1 boundary WCAG 1.4.11 asks for where a border is what identifies a
+	// component. #65 shipped the token and could not apply it, because Tasks
+	// live here.
+	it('renders on the raised surface, inside the measured boundary', () => {
+		const { container } = renderItem(
+			<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
+		);
+
+		const item = container.querySelector('li');
+		expect(item?.className).toContain('bg-card');
+		expect(item?.className).toContain('border-card-border');
+	});
+
 	it('renders one li and nothing else at the top level', () => {
 		const { container } = renderItem(
 			<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
@@ -200,6 +215,148 @@ describe('taskItem', () => {
 			);
 
 			expect(container.querySelector('summary input')).toBeNull();
+		});
+
+		/*
+		 * #50 measured the box at 16x16 with no `<label>`, so the tap target was
+		 * the square alone and the sentence beside it did nothing: 27% of the
+		 * 44pt minimum, for a control used one-handed and outdoors, while the
+		 * disclosure row next to it was 56px tall. The label is the fix, and it
+		 * is only possible because the task text left the `<summary>`.
+		 */
+		it('puts the box and the task text inside one label', () => {
+			const { container } = renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					narrationText={firedNarration}
+				/>,
+			);
+
+			const label = container.querySelector('label');
+			expect(label?.querySelector('input[type="checkbox"]')).not.toBeNull();
+			expect(label?.textContent).toContain(firedNarration);
+		});
+
+		// 2.75rem, which is 44px. Asserted on the class rather than on a measured
+		// height because jsdom lays nothing out, so a geometric assertion here
+		// would pass against an element of zero height.
+		it('spends at least 44px on the row the label covers', () => {
+			const { container } = renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
+			);
+
+			expect(container.querySelector('label')?.className).toContain('min-h-11');
+		});
+
+		// Colour on a 16px square is one cue and the weakest one available. A
+		// reader glancing at a phone in the sun gets a word instead.
+		it('says the work is recorded in words, not only in the box', () => {
+			renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} checked />,
+			);
+
+			expect(screen.getByText('Recorded')).toBeDefined();
+		});
+
+		it('shows no recorded marker while the box is empty', () => {
+			renderItem(<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />);
+
+			expect(screen.queryByText('Recorded')).toBeNull();
+		});
+
+		/*
+		 * Unticking does nothing to the yard, by design: an Occurrence is
+		 * append-only and #62's non-goals are explicit that it stays that way.
+		 * What the page may not do is stay silent about it. A box that flips off
+		 * and snaps back with no sentence beside it reads as a broken control
+		 * rather than as a record that cannot be withdrawn.
+		 */
+		it('explains the refusal in place when a ticked box is clicked again', () => {
+			renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} checked />,
+			);
+
+			expect(screen.queryByText(UNDO_REFUSAL)).toBeNull();
+
+			fireEvent.click(screen.getByRole('checkbox'));
+
+			expect(screen.getByText(UNDO_REFUSAL)).toBeDefined();
+		});
+
+		it('tells the caller about the refused untick so it can be announced', () => {
+			const onUndoAttempt = vi.fn();
+			renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					checked
+					onUndoAttempt={onUndoAttempt}
+				/>,
+			);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+
+			expect(onUndoAttempt).toHaveBeenCalledTimes(1);
+			expect(onUndoAttempt).toHaveBeenCalledWith(firedTask);
+		});
+
+		it('leaves the refusal alone on a tick that has something to record', () => {
+			const onUndoAttempt = vi.fn();
+			renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					onUndoAttempt={onUndoAttempt}
+				/>,
+			);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+
+			expect(onUndoAttempt).not.toHaveBeenCalled();
+			expect(screen.queryByText(UNDO_REFUSAL)).toBeNull();
+		});
+	});
+
+	describe('the evidence drawer', () => {
+		// #50 counted three visible tasks against zero visible citations. The
+		// caller decides which one opens, because only the caller knows how many
+		// are on the page.
+		it('opens on load when the caller asks for it', () => {
+			const { container } = renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					citationOpen
+				/>,
+			);
+
+			expect(container.querySelector('details')?.open).toBe(true);
+		});
+
+		it('stays closed by default', () => {
+			const { container } = renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
+			);
+
+			expect(container.querySelector('details')?.open).toBe(false);
+		});
+
+		// The chevron carried no words, so nothing on the screen said the
+		// evidence was there at all. The label is the promise the brief sentence
+		// makes, in the brief sentence's own vocabulary.
+		it('labels itself in words and names the Rule behind the Task', () => {
+			const { container } = renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
+			);
+
+			const summary = container.querySelector('summary')?.textContent ?? '';
+			expect(summary).toContain('Rule and reading');
+			expect(summary).toContain('Fall pre-emergent');
 		});
 	});
 
