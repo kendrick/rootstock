@@ -166,34 +166,71 @@
 		}
 	},
 	{
-		"id": "fig-fertilizer-until-spring",
-		"kind": "guard",
-		"name": "No fig fertilizer until spring",
+		"id": "fig-spring-nitrogen",
+		"kind": "cadence",
+		"name": "Feed the fig",
 		"region": {
 			"name": "Southwest Fort Worth, Texas",
 			"hardinessZone": "8b"
 		},
-		"condition": {
-			"kind": "within-window",
-			"start": "03-01",
-			"end": "06-15",
-			"negate": true
+		"everyDays": {
+			"min": 28,
+			"max": 35
 		},
-		"effect": "defer",
-		"release": "Once the fig breaks bud in spring, from the first of March.",
-		"tags": ["fertilizer"],
+		"season": {
+			"start": "03-01",
+			"end": "06-30"
+		},
+		"after": null,
+		"tags": [
+			"fruit",
+			"fertilizer",
+			"nitrogen"
+		],
+		"productLabel": null,
+		"source": {
+			"kind": "extension",
+			"label": "Texas A&M AgriLife Extension",
+			"url": "https://agrilifetoday.tamu.edu/2024/12/10/how-to-plant-fruit-trees-the-texas-am-agrilife-way/"
+		},
+		"delegable": true,
+		"priority": 30,
+		"appliesTo": {
+			"plantIds": [
+				"fig-1"
+			],
+			"plantTags": null,
+			"ruleTags": null
+		}
+	},
+	{
+		"id": "fig-spring-compost",
+		"kind": "window",
+		"name": "Compost the fig",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"start": "03-01",
+		"end": "04-30",
+		"tags": [
+			"fruit",
+			"compost"
+		],
 		"productLabel": null,
 		"source": {
 			"kind": "owner",
-			"label": "Owner's own practice",
-			"url": null
+			"label": "Owner's practice, timed to AgriLife's fig schedule",
+			"url": "https://agrilifetoday.tamu.edu/2024/12/10/how-to-plant-fruit-trees-the-texas-am-agrilife-way/"
 		},
-		"delegable": false,
-		"priority": -5,
+		"delegable": true,
+		"priority": 31,
 		"appliesTo": {
-			"plantIds": ["fig-1"],
+			"plantIds": [
+				"fig-1"
+			],
 			"plantTags": null,
-			"ruleTags": ["fertilizer"]
+			"ruleTags": null
 		}
 	},
 	{
@@ -227,9 +264,9 @@
 		}
 	},
 	{
-		"id": "evening-application",
+		"id": "water-in-after-application",
 		"kind": "guard",
-		"name": "Evening application",
+		"name": "Water in after application",
 		"region": {
 			"name": "Southwest Fort Worth, Texas",
 			"hardinessZone": "8b"
@@ -238,8 +275,10 @@
 			"kind": "always"
 		},
 		"effect": "annotate",
-		"text": "Apply in the evening, once the day's heat has gone off.",
-		"tags": ["safety"],
+		"text": "Irrigate after spreading, following the product label.",
+		"tags": [
+			"application"
+		],
 		"productLabel": null,
 		"source": {
 			"kind": "owner",
@@ -251,35 +290,9 @@
 		"appliesTo": {
 			"plantIds": null,
 			"plantTags": null,
-			"ruleTags": ["pesticide"]
-		}
-	},
-	{
-		"id": "away-from-flowering",
-		"kind": "guard",
-		"name": "Away from flowering plants",
-		"region": {
-			"name": "Southwest Fort Worth, Texas",
-			"hardinessZone": "8b"
-		},
-		"condition": {
-			"kind": "always"
-		},
-		"effect": "annotate",
-		"text": "Treat structural voids only, and keep well clear of anything in flower.",
-		"tags": ["safety"],
-		"productLabel": null,
-		"source": {
-			"kind": "owner",
-			"label": "Owner's own practice",
-			"url": null
-		},
-		"delegable": false,
-		"priority": -20,
-		"appliesTo": {
-			"plantIds": null,
-			"plantTags": null,
-			"ruleTags": ["pesticide"]
+			"ruleTags": [
+				"chemical"
+			]
 		}
 	}
 ]

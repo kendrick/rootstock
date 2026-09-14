@@ -1,1 +1,10 @@
-[]
+[
+	{
+		"id": "fig-spring-compost-2026",
+		"ruleId": "fig-spring-compost",
+		"plantId": "fig-1",
+		"completedAt": "2026-06-01T00:00:00Z",
+		"recordedAt": "2026-09-14T00:00:00Z",
+		"source": "seed"
+	}
+]
