@@ -55,6 +55,27 @@ describe('findMisplacedSpecs', () => {
 		expect(findMisplacedSpecs(root)).toEqual([]);
 	});
 
+	// A prerender spec re-runs the module beside it under a server-side
+	// environment, so that module is its subject.
+	it('pairs a prerender spec with the module it re-runs', () => {
+		const root = mkdtempSync(join(tmpdir(), 'colocation-'));
+		mkdirSync(join(root, 'src'), { recursive: true });
+		writeFileSync(join(root, 'src', 'thing.ts'), '');
+		writeFileSync(join(root, 'src', 'thing.prerender.spec.ts'), '');
+
+		expect(findMisplacedSpecs(root)).toEqual([]);
+	});
+
+	// Stripping the `.prerender` suffix changes which name the lookup asks for.
+	// It does not excuse the spec from having a subject at all.
+	it('reports a prerender spec whose module is missing', () => {
+		const root = mkdtempSync(join(tmpdir(), 'colocation-'));
+		mkdirSync(join(root, 'src'), { recursive: true });
+		writeFileSync(join(root, 'src', 'ghost.prerender.spec.ts'), '');
+
+		expect(findMisplacedSpecs(root)).toEqual([join('src', 'ghost.prerender.spec.ts')]);
+	});
+
 	it('ignores end-to-end specs, which drive the built site rather than a module', () => {
 		const root = mkdtempSync(join(tmpdir(), 'colocation-'));
 		mkdirSync(join(root, 'tests', 'integration'), { recursive: true });

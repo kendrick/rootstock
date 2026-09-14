@@ -41,6 +41,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Coverage is enabled in vitest.config.ts, so this step prints the summary
+      # table under the results. Nothing in the job fails on that number—there
+      # is no threshold, by design.
       - name: Test
         run: pnpm test
 
@@ -48,6 +51,11 @@ jobs:
       # so a committed slug is a published one, which is the case ADR 0004
       # makes for the coordinates and applies just as well here. The build
       # fails without the variable rather than falling back to a default.
+      #
+      # `pretest:e2e` builds as well, so this step is redundant for the e2e run.
+      # It stays because it is the only step that proves the build alone works,
+      # and a broken build fails here with the compiler's own error, where a
+      # Playwright webServer timeout would say only that the server never came up.
       - name: Build static export
         run: pnpm build
         env:
@@ -61,9 +69,10 @@ jobs:
       # Chromium projects only, matching the single browser installed above.
       - name: End-to-end tests
         run: pnpm test:e2e --project=mobile-chrome --project=desktop-chrome
-        # Playwright's webServer runs `pnpm dev`, which reads the same variable.
-        # Without it the first test that navigates to the Away Card takes the
-        # whole job down with a build error instead of a failed assertion.
+        # `pretest:e2e` runs `next build` and Playwright's webServer then runs
+        # `pnpm preview`, which serves out/. The variable is still needed because
+        # that build bakes the Away Card route; without it the build fails and
+        # takes the whole job down instead of producing a failed assertion.
         env:
           ROOTSTOCK_AWAY_SLUG: ${{ secrets.ROOTSTOCK_AWAY_SLUG }}
 
