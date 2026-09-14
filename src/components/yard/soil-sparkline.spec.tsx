@@ -265,4 +265,39 @@ describe('soilSparkline', () => {
 		// Where the series stands against the threshold, not just that one exists.
 		expect(desc.textContent).toContain('sit at or above it');
 	});
+
+	/*
+	 * ADR 0005 gave `spring-pre-emergent` a direction, so `thresholdRule` here is
+	 * already the directed case. The desc and the sr-only table caption render
+	 * the same `description` string, so both are checked rather than trusting
+	 * that one following the other means they agree.
+	 */
+	it('says a directed rule fires on a crossing, and frames the day count as context', () => {
+		expect(thresholdRule.direction).toBe('rising');
+		const { container } = render(<SoilSparkline window={planWindow} rule={thresholdRule} citation={null} />);
+
+		const desc = container.querySelector('svg desc')!;
+		const caption = container.querySelector('table caption')!;
+		expect(caption.textContent).toBe(desc.textContent);
+
+		for (const text of [desc.textContent, caption.textContent]) {
+			expect(text).toContain('The rule fires on a crossing rising through 55°F');
+			expect(text).toContain('a run of 3 consecutive days follows a day that sat on the far side of it');
+			expect(text).toContain('For context,');
+			expect(text).toContain('sit at or above it');
+			// The undirected framing this rule used before ADR 0005 gave it a
+			// direction must not still be here alongside the new one.
+			expect(text).not.toContain('threshold is 55°F held for');
+		}
+	});
+
+	it('renders the undirected sentence unchanged when a rule names no direction', () => {
+		const undirected = { ...thresholdRule, direction: null };
+		const { container } = render(<SoilSparkline window={planWindow} rule={undirected} citation={null} />);
+
+		const desc = container.querySelector('svg desc')!;
+		expect(desc.textContent).toContain(`The rule's threshold is 55°F held for ${thresholdRule.consecutiveDays} consecutive days;`);
+		expect(desc.textContent).toContain('sit at or above it');
+		expect(desc.textContent).not.toContain('crossing');
+	});
 });

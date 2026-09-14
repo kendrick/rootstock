@@ -60,6 +60,12 @@ const UNIT_SUFFIX: Record<Unit, string> = {
 	percent: '%',
 };
 
+/** Same wording the Rules route uses for a directed threshold (ADR 0005), so a reader who has seen that sentence recognizes this one. */
+const DIRECTION_TEXT: Record<NonNullable<ThresholdRule['direction']>, string> = {
+	falling: 'falling through',
+	rising: 'rising through',
+};
+
 /** UTC and not the reader's zone: these are local calendar days already, and reparsing one in a western zone slides every label back a day. */
 const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
@@ -253,9 +259,19 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	const meetingCount = values.filter(value => meetsThreshold(value, rule)).length;
 	const sideWords = rule.comparison === 'gte' ? 'at or above it' : 'at or below it';
 
+	/*
+	 * ADR 0005: a directed Rule only counts a run once the day before it sat on
+	 * the far side of the value, so that day—not the day count—is what fired
+	 * it. The undirected sentence is left exactly as it read before that ADR,
+	 * since `direction: null` is still judged on the run alone.
+	 */
+	const thresholdSentence = rule.direction === null
+		? `The rule's threshold is ${thresholdText} held for ${rule.consecutiveDays} consecutive days; ${meetingCount} of these ${days.length} days sit ${sideWords}.`
+		: `The rule fires on a crossing ${DIRECTION_TEXT[rule.direction]} ${thresholdText}: a run of ${rule.consecutiveDays} consecutive days follows a day that sat on the far side of it. For context, ${meetingCount} of these ${days.length} days sit ${sideWords}.`;
+
 	const description = [
 		`${observedCount} observed ${observedCount === 1 ? 'day' : 'days'} and ${forecastCount} forecast, running from ${amount(Math.min(...values), rule.unit)} to ${amount(Math.max(...values), rule.unit)}.`,
-		`The rule's threshold is ${thresholdText} held for ${rule.consecutiveDays} consecutive days; ${meetingCount} of these ${days.length} days sit ${sideWords}.`,
+		thresholdSentence,
 		marked === null ? null : `${dayLabel(marked.day.date)} is marked, the day this task's citation names.`,
 	].filter(sentence => sentence !== null).join(' ');
 
