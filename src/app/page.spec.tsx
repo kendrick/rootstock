@@ -101,6 +101,42 @@ describe('this week page', () => {
 		expect(screen.queryByRole('status')).toBeNull();
 	});
 
+	/*
+	 * #50 measured this route at 1440x900, found `scrollHeight` of exactly 900,
+	 * and found two strings ahead of the first task: `<h1>This Week` and
+	 * `<h2>Ready now`. Neither said one yard, neither said the region, and
+	 * neither mentioned a rule or a reading. The brief sentence the critique
+	 * graded against asks that the page say what it is before it says what to
+	 * do, and this is the half of that a unit test can hold: the copy exists,
+	 * it makes the claim, and it comes first.
+	 */
+	it('says what the page is before it says what to do', async () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+
+		await renderPage();
+
+		const purpose = screen.getByText(/one yard/i);
+		expect(purpose.textContent).toMatch(/rule/i);
+		expect(purpose.textContent).toMatch(/reading/i);
+
+		const firstTask = document.querySelector('li');
+		expect(firstTask).not.toBeNull();
+		expect(purpose.compareDocumentPosition(firstTask as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
+			.toBeTruthy();
+	});
+
+	// Above the fold means in the first paint, and `output: 'export'` means the
+	// first paint is the prerendered HTML. Copy that arrived only on hydration
+	// would fail the brief for anyone the script never reaches.
+	it('ships the purpose copy in the prerendered markup', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+
+		const markup = renderToStaticMarkup(<ThisWeekPage />);
+
+		expect(markup).toMatch(/One yard in /);
+		expect(markup).toContain('Southwest Fort Worth, Texas');
+	});
+
 	// `output: 'export'` prerenders this route in Node at build time. A clock
 	// reading in that markup would be the build machine's instant, and the
 	// browser would contradict it on hydration, so the prerender has to carry no

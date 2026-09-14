@@ -6,6 +6,7 @@ import type { Variable } from '@/weather/observation';
 import { ChevronRight, TriangleAlert } from 'lucide-react';
 import { RuleSummary } from '@/components/rule-summary';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { MONTHS } from '@/planner/dates';
 
@@ -181,12 +182,25 @@ function Evidence({ citation, window }: { citation: Citation; window: DailyAggre
 	}
 }
 
+/**
+ * The words the brief sentence uses, so the label a reader clicks is the
+ * promise the page made. Not exported: `react-refresh/only-export-components`
+ * wants this file to export components and nothing else, and a constant is not
+ * worth a module of its own. The specs assert the literal, which pins the
+ * actual words rather than pinning them to themselves.
+ */
+const CITATION_LABEL = 'Rule and reading';
+
 export interface CitationDisclosureProps {
-	summary: ReactNode;
 	citation: Citation;
 	/** Null when the Artifact cites a Rule this rule set does not carry. */
 	rule: Rule | null;
 	delegable?: boolean | null;
+	/**
+	 * Renders the panel already open. The caller decides which one, because only
+	 * the caller knows how many are on the page.
+	 */
+	defaultOpen?: boolean;
 	/**
 	 * `Plan.window`, for the readings behind a threshold Citation. Omitting it
 	 * costs the reading row and nothing else, which is what a caller holding a
@@ -209,34 +223,54 @@ export interface CitationDisclosureProps {
  * the page. A site whose whole claim is that its reasoning is inspectable
  * cannot put that reasoning behind a script.
  *
+ * The summary says what is behind it and names the Rule beside those words.
+ * The Task's own text belongs to the row above and never here. A summary
+ * carrying that text puts the thing a reader came to do inside the disclosure
+ * control, and leaves the evidence itself advertised by a 16px chevron: #50
+ * counted three visible tasks against zero visible citations on that shape.
+ *
+ * Amber is the one hue in the product and its job is to mark a cited line, so
+ * the disclosure label is the affordance it exists for, and it takes no second
+ * meaning here.
+ *
+ * `defaultOpen` writes the attribute once and then leaves the element alone,
+ * which is what keeps a reader's own toggle from being reverted on the next
+ * render. React touches `open` only when the prop's value changes, and this
+ * prop is fixed for the life of the page.
+ *
  * No heading element anywhere below, and nothing interactive inside the
  * `<summary>`. The route owns the page's only h1, and a control nested in a
  * summary fights the disclosure for the same click and the same key press. The
- * check-off box lives in task-item.tsx, beside this component rather than
+ * check-off box lives in task-item.tsx, above this component rather than
  * inside its summary.
  */
 export function CitationDisclosure({
-	summary,
 	citation,
 	rule,
 	delegable = null,
+	defaultOpen = false,
 	window = [],
 	children,
 }: CitationDisclosureProps): ReactElement {
 	return (
-		<details className="group rounded-md border border-border bg-card">
+		<details open={defaultOpen} className="group border-t border-border">
 			<summary
 				className={cn(
-					'flex list-none items-start gap-2 rounded-md px-3 py-2 text-sm',
-					'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-					'[&::-webkit-details-marker]:hidden',
+					'flex list-none items-center gap-2 px-3 py-2 text-sm',
+					'cursor-pointer [&::-webkit-details-marker]:hidden',
+					FOCUS_RING,
 				)}
 			>
 				<ChevronRight
 					aria-hidden="true"
-					className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+					className="size-4 shrink-0 text-evidence transition-transform group-open:rotate-90"
 				/>
-				<span className="min-w-0 flex-1 text-foreground">{summary}</span>
+				<span className="min-w-0 flex-1">
+					<span className="font-medium text-evidence">{CITATION_LABEL}</span>
+					{rule !== null && (
+						<span className="text-muted-foreground">{` · ${rule.name}`}</span>
+					)}
+				</span>
 			</summary>
 
 			<div className="space-y-3 border-t border-border px-3 py-3 text-sm">

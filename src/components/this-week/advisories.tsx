@@ -20,6 +20,11 @@ export interface AdvisoriesProps {
  * already established that a colour-only signal fails a reader who can't see
  * colour, or one squinting at a phone in the yard.
  *
+ * Flat, and never on `bg-card`. The raised surface belongs to the Tasks. Give
+ * it to this block instead and the page's most prominent element becomes the
+ * one block carrying no Citation, which is what #50 measured: the LCP element
+ * on This Week was an Advisory span.
+ *
  * Returns null on an empty list rather than an empty heading, for the same
  * reason `TaskGroup` will: a label over nothing reads as a promise the page
  * broke, and an unnarrated Artifact carries no advisories to promise.
@@ -32,7 +37,7 @@ export function Advisories({ advisories }: AdvisoriesProps): ReactElement | null
 	return (
 		<section
 			aria-labelledby="advisories-heading"
-			className="space-y-3 rounded-md border border-dashed border-border bg-muted/40 p-4"
+			className="space-y-3 rounded-md border border-dashed border-border p-4"
 		>
 			<div className="space-y-1">
 				<h2 id="advisories-heading" className="text-base font-semibold text-foreground">

@@ -104,26 +104,77 @@ function evidenceRow(container: HTMLElement, term: string): string {
 	return found.nextElementSibling?.textContent ?? '';
 }
 
+/** The words the disclosure label carries, written out here rather than imported: the point of the assertion is the string a reader sees. */
+const CITATION_LABEL = 'Rule and reading';
+
 describe('citationDisclosure', () => {
-	it('puts the Task\'s own text in a summary the reader has to open', () => {
+	/*
+	 * #50 counted three visible tasks against zero visible citations, because
+	 * the only thing advertising the evidence was a 16px chevron with no words
+	 * beside it. These four assertions are that finding turned into a test: the
+	 * label says what is behind it, it says it in the brief's own words, the
+	 * Rule is named before anything is opened, and the panel still defaults to
+	 * closed so a caller has to choose which one opens.
+	 */
+	it('labels the disclosure in words and names the Rule before it is opened', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary={windowTask.title}
 				citation={windowTask.citation}
 				rule={ruleFor(windowTask)}
 			/>,
 		);
 
-		const details = container.querySelector('details');
-		expect(details?.open).toBe(false);
-		expect(details?.querySelector('summary')?.textContent)
+		const summary = container.querySelector('summary');
+		expect(summary?.textContent).toContain(CITATION_LABEL);
+		expect(summary?.textContent).toContain('Fall pre-emergent');
+		expect(container.querySelector('details')?.open).toBe(false);
+	});
+
+	// The Task's own text belongs to the row that ticks the box, which is what
+	// lets that row be a 44px label. A summary carrying the same sentence would
+	// be a second copy to keep in step, and would put the thing a reader came to
+	// do inside the disclosure control.
+	it('leaves the Task\'s own text to the row above it', () => {
+		const { container } = render(
+			<CitationDisclosure
+				citation={windowTask.citation}
+				rule={ruleFor(windowTask)}
+			/>,
+		);
+
+		expect(container.querySelector('summary')?.textContent)
+			.not
 			.toContain('Apply fall pre-emergent to the front lawn');
+	});
+
+	it('renders open when the caller asks for it', () => {
+		const { container } = render(
+			<CitationDisclosure
+				citation={windowTask.citation}
+				rule={ruleFor(windowTask)}
+				defaultOpen
+			/>,
+		);
+
+		expect(container.querySelector('details')?.open).toBe(true);
+		// Open means the evidence is on the screen, not merely that an attribute
+		// is set: this is the whole of what #62 asked for.
+		expect(evidenceRow(container, 'Inside the window')).toBe('September 11, 2026');
+	});
+
+	// A Citation whose Rule the rule set has dropped still has a label. The
+	// words are the constant; only the Rule's name comes off the Rule.
+	it('labels the disclosure even with no Rule to name', () => {
+		const { container } = render(
+			<CitationDisclosure citation={windowTask.citation} rule={null} />,
+		);
+
+		expect(container.querySelector('summary')?.textContent).toBe(CITATION_LABEL);
 	});
 
 	it('dates a window Citation with the day that fell inside the range', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary={windowTask.title}
 				citation={windowTask.citation}
 				rule={ruleFor(windowTask)}
 			/>,
@@ -137,7 +188,6 @@ describe('citationDisclosure', () => {
 	it('names the run a threshold Citation was satisfied over, and invents no reading', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary="Apply spring pre-emergent to the front lawn"
 				citation={thresholdCitation}
 				rule={rulesById.get('spring-pre-emergent') ?? null}
 			/>,
@@ -153,7 +203,6 @@ describe('citationDisclosure', () => {
 	it('shows what was observed on the days a threshold Citation names', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary="Apply spring pre-emergent to the front lawn"
 				citation={windowedCitation}
 				rule={rulesById.get('spring-pre-emergent') ?? null}
 				window={combinedNarratedArtifact.plan.window}
@@ -179,7 +228,6 @@ describe('citationDisclosure', () => {
 
 		const { container } = render(
 			<CitationDisclosure
-				summary="Apply spring pre-emergent to the front lawn"
 				citation={windowedCitation}
 				rule={rulesById.get('spring-pre-emergent') ?? null}
 				window={combinedNarratedArtifact.plan.window}
@@ -198,7 +246,6 @@ describe('citationDisclosure', () => {
 	it('renders the run without readings when no window comes with it', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary="Apply spring pre-emergent to the front lawn"
 				citation={windowedCitation}
 				rule={rulesById.get('spring-pre-emergent') ?? null}
 			/>,
@@ -211,7 +258,6 @@ describe('citationDisclosure', () => {
 	it('renders no readings when the window holds nothing for the cited days', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary="Apply spring pre-emergent to the front lawn"
 				citation={thresholdCitation}
 				rule={rulesById.get('spring-pre-emergent') ?? null}
 				window={combinedNarratedArtifact.plan.window}
@@ -226,7 +272,6 @@ describe('citationDisclosure', () => {
 	it('leaves the depth out of a series that has none', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary="Skip the watering"
 				citation={rainfallCitation}
 				rule={null}
 			/>,
@@ -244,7 +289,6 @@ describe('citationDisclosure', () => {
 
 		const { container } = render(
 			<CitationDisclosure
-				summary={projectionTask.title}
 				citation={citation}
 				rule={ruleFor(projectionTask)}
 			/>,
@@ -268,7 +312,6 @@ describe('citationDisclosure', () => {
 	it('shows the elapsed days and the Occurrence a cadence Citation counted from', () => {
 		render(
 			<CitationDisclosure
-				summary={cadenceTask.title}
 				citation={cadenceTask.citation}
 				rule={ruleFor(cadenceTask)}
 			/>,
@@ -281,7 +324,6 @@ describe('citationDisclosure', () => {
 	it('says so when a cadence Rule had nothing to count from', () => {
 		render(
 			<CitationDisclosure
-				summary="Deep water the fig"
 				citation={{ kind: 'cadence', lastOccurrenceId: null, elapsedDays: null }}
 				rule={ruleFor(cadenceTask)}
 			/>,
@@ -296,7 +338,6 @@ describe('citationDisclosure', () => {
 	it('composes the Rule summary rather than restating the Rule itself', () => {
 		render(
 			<CitationDisclosure
-				summary={windowTask.title}
 				citation={windowTask.citation}
 				rule={ruleFor(windowTask)}
 			/>,
@@ -313,7 +354,6 @@ describe('citationDisclosure', () => {
 		// would print the opposite of this.
 		render(
 			<CitationDisclosure
-				summary={cadenceTask.title}
 				citation={cadenceTask.citation}
 				rule={ruleFor(cadenceTask)}
 				delegable={false}
@@ -326,7 +366,6 @@ describe('citationDisclosure', () => {
 	it('names the gap when the rule set does not carry the cited Rule, and still shows the evidence', () => {
 		render(
 			<CitationDisclosure
-				summary={cadenceTask.title}
 				citation={cadenceTask.citation}
 				rule={rulesByIdMissingDeepWaterFig.get(cadenceTask.ruleId) ?? null}
 			/>,
@@ -347,7 +386,6 @@ describe('citationDisclosure', () => {
 	it('renders its children inside the disclosure, below the evidence', () => {
 		const { container } = render(
 			<CitationDisclosure
-				summary={windowTask.title}
 				citation={windowTask.citation}
 				rule={ruleFor(windowTask)}
 			>
@@ -375,7 +413,6 @@ describe('citationDisclosure', () => {
 		// click.
 		const { container } = render(
 			<CitationDisclosure
-				summary={windowTask.title}
 				citation={windowTask.citation}
 				rule={ruleFor(windowTask)}
 			>

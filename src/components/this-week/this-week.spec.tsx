@@ -11,6 +11,7 @@ import { occurrenceSchema } from '@/planner/occurrence';
 import { seedPlants, seedRules, seedTagPolicy, seedYard } from '@/seed';
 import { createFakeStore } from '@/store/fake-store';
 import { combinedNarratedArtifact, combinedUnnarratedArtifact, okStatus, plants, rules } from './fixtures';
+import { PERMANENCE_NOTE, UNDO_REFUSAL } from './permanence';
 import { ThisWeek } from './this-week';
 
 /**
@@ -80,9 +81,16 @@ function unnarratedTask(): Task {
 const NARRATED_LINE = narratedLine();
 const UNNARRATED_TASK = unnarratedTask();
 
-/** One line per `<summary>`, which is where the Task's own text lands. A Rule's name renders inside the disclosure body and would otherwise match the same assertions. */
-function summaryLines(container: HTMLElement): string[] {
-	return [...container.querySelectorAll('summary')].map(summary => summary.textContent ?? '');
+/**
+ * One line per Task row, which is where the Task's own text lands: `TaskItem`
+ * opens every `<li>` with the row that carries the box and the sentence, and
+ * puts the evidence in a `<details>` after it. Reading the row rather than the
+ * whole `<li>` is what keeps a Rule's name, which renders inside the
+ * disclosure and often matches the Task's title word for word, out of these
+ * assertions.
+ */
+function taskLines(container: HTMLElement): string[] {
+	return [...container.querySelectorAll('li')].map(item => item.firstElementChild?.textContent ?? '');
 }
 
 function readyBox(): HTMLInputElement {
@@ -118,6 +126,11 @@ function taskListWrapper(): HTMLElement {
 	return wrapper;
 }
 
+/** The one live region on the route. Found by its politeness rather than by a role, because `StalenessBanner` already owns `role="status"` on this page. */
+function liveRegion(container: HTMLElement): string {
+	return container.querySelector('[aria-live="polite"]')?.textContent ?? '';
+}
+
 function fullPage(store: Store): ReactElement {
 	return (
 		<ThisWeek
@@ -135,6 +148,7 @@ describe('thisWeek', () => {
 		await mount(fullPage(fakeStore()));
 
 		expect(screen.getAllByRole('heading', { level: 2 }).map(heading => heading.textContent)).toEqual([
+			'The week in the yard',
 			'Ready now',
 			'Approaching',
 			'Held back',
@@ -168,7 +182,7 @@ describe('thisWeek', () => {
 	it('renders the model line for a narrated Task and the Planner title for one it left out', async () => {
 		const { container } = await mount(fullPage(fakeStore()));
 
-		const lines = summaryLines(container);
+		const lines = taskLines(container);
 
 		expect(lines.some(line => line.includes(NARRATED_LINE))).toBe(true);
 		expect(lines.some(line => line.includes(UNNARRATED_TASK.title))).toBe(true);
@@ -189,7 +203,7 @@ describe('thisWeek', () => {
 			/>,
 		);
 
-		const lines = summaryLines(container);
+		const lines = taskLines(container);
 
 		expect(lines.some(line => line.includes(NARRATED_LINE))).toBe(false);
 		for (const task of combinedUnnarratedArtifact.plan.tasks) {
@@ -377,6 +391,161 @@ describe('thisWeek', () => {
 		);
 
 		expect(taskListWrapper().className).not.toContain('text-muted-foreground');
+	});
+
+	/*
+	 * #50: `narrationSchema.summary` is required, its own describe() says it is
+	 * read before any individual task, and grepping the components for a render
+	 * site returned nothing. It was generated, validated and committed on every
+	 * run and read by no one.
+	 */
+	it('renders the narration summary in its own slot above the groups', async () => {
+		const { container } = await mount(fullPage(fakeStore()));
+
+		const summary = combinedNarratedArtifact.narration?.summary ?? '';
+		expect(summary).not.toBe('');
+
+		const slot = screen.getByRole('region', { name: 'The week in the yard' });
+		expect(slot.textContent).toContain(summary);
+
+		// Above the first task, because that is the position the field was
+		// written for and the reason it is required.
+		const firstTask = container.querySelector('li');
+		expect(firstTask).not.toBeNull();
+		expect(slot.compareDocumentPosition(firstTask as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
+			.toBeTruthy();
+	});
+
+	it('renders no summary slot for an Artifact the model never narrated', async () => {
+		await mount(
+			<ThisWeek
+				artifact={combinedUnnarratedArtifact}
+				status={okStatus}
+				rules={rules}
+				plants={plants}
+				store={fakeStore()}
+			/>,
+		);
+
+		expect(screen.queryByRole('region', { name: 'The week in the yard' })).toBeNull();
+	});
+
+	/*
+	 * ADR 0001 calls the cited-Task property the architecturally interesting
+	 * one, and #50 found it fully present in the DOM and entirely absent from
+	 * the screen: three visible tasks, zero open disclosures. One open, not
+	 * three—the panel is tall, and three of them would push the list off the
+	 * fold to demonstrate what one demonstrates.
+	 */
+	it('opens the first Task\'s evidence on load and leaves the rest closed', async () => {
+		const { container } = await mount(fullPage(fakeStore()));
+
+		const open = [...container.querySelectorAll('details[open]')];
+		expect(open).toHaveLength(1);
+
+		const firstFired = combinedNarratedArtifact.plan.tasks.find(task => task.status === 'fired');
+		expect(firstFired).toBeDefined();
+
+		const ready = screen.getByRole('region', { name: 'Ready now' });
+		const firstItem = within(ready).getAllByRole('listitem')[0];
+		expect(firstItem?.contains(open[0] as Node)).toBe(true);
+	});
+
+	// Nothing fired and nothing approaching still leaves held work with a
+	// Citation worth demonstrating, so the open panel falls to it rather than
+	// to nothing.
+	it('opens the held-back Task\'s evidence when nothing else is on the page', async () => {
+		const { container } = await mount(
+			<ThisWeek
+				artifact={artifactWithStatuses(['deferred'])}
+				status={okStatus}
+				rules={rules}
+				plants={plants}
+				store={fakeStore()}
+			/>,
+		);
+
+		const open = container.querySelectorAll('details[open]');
+		expect(open).toHaveLength(1);
+		expect(screen.getByRole('region', { name: 'Held back' }).contains(open[0] as Node)).toBe(true);
+	});
+
+	// #62: marking a task done has to say the record is permanent before or as
+	// it is written. This is the before half, over the group that carries the
+	// boxes.
+	it('warns that a tick cannot be taken back, over the group that has boxes', async () => {
+		await mount(fullPage(fakeStore()));
+
+		const ready = screen.getByRole('region', { name: 'Ready now' });
+		expect(within(ready).getByText(PERMANENCE_NOTE)).toBeDefined();
+	});
+
+	it('drops the warning when the group has no work to tick', async () => {
+		await mount(
+			<ThisWeek
+				artifact={artifactWithStatuses([])}
+				status={okStatus}
+				rules={rules}
+				plants={plants}
+				store={fakeStore()}
+			/>,
+		);
+
+		expect(screen.queryByText(PERMANENCE_NOTE)).toBeNull();
+	});
+
+	/*
+	 * The write landed in IndexedDB and nothing said so out loud. A sighted
+	 * reader watching the box got one cue; a screen-reader user got no
+	 * confirmation the yard had recorded anything at all.
+	 *
+	 * Empty before the click, because a live region has to be in the document
+	 * before its content changes for a screen reader to announce what lands in
+	 * it.
+	 */
+	it('announces the Occurrence in a polite live region once the Store agrees', async () => {
+		const store = fakeStore();
+		const { container } = await mount(fullPage(store));
+
+		expect(liveRegion(container)).toBe('');
+
+		await act(async () => {
+			fireEvent.click(readyBox());
+		});
+
+		expect(liveRegion(container)).toContain('Recorded:');
+		// The same policy sentence the refusal carries, so a reader hears one
+		// account of the append-only log whichever way they arrived at it.
+		expect(liveRegion(container)).toMatch(/nothing here to undo/i);
+	});
+
+	it('announces the refusal when a reader tries to untick', async () => {
+		const store = fakeStore();
+		const { container } = await mount(fullPage(store));
+
+		await act(async () => {
+			fireEvent.click(readyBox());
+		});
+		await act(async () => {
+			fireEvent.click(readyBox());
+		});
+
+		expect(liveRegion(container)).toBe(UNDO_REFUSAL);
+		// The non-goal, held: unticking says something and writes nothing.
+		expect(await store.list('occurrences')).toHaveLength(1);
+		expect(readyBox().checked).toBe(true);
+	});
+
+	// The other half of the surface inversion #62 records. The Tasks are the
+	// raised blocks now; the two sections that carry the least weight are not.
+	it('leaves the held-back and advisory sections off the raised surface', async () => {
+		await mount(fullPage(fakeStore()));
+
+		for (const name of ['Held back', 'Also observed']) {
+			const section = screen.getByRole('region', { name });
+			expect(section.className).not.toContain('bg-card');
+			expect(section.className).not.toContain('bg-muted');
+		}
 	});
 
 	// The other half of `TaskGroup`'s empty contract, and the case the shipped

@@ -20,6 +20,11 @@ function fixtureDeferredTask(): Task {
 
 const deferredTask = fixtureDeferredTask();
 
+/** The Task's own row, which `TaskItem` renders as the first child of its `<li>`, ahead of the evidence drawer. */
+function taskRowText(container: HTMLElement): string {
+	return container.querySelector('li')?.firstElementChild?.textContent ?? '';
+}
+
 describe('deferredSection', () => {
 	it('renders the deferred Task with its Guard name and release text', () => {
 		render(<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />);
@@ -61,16 +66,16 @@ describe('deferredSection', () => {
 		);
 
 		expect(container.querySelector('section')).not.toBeNull();
-		expect(screen.getByText(/nothing is being held back/i)).toBeDefined();
+		expect(screen.getByText(/nothing is holding work back/i)).toBeDefined();
 		expect(container.querySelector('li')).toBeNull();
 	});
 
 	// The deferred Task's own title ('Deep water the fig') and its Rule's name
 	// are the same string, and rule-summary renders the Rule's name inside the
-	// disclosure body. So these two checks read the `<summary>` text
-	// specifically—the one line narrationById is wired to—rather than
-	// screen.getByText, which would also match the Rule name and fail on
-	// ambiguity that has nothing to do with what this component wires up.
+	// disclosure body, where the disclosure label now names it too. So these two
+	// checks read the Task row specifically—the one line narrationById is wired
+	// to—rather than screen.getByText, which would also match the Rule name and
+	// fail on ambiguity that has nothing to do with what this component wires up.
 	it('resolves narration through narrationById by task id', () => {
 		const narrationById = new Map([[deferredTask.id, 'Custom narration for the fig.']]);
 
@@ -83,7 +88,7 @@ describe('deferredSection', () => {
 			/>,
 		);
 
-		expect(container.querySelector('summary')?.textContent).toContain('Custom narration for the fig.');
+		expect(taskRowText(container)).toContain('Custom narration for the fig.');
 	});
 
 	it('falls back to the title when narrationById has no entry for the Task', () => {
@@ -91,7 +96,94 @@ describe('deferredSection', () => {
 			<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />,
 		);
 
-		expect(container.querySelector('summary')?.textContent).toContain(deferredTask.title);
+		expect(taskRowText(container)).toContain(deferredTask.title);
+	});
+
+	/*
+	 * ADR 0002's machinery is the most distinctive thing this app does, and it
+	 * has never had a live example on the deployed site, because holding work
+	 * back needs rain in the forecast. An empty week is the only chance this
+	 * section gets to explain itself, and "no Guard has deferred any work" does
+	 * not take it: that is a glossary term aimed at a reader without the
+	 * glossary.
+	 */
+	it('explains what holding work back means while it has nothing to show', () => {
+		render(<DeferredSection tasks={[]} rulesById={rulesById} plantsById={plantsById} />);
+
+		const copy = screen.getByText(/nothing is holding work back/i).textContent ?? '';
+
+		// ADR 0002's argument in household words: the task stays put, with the
+		// reason on it, rather than disappearing.
+		expect(copy).toMatch(/stays on this page/i);
+		expect(copy).toMatch(/reason/i);
+		expect(copy).not.toContain('Guard');
+	});
+
+	it('names neither Guards nor deferrals at a household reader when work is held', () => {
+		render(<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />);
+
+		const copy = screen.getByRole('region', { name: 'Held back' })
+			.querySelector('p')
+			?.textContent ?? '';
+
+		expect(copy).not.toContain('Guard');
+		expect(copy).not.toContain('Deferral');
+	});
+
+	// #62 moves the raised surface onto the Tasks. This section keeps its
+	// heading and its prose and gives up the card it never earned.
+	it('renders flat, leaving the raised surface to the Tasks inside it', () => {
+		const { container } = render(
+			<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />,
+		);
+
+		const section = container.querySelector('section');
+		expect(section?.className).not.toContain('bg-muted');
+		expect(section?.className).not.toContain('bg-card');
+		expect(container.querySelector('li')?.className).toContain('bg-card');
+	});
+
+	it('opens the evidence on the Task the caller named', () => {
+		const { container } = render(
+			<DeferredSection
+				tasks={[deferredTask]}
+				rulesById={rulesById}
+				plantsById={plantsById}
+				openCitationId={deferredTask.id}
+			/>,
+		);
+
+		expect(container.querySelector('details')?.open).toBe(true);
+	});
+
+	it('leaves the evidence closed for a Task the caller did not name', () => {
+		const { container } = render(
+			<DeferredSection
+				tasks={[deferredTask]}
+				rulesById={rulesById}
+				plantsById={plantsById}
+				openCitationId="some-other-task"
+			/>,
+		);
+
+		expect(container.querySelector('details')?.open).toBe(false);
+	});
+
+	it('passes the refused untick through to its caller', () => {
+		const onUndoAttempt = vi.fn();
+		render(
+			<DeferredSection
+				tasks={[deferredTask]}
+				rulesById={rulesById}
+				plantsById={plantsById}
+				completedIds={new Set([deferredTask.id])}
+				onUndoAttempt={onUndoAttempt}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole('checkbox'));
+
+		expect(onUndoAttempt).toHaveBeenCalledWith(deferredTask);
 	});
 
 	it('checks the box when completedIds names the Task', () => {
