@@ -9,9 +9,21 @@
 :root {
 	--background: var(--color-zinc-950);
 	--foreground: var(--color-zinc-50);
-	--card: var(--color-zinc-950);
+
+	/* One step above --background, not equal to it. While the two matched,
+	`bg-card` did nothing and a 1.34:1 border was the only thing identifying a
+	component, which is also why the two least important blocks on This Week
+	read as more raised than the Tasks (#65). */
+	--card: var(--color-zinc-900);
 	--card-foreground: var(--color-zinc-50);
-	--popover: var(--color-zinc-950);
+
+	/* WCAG 1.4.11 wants 3:1 where a border is what identifies a component. No
+	pair of zinc surfaces reaches 3:1 without giving up the dark shell, so the
+	boundary carries it: zinc-500 measures 4.12:1 on --background and 3.67:1
+	on --card. --border stays quiet for shell hairlines, which identify
+	nothing and would shout at this value. */
+	--card-border: var(--color-zinc-500);
+	--popover: var(--color-zinc-900);
 	--popover-foreground: var(--color-zinc-50);
 	--primary: var(--color-zinc-50);
 	--primary-foreground: var(--color-zinc-900);
@@ -25,14 +37,39 @@
 	--destructive-foreground: var(--color-zinc-50);
 	--border: var(--color-zinc-800);
 	--input: var(--color-zinc-800);
-	--ring: var(--color-zinc-300);
+
+	/* The one hue in the product, and it has a job: amber means this line is
+	cited. It marks the citation affordance, the provenance badge and the
+	focus ring, and nothing else takes it. Green was the obvious pick for a
+	yard app and reads as success, which collides with a ticked Task.
+	11.55:1 on --background, 10.29:1 on --card. */
+	--evidence: var(--color-amber-400);
+	--evidence-foreground: var(--color-zinc-950);
+	--ring: var(--color-amber-400);
 }
 
 @theme inline {
+	/* Atkinson Hyperlegible Next, loaded in layout.tsx. The font's own custom
+	property is read here rather than named --font-sans at the source, because
+	a --font-sans that resolves to var(--font-sans) is circular. */
+	--font-sans: var(--font-atkinson);
+
+	/* h1 24px against a 16px h2 left nothing reading as more important than
+	anything else, and a section heading sat 2px above the body text it
+	governs. Raising these widens the gap without editing a route file, since
+	every heading already reaches the scale through the utilities it uses:
+	--text-base carries the h2s on This Week, --text-2xl the page h1. --text-sm
+	carries body copy and does not move, so the gap opens upward. */
+	--text-base: 1.125rem;
+	--text-lg: 1.25rem;
+	--text-xl: 1.5rem;
+	--text-2xl: 2rem;
+
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
+	--color-card-border: var(--card-border);
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-primary: var(--primary);
@@ -47,5 +84,26 @@
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-border: var(--border);
 	--color-input: var(--input);
+	--color-evidence: var(--evidence);
+	--color-evidence-foreground: var(--evidence-foreground);
 	--color-ring: var(--ring);
+}
+
+@layer base {
+	/* Tailwind leaves --tw-ring-offset-color at white, so every focused control
+	on a near-black page got a white halo nobody chose. */
+	*,
+	::after,
+	::before {
+		--tw-ring-offset-color: var(--background);
+	}
+
+	/* Atkinson Hyperlegible Next draws proportional figures: its digits run 407
+	to 648 units wide, so a column of soil temperatures or dates shifts sideways
+	as the values change. Nearly every number in this app is a measurement read
+	down a column against its neighbours, so tabular is the default here and
+	running prose pays the small cost. */
+	html {
+		font-variant-numeric: tabular-nums;
+	}
 }
