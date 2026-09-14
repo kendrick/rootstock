@@ -303,10 +303,11 @@ describe('thisWeek', () => {
 		expect(readyBox().checked).toBe(true);
 	});
 
-	// The seed defaults, reached by leaving both props off. `src/seed/rules.json`
-	// carries no `deep-water-fig` and `data/artifact.json` cites one, so this is
-	// the line the deployed page renders today rather than a gap invented for a
-	// test.
+	// Two things at once: the seed defaults, reached by leaving both props off, and the message a
+	// Citation gets when its Rule is not in the rule set it is read against. The second is worth
+	// holding onto even while the committed Artifact cites only Rules that exist, because an
+	// Artifact outlives the seed that produced it and a Rule can be retired between the run that
+	// cited it and the next read.
 	it('defaults its rule set and inventory to the seed data', async () => {
 		await mount(
 			<ThisWeek artifact={combinedNarratedArtifact} status={okStatus} store={fakeStore()} />,
