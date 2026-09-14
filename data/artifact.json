@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"generatedAt": "2026-09-14T19:27:22.183Z",
+	"generatedAt": "2026-09-14T20:06:59.039Z",
 	"plan": {
 		"asOf": "2026-09-14",
 		"tasks": [
@@ -863,7 +863,7 @@
 		]
 	},
 	"narration": {
-		"summary": "It is a dry, hot week for the yard, with three timely tasks: protect the lawn, make its final nitrogen application, and feed the Esperanza.",
+		"summary": "It is a lawn-care week, with fall weed prevention and the year's last nitrogen feeding, plus a feeding for the Esperanza.",
 		"tasks": [
 			{
 				"taskId": "fall-pre-emergent@front-lawn",
@@ -871,7 +871,7 @@
 			},
 			{
 				"taskId": "last-nitrogen@front-lawn",
-				"text": "Apply the front lawn's last nitrogen fertilizer of the year."
+				"text": "Apply the final nitrogen feeding of the year to the front lawn."
 			},
 			{
 				"taskId": "esperanza-feeding@esperanza-1",
@@ -880,7 +880,7 @@
 		],
 		"advisories": [
 			{
-				"text": "Rain chances remain very low this week, so check plants and containers for dryness and water as needed."
+				"text": "Rain chances are very low this week, so plan to provide the water needed after the pre-emergent application."
 			}
 		]
 	},
