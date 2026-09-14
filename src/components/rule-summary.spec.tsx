@@ -145,14 +145,14 @@ describe('ruleSummary', () => {
 	// ADR 0002: two effects and no third, and the difference between them is the
 	// difference between held work and a note on work that is going ahead.
 	it('marks a deferring Guard as creating no work', () => {
-		render(<RuleSummary rule={seedRule('fig-fertilizer-until-spring')} />);
+		render(<RuleSummary rule={seedRule('rain-expected')} />);
 
 		expect(screen.getByText('Guard · creates no work')).toBeDefined();
 		expect(screen.getByText('Defers the Task until its release condition is met')).toBeDefined();
 	});
 
 	it('marks an annotating Guard as creating no work, with the other effect', () => {
-		render(<RuleSummary rule={seedRule('evening-application')} />);
+		render(<RuleSummary rule={seedRule('water-in-after-application')} />);
 
 		expect(screen.getByText('Guard · creates no work')).toBeDefined();
 		expect(screen.getByText('Annotates the Task, and holds no work back')).toBeDefined();

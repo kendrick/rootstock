@@ -48,33 +48,36 @@ const esperanza = seedPlants.find(plant => plant.id === 'esperanza-1')!;
 const plannedCrossvine = seedPlants.find(plant => plant.id === 'crossvine-1')!;
 
 describe('rulesFor', () => {
-	it('reaches a lawn through the Rules that name it and the Guard that holds their work', () => {
-		// Four task-creating Rules name front-lawn by id. `rain-expected` joins
-		// them without naming any Plant: three of those four are tagged
-		// `chemical`, which is what its ruleTags select. The other two Guards are
-		// tagged for `pesticide`, which nothing in this yard carries.
+	it('reaches a lawn through the Rules that name it and the Guards that hold their work', () => {
+		// Four task-creating Rules name front-lawn by id. Both Guards join them
+		// without naming any Plant of their own: three of those four Rules are
+		// tagged `chemical`, which is the tag both Guards' ruleTags select.
 		expect(rulesFor(frontLawn, seedRules, seedPlants).map(rule => rule.id)).toEqual([
 			'fall-pre-emergent',
 			'last-nitrogen',
 			'spring-pre-emergent',
 			'spring-pre-emergent-follow-up',
 			'rain-expected',
+			'water-in-after-application',
 		]);
 	});
 
 	it('reaches a tagged plant through a tag-matched task-creating Rule', () => {
-		// fig-1 carries the 'fruit' tag but is never named by id in a
-		// task-creating Rule, so a hand-authored one proves the tag half of
-		// targets() reaches this function's result.
+		// fig-1 carries two task-creating Rules that name it directly by id, so
+		// this hand-authored Rule selects it by the 'fruit' tag instead, with no
+		// plantIds of its own, to prove the tag half of targets() reaches this
+		// function's result on its own strength.
 		const fruitCare = windowRule('fruit-care', { plantIds: null, plantTags: ['fruit'], ruleTags: null });
 		const rules = [fruitCare, ...seedRules];
 
-		// fig-fertilizer-until-spring names fig-1 by id and would have listed here
-		// on that alone. Its ruleTags is ['fertilizer'] and nothing reaching the
-		// fig asks for fertilizer, so the Guard has no work to hold and does not
-		// appear. A Guard listed against nothing is noise on the one screen that
-		// is supposed to say what governs this plant.
-		expect(rulesFor(fig, rules, seedPlants).map(rule => rule.id)).toEqual(['fruit-care']);
+		// Both fig-1 Rules named by id join fruitCare, in seed order. Neither
+		// Guard follows: both select ruleTags: ['chemical'], and none of the
+		// three Rules reaching the fig carries that tag.
+		expect(rulesFor(fig, rules, seedPlants).map(rule => rule.id)).toEqual([
+			'fruit-care',
+			'fig-spring-nitrogen',
+			'fig-spring-compost',
+		]);
 	});
 
 	// The regression this function was rewritten for. `rain-expected` names no
@@ -93,13 +96,17 @@ describe('rulesFor', () => {
 		expect(rulesFor(esperanza, seedRules, seedPlants).map(rule => rule.id)).not.toContain('rain-expected');
 	});
 
-	// No seed Rule is tagged 'pesticide', so both annotating Guards speak to
-	// nothing in this yard and belong on no plant's page.
-	it('leaves off a Guard whose rule tags match nothing in the yard', () => {
-		const reached = rulesFor(frontLawn, seedRules, seedPlants).map(rule => rule.id);
+	// The seed's two Guards both select ruleTags: ['chemical'], and fig-1's task-
+	// creating Rules carry fruit/fertilizer/nitrogen and fruit/compost between
+	// them—no chemical tag anywhere—so neither Guard belongs on its page. Both
+	// Guards leave plantIds and plantTags null, so if the ruleTags half of this
+	// check ever stopped narrowing, both would reach fig-1 on the plant half
+	// alone and this would start failing.
+	it('leaves off both Guards on a plant whose Rules carry no matching rule tag', () => {
+		const reached = rulesFor(fig, seedRules, seedPlants).map(rule => rule.id);
 
-		expect(reached).not.toContain('evening-application');
-		expect(reached).not.toContain('away-from-flowering');
+		expect(reached).not.toContain('rain-expected');
+		expect(reached).not.toContain('water-in-after-application');
 	});
 
 	// A Guard with every selector null reaches every Task in a Plan, so it

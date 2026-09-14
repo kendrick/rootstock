@@ -8,6 +8,7 @@ import { evaluateThresholdRule } from '@/planner/threshold-rule';
 import {
 	findCoordinateKeys,
 	findCoordinatePairs,
+	findDormantGuards,
 	findDuplicateIds,
 	findLongDecimals,
 	findRulesPastWindow,
@@ -91,7 +92,18 @@ describe('seed loading', () => {
 		expect(seedYard.id).toBe('home-yard');
 		expect(seedPlants.length).toBeGreaterThan(0);
 		expect(seedRules.length).toBeGreaterThan(0);
-		expect(seedOccurrences).toEqual([]);
+		// `completedAt` sits outside `fig-spring-compost`'s 03-01 to 04-30 window
+		// on purpose. The Occurrence records the day the compost actually went
+		// down; the Rule records when it should go down next year. Anyone tempted
+		// to bring the two into line should not.
+		expect(seedOccurrences).toEqual([{
+			id: 'fig-spring-compost-2026',
+			ruleId: 'fig-spring-compost',
+			plantId: 'fig-1',
+			completedAt: '2026-06-01T00:00:00Z',
+			recordedAt: '2026-09-14T00:00:00Z',
+			source: 'seed',
+		}]);
 		expect(seedTagPolicy.neverDelegableTags).toContain('chemical');
 	});
 
@@ -204,6 +216,45 @@ describe('reference resolution', () => {
 		expect(findUnresolvedReferences([], [], occurrences)).toEqual([
 			'occurrence \'test-occurrence\' ruleId names unknown rule \'no-such-rule\'',
 			'occurrence \'test-occurrence\' plantId names unknown plant \'no-such-plant\'',
+		]);
+	});
+});
+
+describe('dormant guard detection', () => {
+	it('finds no dormant guard in the real seed data', () => {
+		expect(findDormantGuards(seedRules)).toEqual([]);
+	});
+
+	it('reports a guard whose appliesTo.ruleTags names a tag no task-creating rule carries, by id and tag', () => {
+		const rules: Rule[] = [
+			thresholdRule({ id: 'lawn-rule', tags: ['lawn'] }),
+			guardRule({ id: 'pesticide-guard', appliesTo: { ...WHOLE_YARD, ruleTags: ['pesticide'] } }),
+		];
+
+		expect(findDormantGuards(rules)).toEqual([
+			'guard \'pesticide-guard\' appliesTo.ruleTags names no task-creating rule\'s tag: pesticide',
+		]);
+	});
+
+	it('never reports a guard whose appliesTo.ruleTags is null', () => {
+		const rules: Rule[] = [
+			guardRule({ id: 'whole-yard-guard', appliesTo: WHOLE_YARD }),
+		];
+
+		expect(findDormantGuards(rules)).toEqual([]);
+	});
+
+	// Guards author no work (CONTEXT.md), so a second guard reaching only the
+	// first guard's own tags is still dormant: nothing task-creating carries
+	// the tag it selects.
+	it('reports a guard whose appliesTo.ruleTags matches only another guard\'s tags', () => {
+		const rules: Rule[] = [
+			guardRule({ id: 'first-guard', tags: ['pesticide'], appliesTo: { ...WHOLE_YARD, ruleTags: null } }),
+			guardRule({ id: 'second-guard', appliesTo: { ...WHOLE_YARD, ruleTags: ['pesticide'] } }),
+		];
+
+		expect(findDormantGuards(rules)).toEqual([
+			'guard \'second-guard\' appliesTo.ruleTags names no task-creating rule\'s tag: pesticide',
 		]);
 	});
 });

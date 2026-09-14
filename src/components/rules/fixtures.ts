@@ -37,11 +37,11 @@ export const thresholdRule: Rule = { ...findSeedRule('spring-pre-emergent') };
 export const cadenceRule: Rule = { ...findSeedRule('spring-pre-emergent-follow-up') };
 
 /**
- * A guard rule with a `defer` effect, backed by an owner source. The fig
- * fertilizer guard has a `within-window` condition with `negate: true`, so it
- * covers the "not until" variant of the condition shape.
+ * A guard rule with a `defer` effect, backed by an owner source. `rain-expected`'s
+ * condition is `no-rain-within` rather than `within-window`, so this fixture
+ * covers the probability-based condition shape.
  */
-export const guardRule: Rule = { ...findSeedRule('fig-fertilizer-until-spring') };
+export const guardRule: Rule = { ...findSeedRule('rain-expected') };
 
 /**
  * Aliases for specs that describe what they care about rather than which seed
