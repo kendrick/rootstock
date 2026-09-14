@@ -125,6 +125,31 @@ describe('rules page', () => {
 		}
 	});
 
+	// #64: every Rule in this yard shares one Region, so it belongs on the page
+	// once rather than once per Rule.
+	it('renders the shared region once for the whole page', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+
+		render(<RulesPage />);
+
+		expect(screen.getAllByText(/Zone 8b/)).toHaveLength(1);
+	});
+
+	// #64's cross-link criterion: the committed Plan already names every Rule
+	// it used, and this proves the page actually reads that Plan rather than
+	// rendering the seed Rules with no reference to it.
+	it('marks exactly the rules the committed Plan\'s Tasks and Guards name', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+
+		render(<RulesPage />);
+
+		// fall-pre-emergent and last-nitrogen both own a Task in narratedArtifact.
+		expect(screen.getAllByText('Produced a Task this week')).toHaveLength(2);
+		// rain-expected deferred the fig watering; water-in-after-application
+		// annotated the pre-emergent Task. Neither owns a Task itself.
+		expect(screen.getAllByText('Acted on a Task this week')).toHaveLength(2);
+	});
+
 	// `output: 'export'` prerenders this route in Node at build time. A timestamp
 	// in that markup would be the build machine's instant, and the browser would
 	// contradict it on hydration.
