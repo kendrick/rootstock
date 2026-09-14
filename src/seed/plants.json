@@ -5,7 +5,7 @@
 		"kind": "lawn",
 		"status": "planted",
 		"tags": ["lawn", "turf"],
-		"position": { "x": 0.27, "y": 0.61 },
+		"position": { "x": 0.3, "y": 0.8 },
 		"site": null,
 		"lawn": {
 			"grass": "TifTuf bermuda",
@@ -24,7 +24,7 @@
 		"kind": "plant",
 		"status": "planted",
 		"tags": ["fig", "fruit", "tree"],
-		"position": { "x": 0.74, "y": 0.47 },
+		"position": { "x": 0.85, "y": 0.63 },
 		"site": "Sandy fill on a slope against a west-facing stone wall",
 		"lawn": null,
 		"notes": null
@@ -35,7 +35,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "perennial"],
-		"position": { "x": 0.44, "y": 0.68 },
+		"position": { "x": 0.66, "y": 0.13 },
 		"site": "Back patio, full sun",
 		"lawn": null,
 		"notes": null
@@ -46,7 +46,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.4, "y": 0.69 },
+		"position": { "x": 0.7, "y": 0.1 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": "Due for a repot in spring."
@@ -57,7 +57,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.43, "y": 0.7 },
+		"position": { "x": 0.74, "y": 0.14 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": null
@@ -68,7 +68,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.46, "y": 0.71 },
+		"position": { "x": 0.71, "y": 0.18 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": null
