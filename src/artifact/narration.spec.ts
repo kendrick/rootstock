@@ -1,6 +1,5 @@
-import type { JsonSchema } from '@/validation/json-schema';
 import { describe, expect, it } from 'vitest';
-import { walkSchema } from '@/validation/json-schema';
+import { nodes } from '@/validation/json-schema';
 import { narrationJsonSchema, parseNarration } from './narration';
 
 // The keywords OpenAI's strict structured-output mode accepts for a schema of this shape. An
@@ -9,12 +8,6 @@ import { narrationJsonSchema, parseNarration } from './narration';
 // upgrade emitting a keyword nobody has seen yet. Anything new shows up here as a failing test
 // rather than an opaque HTTP 400 from a generation run.
 const ALLOWED_KEYWORDS = new Set(['type', 'properties', 'required', 'additionalProperties', 'items', 'description']);
-
-function nodes(schema: JsonSchema): Array<{ path: string; node: JsonSchema }> {
-	const visited: Array<{ path: string; node: JsonSchema }> = [];
-	walkSchema(schema, (node, path) => visited.push({ path, node }));
-	return visited;
-}
 
 const validNarration = {
 	summary: 'A cool, wet week. The soil finally came up to temperature, so the pre-emergent window is open.',

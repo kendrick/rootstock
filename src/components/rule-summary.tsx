@@ -1,83 +1,18 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
-import type { Aggregate, Unit, Variable } from '@/weather/observation';
 import { ExternalLink, Shield, Users, UserX } from 'lucide-react';
+import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { MONTHS } from '@/planner/dates';
 import { isDelegable } from '@/planner/delegation';
 import { seedTagPolicy } from '@/seed';
-
-/* eslint-disable react-refresh/only-export-components -- the four exports below
- * are shared with citation.tsx, and fast refresh's price for that is a full dev
- * reload when this file changes instead of a hot patch. The rule's own answer is
- * a third module, and the one that most wants it is MONTHS, whose home is
- * `src/planner/dates.ts`, frozen for this ticket. A copy in each file is the
- * worse trade: two spellings of `soil-temperature` in one app, and a fix to
- * either one leaves the other wrong.
- */
-
-/**
- * The enum values are wire spellings, not prose. A household member reads this
- * in the yard, and `soil-temperature` beside `gte` reads as a dump of the JSON
- * rather than as a sentence about the lawn. citation.tsx says the same words
- * about the same series, so it reads them from here.
- */
-export const VARIABLE_TEXT: Record<Variable, string> = {
-	'soil-temperature': 'soil temperature',
-	'precipitation': 'rainfall',
-	'precipitation-probability': 'chance of rain',
-};
-
-export const AGGREGATE_TEXT: Record<Aggregate, string> = {
-	mean: 'mean',
-	min: 'minimum',
-	max: 'maximum',
-	sum: 'total',
-};
 
 const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
 	gte: 'at or above',
 	lte: 'at or below',
 };
-
-/**
- * The unit lives with the number it belongs to, so a caller passes the pair it
- * read rather than the unit it assumed. citation.tsx takes `unit` off the
- * DailyAggregate it is rendering, which is not necessarily the unit the Rule
- * that cited it was written in.
- */
-export function formatValue(value: number, unit: Unit): string {
-	switch (unit) {
-		case 'F':
-			return `${value}°F`;
-		case 'mm':
-			return `${value} mm`;
-		case 'percent':
-			return `${value}%`;
-	}
-}
-
-/**
- * `src/planner/dates.ts` is where a shared month table belongs, and it is frozen
- * for this ticket, so citation.tsx imports it from here in the meantime. Moving
- * it is a one-line change on the day that file opens up again.
- */
-export const MONTHS = [
-	'January',
-	'February',
-	'March',
-	'April',
-	'May',
-	'June',
-	'July',
-	'August',
-	'September',
-	'October',
-	'November',
-	'December',
-];
-/* eslint-enable react-refresh/only-export-components */
 
 /**
  * MM-DD is deliberately yearless—rule.ts keeps the fall pre-emergent window

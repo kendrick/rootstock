@@ -4,17 +4,13 @@ import type { Citation } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Variable } from '@/weather/observation';
 import { ChevronRight, TriangleAlert } from 'lucide-react';
-import { AGGREGATE_TEXT, formatValue, MONTHS, RuleSummary, VARIABLE_TEXT } from '@/components/rule-summary';
+import { RuleSummary } from '@/components/rule-summary';
+import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { cn } from '@/lib/utils';
+import { MONTHS } from '@/planner/dates';
 
 /*
- * The series words, the month table and the unit formatter come from
- * rule-summary.tsx, which this component already composes. The overlap that
- * remains is deliberate: `Row` here baselines a `<time>` against its label
- * where rule-summary centres badges against theirs, and the two date formatters
- * read different shapes—a yearless `MM-DD` window on a Rule against a full ISO
- * day on a Citation. `src/planner/dates.ts` is where a shared month table
- * belongs, and it is frozen for this ticket.
+ * This component and `rule-summary.tsx` keep their own `Row` and their own date formatter rather than sharing either. `Row` here baselines a `<time>` against its label where rule-summary centres a badge against its own, and the two formatters read different shapes: a yearless `MM-DD` window on a Rule, against a full ISO day on a Citation.
  */
 
 /**

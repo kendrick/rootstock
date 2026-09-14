@@ -1,13 +1,10 @@
 import { z } from 'zod';
+import { KEBAB_ID_PATTERN, kebabIdSchema } from '@/validation/ids';
 import { aggregateSchema, variableSchema } from '@/weather/observation';
 
-/**
- * A lowercase-kebab identifier, shared by every entity id this module
- * refers to. Defined locally rather than imported: this module speaks only
- * to `@/weather/observation`, so a Rule or Plant id is just a string shape
- * here, never a type borrowed from the module that owns it.
+/*
+ * Every entity id here is a string shape, never a type borrowed from the module that owns the entity, which is what keeps `@/rules/` and `@/yard/` out of this module's import graph. `@/validation/ids` carries the id character class and no domain type, so the shared shape arrives without a Rule or a Plant arriving with it.
  */
-const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
 
 /**
  * A Task's id is derived, never authored, so the Planner, the store, and the
@@ -25,7 +22,7 @@ export function taskId(ruleId: string, plantId: string | null): string {
 }
 
 /** Matches exactly what {@link taskId} produces: a kebab rule id, optionally `@`-joined to a kebab plant id. */
-export const taskIdSchema = z.string().regex(/^[a-z0-9-]+(@[a-z0-9-]+)?$/);
+export const taskIdSchema = z.string().regex(new RegExp(`^${KEBAB_ID_PATTERN}(@${KEBAB_ID_PATTERN})?$`));
 export type TaskId = z.infer<typeof taskIdSchema>;
 
 /**

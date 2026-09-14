@@ -1,7 +1,5 @@
 import { z } from 'zod';
-
-/** A lowercase-kebab identifier, shared by every entity id in this module. */
-const idSchema = z.string().regex(/^[a-z0-9-]+$/);
+import { kebabIdSchema } from '@/validation/ids';
 
 /**
  * A place is a city and a hardiness zone, never a coordinate pair. The
@@ -59,7 +57,7 @@ export type LawnDetail = z.infer<typeof lawnDetailSchema>;
  * an authoring mistake worth catching at parse time rather than downstream.
  */
 export const plantSchema = z.strictObject({
-	id: idSchema,
+	id: kebabIdSchema,
 	name: z.string(),
 	kind: z.enum(['plant', 'container', 'bed', 'lawn']),
 	status: z.enum(['planned', 'planted']),
@@ -84,7 +82,7 @@ export type Plant = z.infer<typeof plantSchema>;
  * that owns Plant is exactly the confusion the glossary is guarding.
  */
 export const yardSchema = z.strictObject({
-	id: idSchema,
+	id: kebabIdSchema,
 	region: regionSchema,
 	photo: z.strictObject({
 		path: z.string(),

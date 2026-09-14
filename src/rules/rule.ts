@@ -1,8 +1,7 @@
 import { z } from 'zod';
+import { kebabIdSchema } from '@/validation/ids';
 import { aggregateSchema, unitSchema, variableSchema } from '@/weather/observation';
 import { regionSchema } from '@/yard/plant';
-
-const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
 
 /**
  * A date that recurs every year, written MM-DD. Deliberately not
@@ -10,6 +9,14 @@ const kebabIdSchema = z.string().regex(/^[a-z0-9-]+$/);
  * and the window comes back every September.
  */
 const monthDaySchema = z.string().regex(/^\d{2}-\d{2}$/);
+
+/**
+ * The stretch of the year a rule is allowed to fire in. The cadence and threshold kinds have to fence identically, so they share one shape. Two rules written the same way would otherwise behave differently, and nothing in the authored JSON would say why.
+ */
+const seasonSchema = z.strictObject({
+	start: monthDaySchema,
+	end: monthDaySchema,
+});
 
 /**
  * Where the rule came from. `kind` separates a published extension
@@ -161,11 +168,7 @@ export type WindowRule = z.infer<typeof windowRuleSchema>;
  * evidenced rather than assumed—a run already past `value` before the window
  * opened proves no trend at all.
  *
- * `season` fences the reading to part of the year, the same shape as
- * `cadenceRuleSchema.season` above. A soil-temperature threshold with no
- * season fires on a freak January warm spell exactly as readily as an actual
- * spring one; season is what lets a rule restrict a crossing to the part of
- * the year it's agronomically meaningful.
+ * `season` fences the reading to part of the year, through the same `seasonSchema` the cadence kind fences itself with. A soil-temperature threshold carrying no season fires on a freak January warm spell exactly as readily as on an actual spring one, so season is what lets a rule hold a crossing to the stretch of the year where it means something agronomically.
  */
 export const thresholdRuleSchema = z.strictObject({
 	...ruleBaseShape,
@@ -178,10 +181,7 @@ export const thresholdRuleSchema = z.strictObject({
 	unit: unitSchema,
 	consecutiveDays: z.number().int().min(1),
 	direction: z.enum(['rising', 'falling']).nullable().default(null),
-	season: z.strictObject({
-		start: monthDaySchema,
-		end: monthDaySchema,
-	}).nullable().default(null),
+	season: seasonSchema.nullable().default(null),
 	published: z.strictObject({
 		low: z.number(),
 		high: z.number(),
@@ -238,10 +238,7 @@ export const cadenceRuleSchema = z.strictObject({
 		min: z.number().int().min(1),
 		max: z.number().int().min(1),
 	}),
-	season: z.strictObject({
-		start: monthDaySchema,
-		end: monthDaySchema,
-	}).nullable().default(null),
+	season: seasonSchema.nullable().default(null),
 	after: z.strictObject({
 		ruleId: kebabIdSchema,
 	}).nullable().default(null),

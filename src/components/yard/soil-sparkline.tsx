@@ -4,8 +4,10 @@ import type { ReactElement } from 'react';
 import type { DailyAggregate } from '@/planner/plan';
 import type { Citation } from '@/planner/task';
 import type { ThresholdRule } from '@/rules/rule';
-import type { Aggregate, Unit, Variable } from '@/weather/observation';
+import type { Aggregate, Unit } from '@/weather/observation';
 import { useId } from 'react';
+import { VARIABLE_TEXT } from '@/components/series-text';
+import { meetsThreshold } from '@/planner/threshold-rule';
 
 /*
  * The picture ADR 0003 bought. The Artifact ships the window the Rules read so
@@ -34,12 +36,6 @@ const PLOT_HEIGHT = VIEW.height - PLOT.top - PLOT.bottom;
 
 /** Floored by the dataviz mark spec, which puts markers at 8px across or wider; the 2px ring below is what keeps this one legible where it crosses the line. */
 const MARKER_RADIUS = 4.5;
-
-const VARIABLE_LABEL: Record<Variable, string> = {
-	'soil-temperature': 'soil temperature',
-	'precipitation': 'rainfall',
-	'precipitation-probability': 'chance of rain',
-};
 
 const AGGREGATE_LABEL: Record<Aggregate, string> = {
 	max: 'Daily high',
@@ -192,7 +188,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 		.filter(day => day.variable === rule.variable && day.depthCm === rule.depthCm && day.aggregate === rule.aggregate)
 		.sort((left, right) => left.date.localeCompare(right.date));
 
-	const seriesName = `${AGGREGATE_LABEL[rule.aggregate]} ${VARIABLE_LABEL[rule.variable]}${rule.depthCm === null ? '' : ` at ${rule.depthCm} cm`}`;
+	const seriesName = `${AGGREGATE_LABEL[rule.aggregate]} ${VARIABLE_TEXT[rule.variable]}${rule.depthCm === null ? '' : ` at ${rule.depthCm} cm`}`;
 	const thresholdText = amount(rule.value, rule.unit);
 
 	/*
@@ -253,18 +249,8 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 
 	const observedCount = days.filter(day => day.basis === 'observed').length;
 	const forecastCount = days.length - observedCount;
-	/*
-	 * A copy of `satisfies` in `src/planner/threshold-rule.ts`, and it has to stay
-	 * a copy: that function is private to the module and `src/planner` is frozen
-	 * for this milestone, so there is nothing to import. Both comparisons include
-	 * the boundary, which that file flags as the off-by-one a reader is most
-	 * likely to assume the other way round. The two must agree, because the count
-	 * below goes into the chart's description and the Planner's answer goes into
-	 * the Citation, and a reader comparing them is the whole point of ADR 0003.
-	 * Exporting the original is the fix once the freeze lifts.
-	 */
-	const meetsThreshold = (value: number): boolean => (rule.comparison === 'gte' ? value >= rule.value : value <= rule.value);
-	const meetingCount = values.filter(meetsThreshold).length;
+	// Both comparisons include the boundary. The count below goes into the chart's description while the Planner's own answer goes into the Citation, and ADR 0003 exists so that a reader can hold those two against each other, so they have to agree. Reading the boundary off one shared function is what makes them agree by construction rather than by coincidence.
+	const meetingCount = values.filter(value => meetsThreshold(value, rule)).length;
 	const sideWords = rule.comparison === 'gte' ? 'at or above it' : 'at or below it';
 
 	const description = [
