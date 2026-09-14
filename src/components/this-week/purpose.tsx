@@ -13,8 +13,8 @@ export interface PurposeProps {
  * that the model cannot author a Task, and a page that never says so leaves
  * that property unfalsifiable from the outside. #50 measured the route at
  * 1440x900 and found two strings ahead of the first task, `<h1>This Week` and
- * `<h2>Ready now`, so a reader arriving cold got a to-do list with no claim
- * attached to it.
+ * `<h2>Ready now`, so a reader arriving cold got a bare list of work with no
+ * claim attached to it.
  *
  * Authored copy and not `narration.summary`, which `week-summary.tsx` renders
  * a slot below. The two answer different questions: this one says what the

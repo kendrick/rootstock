@@ -9,6 +9,7 @@ import { CitationDisclosure } from '@/components/citation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { UNDO_REFUSAL } from './permanence';
+import { taskText } from './task-text';
 
 export interface TaskItemProps {
 	task: Task;
@@ -117,12 +118,10 @@ export function TaskItem({
 		? null
 		: (plantsById.get(task.plantId)?.name ?? task.plantId);
 
-	// Contract 14. The Planner writes `title` for every Task whether or not the
-	// model ever ran, so the fallback is the mechanical prose ADR 0001 calls a
-	// real deliverable rather than a hole in the page. An empty narration string
-	// counts as no narration, since rendering it would leave the Task with no
-	// words on it at all.
-	const text = narrationText !== null && narrationText.trim() !== '' ? narrationText : task.title;
+	// Shared with `ThisWeek`, which speaks the same sentence into the live region
+	// after a write. `task-text.ts` carries the reason that has to be one
+	// function rather than the same expression written out in two places.
+	const text = taskText(task.title, narrationText);
 
 	// Nothing has called for this work yet, so there is nothing to record having
 	// done. `isCompleted` never returns true for an approaching Task, so a box

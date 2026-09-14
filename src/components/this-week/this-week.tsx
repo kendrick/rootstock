@@ -19,6 +19,7 @@ import { DeferredSection } from './deferred-section';
 import { PERMANENCE_NOTE, recordedAnnouncement, UNDO_REFUSAL } from './permanence';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
+import { taskText } from './task-text';
 import { WeekSummary } from './week-summary';
 
 export interface ThisWeekProps {
@@ -221,11 +222,6 @@ export function ThisWeek({
 	 */
 	const [announcement, setAnnouncement] = useState('');
 
-	function taskText(task: Task): string {
-		const narrated = narrationById.get(task.id);
-		return narrated !== undefined && narrated.trim() !== '' ? narrated : task.title;
-	}
-
 	function handleComplete(task: Task): void {
 		// A tick that lands before the Store has answered goes nowhere. The box is
 		// controlled by what the Store says, so React puts it straight back, and
@@ -250,7 +246,7 @@ export function ThisWeek({
 			// After the read, not before it. The sentence claims the yard holds the
 			// record, and the only moment that claim is true is once the Store has
 			// been asked again and said so.
-			setAnnouncement(recordedAnnouncement(taskText(task)));
+			setAnnouncement(recordedAnnouncement(taskText(task.title, narrationById.get(task.id))));
 		})();
 	}
 
