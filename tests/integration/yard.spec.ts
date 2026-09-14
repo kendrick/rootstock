@@ -21,6 +21,26 @@ test('serves the yard route', async ({ page }) => {
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Yard');
 });
 
+/*
+ * The regression this whole ticket started from. The exported page emitted
+ * `src="/yard.jpg"`, which 404s against a project page served at
+ * `/rootstock/`. `img.naturalWidth` sat at 0 and the browser raised no
+ * console error over it, which is the reason nothing caught it the first
+ * time. A vitest render of the component can't reproduce any of that: it
+ * never goes through `next build`'s basePath rewriting or an actual network
+ * fetch, so only a test against the built, served export can tell a correct
+ * path from a broken one here.
+ */
+test('the yard photo loads from the built export', async ({ page }) => {
+	await page.goto('yard');
+
+	const photo = page.getByRole('img', { name: /seen from above/ });
+	await expect(photo).toBeVisible();
+
+	const naturalWidth = await photo.evaluate((image: HTMLImageElement) => image.naturalWidth);
+	expect(naturalWidth).toBeGreaterThan(0);
+});
+
 test('a photo pin takes focus and opens its sheet on Enter', async ({ page }) => {
 	await page.goto('yard');
 

@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import nextConfig from './next.config';
+import { BASE_PATH } from './src/lib/base-path';
 
 // GitHub Pages serves files, not a Node process. Every constraint below is one
 // the deploy would otherwise discover for us, in production, as a blank page or
@@ -14,8 +15,13 @@ describe('static export constraints', () => {
 
 	// Project pages are served from /<repo>, not the domain root. Drop this and
 	// every stylesheet and script 404s on the deployed site while working locally.
-	it('sets the project-page base path', () => {
-		expect(nextConfig.basePath).toBe('/rootstock');
+	//
+	// Read off the shared constant rather than the literal '/rootstock': the
+	// yard photo 404ed in production because next/image needed that same value
+	// and had no way to read it except a second, independently-typed copy. This
+	// is the assertion that would have caught the two drifting apart.
+	it('sets the project-page base path from the shared constant', () => {
+		expect(nextConfig.basePath).toBe(BASE_PATH);
 	});
 
 	// The image optimizer is a server route. Without this, next/image fails the
