@@ -21,22 +21,33 @@ function positionOf(plant: Plant): Position {
 const plannedAndSited: Plant = { ...plannedPlant, position: { x: 0.12, y: 0.34 } };
 
 describe('plantPin', () => {
-	// A div with an onClick looks identical on screen and no keyboard can reach
-	// it. The role would not catch that, since `role="button"` on a div
-	// satisfies it, so this reads the tag name.
-	it('renders a real button, focusable and operable from the keyboard', () => {
+	// A real button rather than a div with an onClick, so pointer and touch
+	// interaction behave exactly like any other button.
+	it('renders a real button, operable by click', () => {
 		const onSelect = vi.fn();
 		render(<PlantPin plant={figPlant} onSelect={onSelect} />);
 
-		const pin = screen.getByRole('button', { name: figPlant.name });
+		const pin = screen.getByTitle(figPlant.name);
 		expect(pin.tagName).toBe('BUTTON');
 
-		pin.focus();
-		expect(document.activeElement).toBe(pin);
-
-		// The DOM click a native button fires on Enter and on Space.
 		pin.click();
-		expect(onSelect).toHaveBeenCalledWith(figPlant, expect.any(HTMLElement));
+		expect(onSelect).toHaveBeenCalledWith(figPlant, pin);
+	});
+
+	// The critique found the pin layer and the list exposing the same nine
+	// Plants as two independent button sets, so a keyboard or screen-reader
+	// user traversed every one of them twice with near-identical labels.
+	// `plant-list.tsx` already reaches every Plant, sited or not, and carries
+	// more context per row (kind, site) than a pin's bare name; a pin reached
+	// by Tab in isolation gives no sense of where on the photo it sits either,
+	// so a keyboard user loses nothing real by this. Pointer and touch
+	// interaction are untouched: aria-hidden and tabIndex affect neither.
+	it('is excluded from the tab order and the accessibility tree, so a plant is not reachable twice', () => {
+		render(<PlantPin plant={figPlant} onSelect={vi.fn()} />);
+
+		const pin = screen.getByTitle(figPlant.name);
+		expect(pin.tabIndex).toBe(-1);
+		expect(pin.getAttribute('aria-hidden')).toBe('true');
 	});
 
 	// Position is a fraction because issue #29 replaces the photo at another
@@ -47,9 +58,25 @@ describe('plantPin', () => {
 		const position = positionOf(figPlant);
 		render(<PlantPin plant={figPlant} onSelect={vi.fn()} />);
 
-		const pin = screen.getByRole('button', { name: figPlant.name });
+		const pin = screen.getByTitle(figPlant.name);
 		expect(pin.style.left).toBe(`${position.x * 100}%`);
 		expect(pin.style.top).toBe(`${position.y * 100}%`);
+	});
+
+	// pin-layout.ts nudges a crowded cluster apart for rendering only, and
+	// hands the result in here rather than mutating the Plant it came from.
+	// onSelect still has to carry the real Plant record, position and all, so
+	// the sheet and the store never see a fiction the layout invented.
+	it('renders at an overridden position without changing which Plant onSelect receives', () => {
+		const onSelect = vi.fn();
+		render(<PlantPin plant={figPlant} position={{ x: 0.9, y: 0.1 }} onSelect={onSelect} />);
+
+		const pin = screen.getByTitle(figPlant.name);
+		expect(pin.style.left).toBe('90%');
+		expect(pin.style.top).toBe('10%');
+
+		pin.click();
+		expect(onSelect).toHaveBeenCalledWith(figPlant, pin);
 	});
 
 	// A pin anchored by its top-left corner points at a spot down and to the
@@ -57,7 +84,7 @@ describe('plantPin', () => {
 	it('centres the pin on its own point', () => {
 		render(<PlantPin plant={figPlant} onSelect={vi.fn()} />);
 
-		const className = screen.getByRole('button', { name: figPlant.name }).getAttribute('class') ?? '';
+		const className = screen.getByTitle(figPlant.name).getAttribute('class') ?? '';
 		expect(className).toContain('-translate-x-1/2');
 		expect(className).toContain('-translate-y-1/2');
 	});
@@ -68,7 +95,7 @@ describe('plantPin', () => {
 		const { container } = render(<PlantPin plant={unplacedPlantedPlant} onSelect={vi.fn()} />);
 
 		expect(container.firstChild).toBeNull();
-		expect(screen.queryByRole('button')).toBeNull();
+		expect(screen.queryByRole('button', { hidden: true })).toBeNull();
 	});
 
 	it('renders nothing for a planned Plant the yard has not sited yet', () => {
@@ -77,14 +104,13 @@ describe('plantPin', () => {
 		expect(container.firstChild).toBeNull();
 	});
 
-	// A screen reader hears the accessible name and nothing else, so "planned"
-	// has to be in it. A class check would pass a treatment only a sighted
-	// reader can see, so this reads the name.
-	it('says planned in the accessible name of a planned Plant', () => {
+	// The pin is aria-hidden, so its title (not an accessible name) is what a
+	// test, or a sighted mouse user hovering it, has to go on.
+	it('says planned in the pin\'s title', () => {
 		render(<PlantPin plant={plannedAndSited} onSelect={vi.fn()} />);
 
-		expect(screen.getByRole('button', { name: `${plannedAndSited.name}, planned` })).toBeDefined();
-		expect(screen.queryByRole('button', { name: plannedAndSited.name })).toBeNull();
+		expect(screen.getByTitle(`${plannedAndSited.name}, planned`)).toBeDefined();
+		expect(screen.queryByTitle(plannedAndSited.name)).toBeNull();
 	});
 
 	// The shell is one zinc scale and the yard gets read on a phone in daylight,
@@ -107,7 +133,7 @@ describe('plantPin', () => {
 		expect(plannedIcon).toContain('fill-none');
 	});
 
-	it('hides the glyph from screen readers so the name is not announced twice', () => {
+	it('marks the glyph decorative', () => {
 		const { container } = render(<PlantPin plant={figPlant} onSelect={vi.fn()} />);
 
 		expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');

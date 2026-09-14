@@ -5,6 +5,7 @@ import type { Plant, Yard } from '@/yard/plant';
 import Image from 'next/image';
 import { useState } from 'react';
 import { withBasePath } from '@/lib/base-path';
+import { declutteredPositions } from './pin-layout';
 import { PlantPin } from './plant-pin';
 
 export function YardPhoto({ yard, plants, onSelect }: {
@@ -40,6 +41,8 @@ export function YardPhoto({ yard, plants, onSelect }: {
 		);
 	}
 
+	const positions = declutteredPositions(plants, photo.height / photo.width);
+
 	return (
 		<div
 			// The box takes its shape from the photo's own dimensions, so a pin's
@@ -68,9 +71,16 @@ export function YardPhoto({ yard, plants, onSelect }: {
 				Every Plant goes to a pin and the pin decides, rather than filtering
 				here. One place that knows what an unsited Plant means beats two that
 				have to agree.
+
+				The position handed to each pin comes from declutteredPositions, not
+				necessarily plant.position: three of six pins in the seed's own layout
+				failed their own centre hit-test at 390px (the critique's measurement),
+				because the owner sited four plants within a 22px span. The nudge is
+				rendering-only, so onSelect still hands the sheet the Plant exactly as
+				the inventory carries it, position and all.
 			*/}
 			{plants.map(plant => (
-				<PlantPin key={plant.id} plant={plant} onSelect={onSelect} />
+				<PlantPin key={plant.id} plant={plant} position={positions.get(plant.id)} onSelect={onSelect} />
 			))}
 		</div>
 	);

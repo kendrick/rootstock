@@ -1,14 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-/**
- * The pin's accessible name, which is the Plant's name and nothing else. The
- * list row for the same Plant is also a button, and its name picks up the kind
- * and site printed underneath, so only an exact match tells the two paths into
- * the sheet apart. The count assertion below is what keeps that claim from
- * rotting the day a row's wording changes.
- */
+/** The seed Plant this file's pin- and list-based tests both open. */
 const PIN_NAME = 'Front lawn';
+
+/** Every seed Plant the photo sites a pin for, by its row's accessible name prefix (`plant-list.tsx` appends kind and site). */
+const SITED_PLANT_NAMES = ['Front lawn', 'Brown Turkey fig', 'Esperanza', 'Watermelon Ruffles hardy hibiscus', 'Starry Night hardy hibiscus', 'Luna White hardy hibiscus'];
 
 test('serves the yard route', async ({ page }) => {
 	const response = await page.goto('yard');
@@ -47,29 +44,75 @@ test('the yard photo loads from the built export', async ({ page }) => {
 	}).toPass();
 });
 
-test('a photo pin takes focus and opens its sheet on Enter', async ({ page }) => {
+test('a photo pin opens its sheet on click', async ({ page }) => {
 	await page.goto('yard');
 
-	const pin = page.getByRole('button', { name: PIN_NAME, exact: true });
+	// title, not role: the pin is aria-hidden (see the dedup test below), so a
+	// role query would not find it at all, exactly like a screen reader.
+	const pin = page.locator(`button[title="${PIN_NAME}"]`);
 	await expect(pin).toHaveCount(1);
 
-	await pin.focus();
-	await expect(pin).toBeFocused();
+	const sheet = page.getByRole('dialog');
+	await pin.click();
+	await expect(sheet).toBeVisible();
+	await expect(sheet.getByRole('heading', { name: PIN_NAME })).toBeVisible();
+});
 
-	// Enter and not a click. A pin has to be a real button for a keyboard to
-	// reach the photo at all, and a click would pass just as well on a div with
-	// an onClick hung off it.
-	//
-	// Retried rather than pressed once, because the export ships HTML that
-	// exists before React has attached anything to it. A single keypress that
-	// lands in that gap goes nowhere and the sheet never opens.
+// The critique found the pin layer and the list exposing the same nine Plants
+// as two independent button sets: a keyboard or screen-reader user traversed
+// every one of them twice with near-identical labels. The list row is the one
+// surviving path, and this is the keyboard equivalent of the click test above.
+test('a plant reaches its sheet by keyboard through the list, once', async ({ page }) => {
+	await page.goto('yard');
+
+	const row = page.getByRole('button', { name: new RegExp(`^${PIN_NAME}`) });
+	await expect(row).toHaveCount(1);
+
+	await row.focus();
+	await expect(row).toBeFocused();
+
 	const sheet = page.getByRole('dialog');
 	await expect(async () => {
-		await pin.press('Enter');
+		await row.press('Enter');
 		await expect(sheet).toBeVisible({ timeout: 1_000 });
 	}).toPass();
 
 	await expect(sheet.getByRole('heading', { name: PIN_NAME })).toBeVisible();
+});
+
+test('every sited Plant appears once in the accessible tab order, not twice', async ({ page }) => {
+	await page.goto('yard');
+
+	for (const name of SITED_PLANT_NAMES) {
+		await expect(page.getByRole('button', { name: new RegExp(`^${name}`) })).toHaveCount(1);
+	}
+});
+
+// The critique's own method: elementFromPoint at a pin's centre returning a
+// different pin. Three of six failed this at 390px before the fix.
+test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('yard');
+
+	const pins = page.locator('button[title]');
+	const count = await pins.count();
+	expect(count).toBeGreaterThan(0);
+
+	for (let i = 0; i < count; i++) {
+		const pin = pins.nth(i);
+		const title = await pin.getAttribute('title');
+		const box = await pin.boundingBox();
+		if (box === null) {
+			throw new Error(`pin '${title}' has no bounding box: this test has nothing to hit-test.`);
+		}
+
+		const hitTitle = await page.evaluate(
+			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('title') ?? null,
+			[box.x + box.width / 2, box.y + box.height / 2] as const,
+		);
+
+		expect(hitTitle, `pin '${title}' at its own centre resolved to '${hitTitle}' instead`).toBe(title);
+	}
 });
 
 // This route has never had committed end-to-end coverage, so nothing here is a

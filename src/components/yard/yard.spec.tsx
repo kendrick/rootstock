@@ -59,7 +59,7 @@ describe('yard', () => {
 	it('opens the sheet for the Plant whose pin was clicked', async () => {
 		renderYard();
 
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
@@ -73,7 +73,7 @@ describe('yard', () => {
 	 */
 	it('opens the same sheet from a pin and from a list row', async () => {
 		const fromPin = renderYard();
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 		const pinSheet = screen.getByRole('dialog').textContent;
 		fromPin.unmount();
@@ -111,7 +111,7 @@ describe('yard', () => {
 	// from it and never changed.
 	it('clears the selection when the sheet is closed, and reopens on the same Plant', async () => {
 		renderYard();
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -119,7 +119,7 @@ describe('yard', () => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
 
-		fireEvent.click(screen.getByRole('button', { name: figPlant.name }));
+		fireEvent.click(screen.getByTitle(figPlant.name));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
@@ -134,7 +134,7 @@ describe('yard', () => {
 	it('returns focus to the pin that opened the sheet, once it closes', async () => {
 		renderYard();
 
-		const pin = screen.getByRole('button', { name: figPlant.name, hidden: true });
+		const pin = screen.getByTitle(figPlant.name);
 		fireEvent.click(pin);
 		await settled();
 

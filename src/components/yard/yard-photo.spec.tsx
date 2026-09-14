@@ -85,17 +85,37 @@ describe('yardPhoto', () => {
 	it('renders one pin per sited Plant and none for the rest', () => {
 		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
 
-		expect(screen.getAllByRole('button')).toHaveLength(sitedPlants.length);
-		expect(screen.queryByRole('button', { name: unplacedPlantedPlant.name })).toBeNull();
+		expect(screen.getAllByRole('button', { hidden: true })).toHaveLength(sitedPlants.length);
+		expect(screen.queryByTitle(unplacedPlantedPlant.name)).toBeNull();
 	});
 
-	it('places each pin by its fraction of the box, not by a pixel offset', () => {
+	// figPlant sits far from every other sited Plant in the seed, so the pin
+	// declutter pass (which only nudges a pin close enough to another to fail
+	// its own centre hit-test) leaves it exactly where the seed put it.
+	it('places an isolated pin by its own fraction of the box, not by a pixel offset', () => {
 		const position = positionOf(figPlant);
 		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
 
-		const pin = screen.getByRole('button', { name: figPlant.name });
+		const pin = screen.getByTitle(figPlant.name);
 		expect(pin.style.left).toBe(`${position.x * 100}%`);
 		expect(pin.style.top).toBe(`${position.y * 100}%`);
+	});
+
+	// The critique measured four seed Plants (esperanza-1 and the three
+	// hibiscus) clustered within a 22px span, with three of six pins failing
+	// their own centre hit-test at 390px. This asserts against the real seed
+	// data rather than a synthetic fixture, since the crowding is a property of
+	// where the owner actually sited these plants.
+	it('spreads a crowded cluster of pins apart, rather than rendering their raw fractions', () => {
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+
+		const esperanza = plantFixtures.find(plant => plant.id === 'esperanza-1');
+		if (esperanza?.position == null) {
+			throw new Error('seed plant \'esperanza-1\' carries no position: this test has nothing to compare against.');
+		}
+
+		const pin = screen.getByTitle(esperanza.name);
+		expect(pin.style.left).not.toBe(`${esperanza.position.x * 100}%`);
 	});
 
 	// The plant sheet reads the whole Plant, so the pin has to pass the record
@@ -104,7 +124,7 @@ describe('yardPhoto', () => {
 		const onSelect = vi.fn();
 		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={onSelect} />);
 
-		screen.getByRole('button', { name: figPlant.name }).click();
+		screen.getByTitle(figPlant.name).click();
 
 		expect(onSelect).toHaveBeenCalledWith(figPlant, expect.any(HTMLElement));
 	});
