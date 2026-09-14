@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CODEX_MODEL, createCodexNarrator } from './codex-narrator';
+import { CODEX_MODEL, CODEX_REASONING_EFFORT, createCodexNarrator } from './codex-narrator';
 
 const SCHEMA_FILE = path.resolve(import.meta.dirname, '../schemas/narration.schema.json');
 
@@ -81,14 +81,16 @@ describe('createCodexNarrator', () => {
 
 		expect(calls).toHaveLength(1);
 		expect(calls[0].command).toBe('codex');
-		expect(calls[0].args.slice(0, 11)).toEqual([
+		expect(calls[0].args.slice(0, 13)).toEqual([
 			'exec',
 			'--ephemeral',
 			'--skip-git-repo-check',
 			'-s',
 			'read-only',
 			'-m',
-			'o4-mini',
+			'gpt-5.6-terra',
+			'-c',
+			'model_reasoning_effort="medium"',
 			'--output-schema',
 			SCHEMA_FILE,
 			'-o',
@@ -96,15 +98,18 @@ describe('createCodexNarrator', () => {
 		]);
 	});
 
-	// The literal in the test above is the pin. This test proves the argument list is built from
-	// `CODEX_MODEL` and not from a second copy of the string that could drift away from it.
-	it('takes the model from the one pinned constant', async () => {
+	// The literals in the test above are the pins. This test proves the argument list is built from
+	// the two constants and not from second copies of those strings that could drift away from them.
+	it('takes the model and the reasoning effort from the pinned constants', async () => {
 		const { spawn, calls } = fakeSpawn({ output: JSON.stringify(NARRATION) });
 
 		await createCodexNarrator(spawn)(PLAN);
 
-		expect(CODEX_MODEL).toBe('o4-mini');
+		expect(CODEX_MODEL).toBe('gpt-5.6-terra');
+		expect(CODEX_REASONING_EFFORT).toBe('medium');
 		expect(calls[0].args[calls[0].args.indexOf('-m') + 1]).toBe(CODEX_MODEL);
+		expect(calls[0].args[calls[0].args.indexOf('-c') + 1])
+			.toBe(`model_reasoning_effort="${CODEX_REASONING_EFFORT}"`);
 	});
 
 	it('sends the whole plan as the trailing positional argument', async () => {
@@ -113,7 +118,7 @@ describe('createCodexNarrator', () => {
 		await createCodexNarrator(spawn)(PLAN);
 
 		const prompt = calls[0].args.at(-1);
-		expect(calls[0].args).toHaveLength(12);
+		expect(calls[0].args).toHaveLength(14);
 		expect(prompt).toContain(JSON.stringify(PLAN));
 	});
 
@@ -163,7 +168,8 @@ describe('createCodexNarrator', () => {
 
 		await createCodexNarrator(spawn)(PLAN);
 
-		expect(JSON.parse(readFileSync(calls[0].args[8], 'utf8'))).toMatchObject({ type: 'object' });
+		const schemaPath = calls[0].args[calls[0].args.indexOf('--output-schema') + 1];
+		expect(JSON.parse(readFileSync(schemaPath, 'utf8'))).toMatchObject({ type: 'object' });
 	});
 });
 
