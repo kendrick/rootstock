@@ -241,11 +241,12 @@ export function CitationDisclosure({
 
 			<div className="space-y-3 border-t border-border px-3 py-3 text-sm">
 				{/*
-				 * `data/artifact.json` cites `deep-water-fig` and `src/seed/rules.json`
-				 * has no such Rule, so this line is a case the shipped data already
-				 * reaches, not a defensive branch. ADR 0002 makes the same argument one
-				 * level up: a Task that quietly loses the Rule behind it is
-				 * indistinguishable from one nobody wrote. So this names the gap and
+				 * An Artifact outlives the rule set that produced it. The daily run commits a Plan,
+				 * and a Rule cited by that Plan can leave `src/seed/rules.json` before anyone reads
+				 * it again, which is how a committed Citation ends up naming a Rule the site cannot
+				 * resolve. Retiring three guards in #23 came within one Citation of doing exactly
+				 * that. ADR 0002 makes the argument one level up: a Task that quietly loses the Rule
+				 * behind it is indistinguishable from one nobody wrote. So this names the gap and
 				 * renders the evidence anyway.
 				 */}
 				{rule === null
