@@ -32,8 +32,22 @@ import { parseNarration } from '../src/artifact/narration';
  * The model, pinned in one place. A narration written by a different model reads differently, so a
  * committed pin is what lets a diff in the generated prose trace back to a deliberate edit here
  * instead of to whatever the vendor rolled out that morning.
+ *
+ * The pin has to name a model the signed-in account can actually reach. A ChatGPT account rejects
+ * some ids outright, and codex reports that on stderr and still exits 0 having written nothing, so
+ * the only symptom is a missing output file. `runCodex` reads that as a failed narration, which is
+ * correct and also quiet: the run stays green and the site silently loses its prose.
  */
-export const CODEX_MODEL = 'o4-mini';
+export const CODEX_MODEL = 'gpt-5.6-terra';
+
+/**
+ * Reasoning effort, overridden rather than inherited. `codexEnv` forwards `CODEX_HOME`, so without
+ * this the prose would track whatever a person last set for their own interactive use, and the box
+ * and a laptop could narrate differently from the same commit. Medium because ADR 0001 leaves the
+ * model no arithmetic, no dates, and no say in what the tasks are: it is writing sentences over a
+ * Plan that is already decided.
+ */
+export const CODEX_REASONING_EFFORT = 'medium';
 
 /** The binary. The child finds it on the `PATH` that `codexEnv` forwards. */
 const CODEX_BIN = 'codex';
@@ -107,7 +121,8 @@ export function createCodexNarrator(spawn: SpawnLike = nodeSpawn): Narrator {
  * The argument list. `--ephemeral` keeps the run out of codex's session history and
  * `--skip-git-repo-check` lets it run from any directory, both because this is a one-shot call that
  * leaves nothing behind. `-s read-only` is the sandbox: the call asks for prose, so the model has no
- * business writing files. The prompt goes last, as the positional argument, because `runCodex` hands
+ * business writing files. `-c` pins the reasoning effort over the value `CODEX_HOME`'s config file
+ * would otherwise supply. The prompt goes last, as the positional argument, because `runCodex` hands
  * the child stdin from the null device and codex would otherwise wait there for one.
  */
 function codexArgs(outputFile: string, prompt: string): readonly string[] {
@@ -119,6 +134,8 @@ function codexArgs(outputFile: string, prompt: string): readonly string[] {
 		'read-only',
 		'-m',
 		CODEX_MODEL,
+		'-c',
+		`model_reasoning_effort="${CODEX_REASONING_EFFORT}"`,
 		'--output-schema',
 		SCHEMA_FILE,
 		'-o',
