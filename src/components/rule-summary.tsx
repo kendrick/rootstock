@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
-import { ExternalLink, Shield, Users, UserX } from 'lucide-react';
+import { ClipboardCheck, ExternalLink, Shield, Users, UserX } from 'lucide-react';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
 import { Badge } from '@/components/ui/badge';
@@ -154,6 +154,20 @@ export interface RuleSummaryProps {
 	 */
 	delegable?: boolean | null;
 	tagPolicy?: TagPolicy;
+	/**
+	 * Omits the Region row. Every Rule in this yard shares one Region, so the
+	 * Rules route—the only caller passing this—renders it once for the page
+	 * and hides the per-Rule copy rather than repeating it once per Rule.
+	 * Defaults to false, which keeps every other caller's rendered shape as it was.
+	 */
+	hideRegion?: boolean;
+	/**
+	 * Whether the committed Artifact's Plan already used this Rule: it produced
+	 * a Task, or—for a Guard—it placed a Deferral or Annotation on one. Omitted
+	 * renders nothing extra, which is what keeps this additive for the callers
+	 * that render a Rule with no Plan in hand.
+	 */
+	inCurrentPlan?: boolean;
 }
 
 /**
@@ -172,6 +186,8 @@ export function RuleSummary({
 	rule,
 	delegable = null,
 	tagPolicy = seedTagPolicy,
+	hideRegion = false,
+	inCurrentPlan = false,
 }: RuleSummaryProps): ReactElement {
 	// The stamped flag wins when there is one. `isDelegable` has already been
 	// applied to it by the Planner, and CONTEXT.md's Delegable entry says tag
@@ -190,9 +206,11 @@ export function RuleSummary({
 			</div>
 
 			<dl className="space-y-1">
-				<Row term="Region">
-					{`${rule.region.name} · Zone ${rule.region.hardinessZone}`}
-				</Row>
+				{!hideRegion && (
+					<Row term="Region">
+						{`${rule.region.name} · Zone ${rule.region.hardinessZone}`}
+					</Row>
+				)}
 
 				{rule.kind === 'window' && <WindowRows rule={rule} />}
 				{rule.kind === 'threshold' && <ThresholdRows rule={rule} />}
@@ -253,6 +271,20 @@ export function RuleSummary({
 					<DelegableIcon aria-hidden="true" className="size-3.5 shrink-0" />
 					<span>{canDelegate ? 'Delegable' : 'Not delegable'}</span>
 				</Badge>
+
+				{/*
+				 * The join the Rules route is missing today: the Artifact names every
+				 * Rule that fired, and until now nothing here said which of these Rules
+				 * that was. A Guard never produces a Task itself, so its badge asks a
+				 * different question—whether it reached one through a Deferral or an
+				 * Annotation—rather than restating the Task's own evidence.
+				 */}
+				{inCurrentPlan && (
+					<Badge variant="secondary" className="gap-1.5">
+						<ClipboardCheck aria-hidden="true" className="size-3.5 shrink-0" />
+						<span>{rule.kind === 'guard' ? 'Acted on a Task this week' : 'Produced a Task this week'}</span>
+					</Badge>
+				)}
 			</div>
 		</div>
 	);

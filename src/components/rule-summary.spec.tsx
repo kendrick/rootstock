@@ -298,4 +298,43 @@ describe('ruleSummary', () => {
 		).toBeDefined();
 		expect(screen.queryByText('Season')).toBeNull();
 	});
+
+	// #64: the Rules route hides the per-Rule Region row because every Rule in
+	// this yard shares one, and renders it once for the page instead.
+	it('omits the Region row when hideRegion is true', () => {
+		render(<RuleSummary rule={seedRule('fall-pre-emergent')} hideRegion />);
+
+		expect(screen.queryByText('Region')).toBeNull();
+		expect(screen.queryByText(/Zone 8b/)).toBeNull();
+	});
+
+	it('keeps rendering the Region row when hideRegion is omitted', () => {
+		render(<RuleSummary rule={seedRule('fall-pre-emergent')} />);
+
+		expect(screen.getByText('Region')).toBeDefined();
+	});
+
+	// #64's cross-link criterion: whether this Rule's Task is in the committed
+	// Artifact's Plan.
+	it('marks a task-creating rule that produced a Task, when told it did', () => {
+		render(<RuleSummary rule={seedRule('last-nitrogen')} inCurrentPlan />);
+
+		expect(screen.getByText('Produced a Task this week')).toBeDefined();
+	});
+
+	// A Guard never produces a Task of its own (CONTEXT.md's Guard entry), so
+	// its mark reads differently from a Rule that created work.
+	it('marks a guard that acted on a Task, with wording distinct from a producing rule', () => {
+		render(<RuleSummary rule={seedRule('rain-expected')} inCurrentPlan />);
+
+		expect(screen.getByText('Acted on a Task this week')).toBeDefined();
+		expect(screen.queryByText('Produced a Task this week')).toBeNull();
+	});
+
+	it('renders no plan mark by default', () => {
+		render(<RuleSummary rule={seedRule('last-nitrogen')} />);
+
+		expect(screen.queryByText('Produced a Task this week')).toBeNull();
+		expect(screen.queryByText('Acted on a Task this week')).toBeNull();
+	});
 });
