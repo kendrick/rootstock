@@ -54,6 +54,8 @@ next-env.d.ts
 !.impeccable/surfaces/
 !.impeccable/mocks/
 .impeccable/mocks/*
+!.impeccable/mocks/this-week-job-ticket.png
+!.impeccable/mocks/this-week-job-ticket.png.json
 !.impeccable/mocks/this-week-tally.png
 !.impeccable/mocks/this-week-tally.png.json
 !.impeccable/mocks/this-week-fullpage.png

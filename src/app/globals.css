@@ -10,30 +10,33 @@ full Texas sun on a phone held one-handed, where a dark shell loses to
 reflected skylight. PRODUCT.md records that scene; it is what picks the
 ground. */
 :root {
-	--ground: #f6f7f8;
-	--ink: #0b0b0c;
+	/* Carbonless copy stock: the top sheet of a numbered work-order ticket, the
+		kind that moves with a job through a shop and gets signed off box by box.
+		Warm rather than white, because a ticket is paper somebody handled. */
+	--ground: #f7f4ec;
+	--ink: #1a1815;
 
-	/* The construction grid. It is the design rather than a background: the
-	armature that builds every row stays on the page. Kept faint enough that
-	body copy sitting on it still clears 4.5:1 against --ground. */
-	--grid-line: #c9def7;
+	/* The two sheets under the top copy, showing as thin edges. They are the
+		genre's signature and they carry no information, so they appear once, at
+		the sheet's head, and nowhere else. */
+	--copy-canary: #f2e2a8;
+	--copy-pink: #e8c4c0;
 
-	/* The one accent, and it is rationed. Four things earn it and nothing else
-	does: the active nav underline, a recorded control, the evidence line, and
-	the open count. Everything else is ink or muted. 5.93:1 on --ground. */
-	--accent: #1156f8;
+	/* Rubber-stamp red, and it is rationed to one job: work that was recorded.
+		Nothing else on the sheet takes it, so a stamp always means the same thing.
+		5.98:1 on --ground, and white clears 6.57:1 on it. */
+	--accent: #b02a1f;
 	--accent-foreground: #fff;
 
-	/* The comp draws secondary text at #999b9f, which measures 2.52:1 and fails
-	1.4.3 outright. WCAG 2.2 AA is binding here (PRODUCT.md), so the token
-	ships darker than the render: 5.12:1. A comp is a north star for
-	composition, never a license to inherit its contrast. */
-	--muted: #5c6166;
+	/* 5.32:1. Secondary ink on a warm stock, tinted from the ground rather than
+		grey, so it reads as lighter printing instead of a different material. */
+	--muted: #6b6459;
 
-	/* A hairline is the only divider in this world. No cards, no shadows, no
-	elevation: regions are separated by rules that land on grid lines. */
-	--rule: #0b0b0c;
-	--rule-faint: #d4d6d9;
+	/* A ticket is ruled, not shadowed. The heavy rule divides the sheet's own
+		regions and the faint one divides rows inside them; nothing here is a card
+		and nothing sits on a raised surface. */
+	--rule: #1a1815;
+	--rule-faint: #d8d2c4;
 
 	--background: var(--ground);
 	--foreground: var(--ink);
@@ -52,14 +55,21 @@ Auto only, keyed to the reader's system. There is no toggle, because the scene
 that picks the scheme is the ambient light the phone is already measuring. */
 @media (prefers-color-scheme: dark) {
 	:root {
-		--ground: #0c0d0f;
-		--ink: #f1f2f4;
-		--grid-line: #1e2a44;
-		--accent: #6f9bff;
-		--accent-foreground: #07080a;
-		--muted: #9aa1aa;
-		--rule: #f1f2f4;
-		--rule-faint: #2b2f34;
+		/* The carbon copy rather than the top sheet: the same ticket read at night,
+			still warm, with the ink and the stock exchanged. */
+		--ground: #14120f;
+		--ink: #f2efe6;
+		--copy-canary: #6b5c2e;
+		--copy-pink: #6b3f3c;
+
+		/* #b02a1f measures 1.9:1 on this ground and fails outright. The stamp lifts
+			to 7.34:1 and keeps its hue, so a recorded row reads the same in both. */
+		--accent: #ff7a6a;
+		--accent-foreground: #14120f;
+
+		--muted: #a09789;
+		--rule: #f2efe6;
+		--rule-faint: #2e2a24;
 	}
 }
 
@@ -72,8 +82,9 @@ switch off. */
 	:root {
 		--ground: #fff;
 		--ink: #000;
-		--grid-line: transparent;
-		--accent: #0b0b0c;
+		--copy-canary: transparent;
+		--copy-pink: transparent;
+		--accent: #000;
 		--accent-foreground: #fff;
 		--muted: #3a3a3a;
 		--rule: #000;
@@ -96,13 +107,14 @@ switch off. */
 	product-label figures are read down a column and compared against their
 	neighbours, and that is exactly the evidence line. It is the one place a
 	stated product constraint outranks the metric winner. */
-	--font-display: var(--font-economica);
+	--font-display: var(--font-display-face);
 	--font-sans: var(--font-assistant);
 	--font-mono: var(--font-atkinson-mono);
 
 	--color-ground: var(--ground);
 	--color-ink: var(--ink);
-	--color-grid-line: var(--grid-line);
+	--color-copy-canary: var(--copy-canary);
+	--color-copy-pink: var(--copy-pink);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-muted: var(--muted);
@@ -139,27 +151,24 @@ switch off. */
 	--color-evidence: var(--accent);
 	--color-evidence-foreground: var(--accent-foreground);
 
-	/* Sizes come from cap heights measured off the approved comp and converted to
-	font-size by the same tool. They are not a scale somebody invented and then
-	justified after the fact.
+	/* The scale stops growing well before the viewport does.
 
-	clamp rather than a fixed px, because the measured values belong to the
-	comp's 1024px frame and the real scene is a phone held one-handed. The
-	upper bound is the comp; the lower bound is what stays readable at 390px;
-	the middle tracks the viewport so the display type keeps its proportion to
-	the grid instead of collapsing into body copy on a small screen. */
-	--text-wordmark: clamp(2.5rem, 18vw, 11.5rem);
-	--text-display: clamp(2.5rem, 17vw, 10.75rem);
-	--text-title: clamp(1.5rem, 6.2vw, 4rem);
-	--text-body: clamp(1rem, 2.8vw, 1.8125rem);
-	--text-label: clamp(0.8125rem, 2.6vw, 1.6875rem);
-	--text-evidence: clamp(0.9375rem, 2.9vw, 1.875rem);
+		Sizes were derived from cap heights measured off a portrait 1024 comp and
+		expressed in vw, which grows without limit: at 1440 the first screen held a
+		wordmark, a headline and one sentence, which is a phone layout enlarged
+		rather than a desktop one. A wide viewport should carry more of the week,
+		not a bigger version of less of it.
 
-	/* Secondary apparatus: Guard notes, the Citation panel's own rows, Advisories.
-	It is a real step on the scale rather than a leftover default. Tailwind's
-	text-sm sat at 14px beside 29px body copy, a jump so large the two read as
-	different pages; this keeps the ratio deliberate and still subordinate. */
-	--text-detail: clamp(0.875rem, 1.9vw, 1.25rem);
+		So each step reaches its ceiling around 900px and holds there. Below that
+		the middle term still tracks the viewport, because a phone genuinely needs
+		the display sizes to come down. Above it, extra width goes to the layout. */
+	--text-wordmark: clamp(1.5rem, 3.2vw, 2rem);
+	--text-display: clamp(1.875rem, 4.4vw, 2.75rem);
+	--text-title: clamp(1.125rem, 2.4vw, 1.5rem);
+	--text-body: clamp(0.9375rem, 1.5vw, 1.0625rem);
+	--text-label: clamp(0.6875rem, 1.1vw, 0.8125rem);
+	--text-evidence: clamp(0.75rem, 1.2vw, 0.875rem);
+	--text-detail: clamp(0.75rem, 1.2vw, 0.875rem);
 }
 
 @layer base {
@@ -204,62 +213,44 @@ switch off. */
 }
 
 @layer components {
-	/* The construction grid itself, drawn rather than imaged: two repeating
-	gradients on the page ground. Kept as one class so the accessibility
-	escape hatch below has a single thing to switch off.
-
-	A pattern held permanently behind body text is a real problem for visual
-	stress and low vision, and this world puts one there on purpose. The GRID
-	control is how a reader turns it off, and `prefers-contrast: more` turns it
-	off without being asked. */
-	.construction-grid {
-		background-image:
-			repeating-linear-gradient(to right, var(--grid-line) 0 1px, transparent 1px var(--cell)),
-			repeating-linear-gradient(to bottom, var(--grid-line) 0 1px, transparent 1px var(--cell));
-		background-position: 0 0;
-	}
-
 	/* The one authored moment on this surface, and it belongs to the only action
 		that cannot be taken back.
 
 		Recording work writes an append-only Occurrence: there is no undo, and the
-		page refuses one out loud. So the control does not toggle, it commits. The
-		fill runs out from the centre on an exponential ease-out, fast to start and
-		settling rather than stopping, which reads as something landing instead of
-		something switching. It happens once, on the way in, and there is no reverse
-		because there is no reverse.
+		page refuses one out loud. So the control does not toggle, it stamps. The
+		mark lands slightly rotated and fully formed rather than fading up, because
+		a stamp is a single impact and anything smoother would read as a switch.
 
 		Nothing else on the page moves. A second animated thing would make this one
 		ordinary. */
-	@keyframes record-commit {
+	@keyframes stamp-down {
 		from {
-			clip-path: circle(0% at 50% 50%);
+			opacity: 0;
+			transform: rotate(-4deg) scale(1.35);
 		}
 
 		to {
-			clip-path: circle(75% at 50% 50%);
+			opacity: 1;
+			transform: rotate(-4deg) scale(1);
 		}
 	}
 
-	.record-control:checked {
-		animation: record-commit 320ms cubic-bezier(0.16, 1, 0.3, 1);
+	.stamp-mark {
+		animation: stamp-down 140ms cubic-bezier(0.2, 0.9, 0.3, 1);
+		transform: rotate(-4deg);
 	}
 
-	/* A reader who asked for less motion still gets the state, immediately and
-		without the travel. The information was never in the movement. */
+	/* The information was never in the movement. */
 	@media (prefers-reduced-motion: reduce) {
-		.record-control:checked {
+		.stamp-mark {
 			animation: none;
 		}
 	}
 
-	.construction-grid[data-grid='off'] {
-		background-image: none;
-	}
-
-	@media (prefers-contrast: more) {
-		.construction-grid {
-			background-image: none;
-		}
+	/* The perforation across the stub at the foot of the sheet. Drawn rather than
+		imaged so it takes the ink colour in both schemes and disappears on paper. */
+	.perforation {
+		background-image: repeating-linear-gradient(to right, var(--rule) 0 6px, transparent 6px 12px);
+		block-size: 1px;
 	}
 }

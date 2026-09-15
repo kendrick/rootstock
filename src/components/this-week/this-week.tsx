@@ -16,9 +16,7 @@ import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
-import { NotLit } from './not-lit';
 import { PERMANENCE_NOTE, recordedAnnouncement, UNDO_REFUSAL } from './permanence';
-import { TallyBand } from './tally-band';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
 import { taskText } from './task-text';
@@ -243,11 +241,15 @@ export function ThisWeek({
 		setAnnouncement(UNDO_REFUSAL);
 	}
 
-	function taskItem(task: Task): ReactElement {
+	// `.map(taskItem)` hands the index through, which is where the ticket's line
+	// numbers come from. They number the run a reader is looking at rather than
+	// anything stored on the Task, so a filtered group counts from one.
+	function taskItem(task: Task, index: number): ReactElement {
 		return (
 			<TaskItem
 				key={task.id}
 				task={task}
+				ordinal={index + 1}
 				rulesById={rulesById}
 				plantsById={plantsById}
 				narrationText={narrationById.get(task.id) ?? null}
@@ -285,24 +287,6 @@ export function ThisWeek({
 			 * None of it reaches the exported HTML, for the same reason the banner's
 			 * band does not: `asOf` stays null until the mount flag flips.
 			 */}
-			{/*
-			 * The load before the work. A reader in the yard asks how much before they
-			 * ask what, and the band answers without language, which is what makes it
-			 * survive a glance in full sun. The sentence under it is the same answer in
-			 * words, and the accessible one.
-			 */}
-			<div className="space-y-2">
-				<TallyBand total={tasks.length} recorded={completedIds.size} />
-				<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-					<p className="font-display text-label font-bold tracking-widest uppercase">
-						{`${tasks.length} ${tasks.length === 1 ? 'job' : 'jobs'} / ${completedIds.size} recorded / ${tasks.length - completedIds.size} open`}
-					</p>
-					<p className="font-display text-label tracking-widest text-muted uppercase">
-						{`${seedYard.region.name} / Zone ${seedYard.region.hardinessZone}`}
-					</p>
-				</div>
-			</div>
-
 			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 				{/*
 				 * The model's own sentences about the week, which nothing rendered
@@ -313,6 +297,18 @@ export function ThisWeek({
 				 * questions.
 				 */}
 				<WeekSummary summary={artifact.narration?.summary ?? null} />
+			</div>
+
+			{/*
+			 * Outside the de-emphasis above and the one below, deliberately. An
+			 * Advisory is not part of a Plan (CONTEXT.md), so it has no Plan staleness
+			 * to inherit: rain that is unlikely this week is worth acting on whether or
+			 * not the daily run has stopped. It sits here rather than under the work
+			 * because a homeowner acts on weather before they act on a checklist.
+			 */}
+			<Advisories advisories={artifact.narration?.advisories ?? []} />
+
+			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 
 				<TaskGroup heading="Ready now" emptyText={nothingDue} description={PERMANENCE_NOTE}>
 					{tasks.filter(task => task.status === 'fired').map(taskItem)}
@@ -347,9 +343,6 @@ export function ThisWeek({
 			 * this reads the Narration directly. An unnarrated Artifact has none,
 			 * and `Advisories` renders nothing for an empty list.
 			 */}
-			<NotLit rules={rules} tasks={tasks} />
-
-			<Advisories advisories={artifact.narration?.advisories ?? []} />
 
 			{/*
 			 * One region for the page rather than one per Task. Every announcement
@@ -361,6 +354,19 @@ export function ThisWeek({
 			 * the same name. `aria-live` alone carries the politeness without the
 			 * role, and `aria-atomic` makes the sentence arrive whole.
 			 */}
+			{/*
+			 * The stub, torn off and kept. It says how much of the week is still open
+			 * without naming a single job, which is the one thing a reader wants from
+			 * across the room and the thing a list of rows cannot give them.
+			 */}
+			<div className="pt-2 print:hidden">
+				<div aria-hidden="true" className="perforation" />
+				<p className="mt-3 flex flex-wrap justify-between gap-x-4 font-display text-label font-bold tracking-widest uppercase">
+					<span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>
+					<span className="text-muted">{seedYard.region.name}</span>
+				</p>
+			</div>
+
 			<div aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
 		</div>
 	);

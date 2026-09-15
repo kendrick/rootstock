@@ -55,7 +55,7 @@ export function TallyBand({ total, recorded }: TallyBandProps): ReactElement {
 						// Beyond the week's own work the cell stops being a task and
 						// becomes the band's own ground, so it loses its dividing rule's
 						// weight rather than claiming to be an empty job.
-						index >= total && 'border-r-grid-line bg-grid-line/35 print:bg-transparent',
+						index >= total && 'border-r-rule-faint bg-rule-faint/40 print:bg-transparent',
 					)}
 				/>
 			))}

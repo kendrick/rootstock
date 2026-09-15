@@ -2,36 +2,38 @@
 
 <!-- impeccable:design-schema 1 -->
 
-The world is a gridded type specimen. The construction grid that builds the page stays visible on it, and the evidence behind every Task sits on a line of its own where nothing can fold it away.
+The world is a numbered work-order ticket: the carbonless form that travels with a job through a shop and gets signed off box by box. The page is a bounded sheet with an edge, ruled into cells, and the evidence behind every Task sits on a line of its own where nothing can fold it away.
 
-That second property is the one this design exists for. The category answer to provenance is a "Why this?" link, which promises the reasoning exists rather than showing it. This product's claim is that nothing on the page was invented, so the proof renders under the instruction it backs, every time.
+That last property is the one this design exists for. The category answer to provenance is a "Why this?" link, which promises the reasoning exists rather than showing it. This product's claim is that nothing on the page was invented, so the proof renders under the instruction it backs, every time.
+
+The genre was chosen because its central gesture is already the product's. A ticket is signed off, and a signature is not taken back. An Occurrence is append-only and the page refuses an undo out loud, so the form and the data agree without either having to explain itself.
 
 ## Ground and Ink
 
-| Role          | Light     | Dark      | Notes                                                                                                                                                                                |
-| ------------- | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--ground`    | `#f6f7f8` | `#0c0d0f` | Sampled from the approved comp rather than typed from the prompt that made it. The prompt asked for pure white; the render settled on an off-white that holds up better under glare. |
-| `--ink`       | `#0b0b0c` | `#f1f2f4` | Body and display.                                                                                                                                                                    |
-| `--grid-line` | `#c9def7` | `#1e2a44` | The construction grid. Faint enough that body copy on it still clears 4.5:1.                                                                                                         |
-| `--accent`    | `#1156f8` | `#6f9bff` | 5.93:1 on light, 7.4:1 on dark. Same hue in both, so "cited" reads as one colour across schemes.                                                                                     |
-| `--muted`     | `#5c6166` | `#9aa1aa` | 5.12:1. The comp drew secondary text at `#999b9f`, which measures 2.52:1 and fails 1.4.3. A comp is a north star for composition and carries no authority over contrast.             |
-| `--rule`      | `#0b0b0c` | `#f1f2f4` | The only divider in this world.                                                                                                                                                      |
+| Role            | Light     | Dark      | Notes                                                                                                                                                 |
+| --------------- | --------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--ground`      | `#f7f4ec` | `#14120f` | Carbonless copy stock, warm rather than white, because a ticket is paper somebody handled. Dark is the carbon copy rather than the top sheet.         |
+| `--ink`         | `#1a1815` | `#f2efe6` | 16.1:1 in both schemes.                                                                                                                               |
+| `--copy-canary` | `#f2e2a8` | `#6b5c2e` | With `--copy-pink`, the two sheets under the top copy, showing as edges across the head. The only decorative mark in this world, and it appears once. |
+| `--accent`      | `#b02a1f` | `#ff7a6a` | Rubber-stamp red, rationed to one job: work that was recorded. 5.98:1 light, 7.34:1 dark, and white clears 6.57:1 on it.                              |
+| `--muted`       | `#6b6459` | `#a09789` | 5.32:1. Tinted from the stock rather than grey, so it reads as lighter printing instead of a different material.                                      |
+| `--rule`        | `#1a1815` | `#f2efe6` | A ticket is ruled, not shadowed. Heavy rules divide the sheet's regions; `--rule-faint` divides rows inside them.                                     |
 
-The use scene picked the ground, and the category had no say in it. This page is read outdoors in full Texas sun on a phone held one-handed, where a dark shell loses to reflected skylight. Dark mode follows the reader's system and offers no toggle, because the ambient light the phone already measures is what decides.
+The use scene picked the ground and the category had no say in it. This page is read outdoors in full Texas sun on a phone held one-handed, where a dark shell loses to reflected skylight. Dark mode follows the reader's system and offers no toggle, because the ambient light the phone already measures is what decides.
 
-Four things earn the accent and nothing else does: the active nav underline, a recorded control, the evidence line, and the open count. Colour never decorates here.
+Three things earn the accent and nothing else does: the active nav rule, the evidence line, and a stamp. Colour never decorates here.
 
 ## Type
 
-Three faces, and two of them were chosen by measurement. `impeccable font-match` measures cap height, advance width and stroke density off the approved comp, then ranks a catalogue against those numbers.
+Two faces do the work, and how the first was chosen is worth recording because the process got it wrong.
 
-Economica 400 and 700 carry display, job names and every label, having won that ranking. It has no variable axis, so both weights ship explicitly. Assistant carries body copy and won the ranking for the instruction region.
+**Saira Condensed 600/800** carries the lettering: wordmark, headings, job names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
 
-Atkinson Hyperlegible Mono carries evidence only, and is the one face chosen against the ranking. `PRODUCT.md` records a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours, which describes the evidence line and nothing else on the page. The metric winner for that region was unusable anyway: at the spec's grid resolution the region boxes could not separate a title from its instruction from its evidence, so the measurement came back mixed and ranked serif faces against a monospaced line.
+**Atkinson Hyperlegible Mono** carries everything written on the form: instructions, evidence lines, the ticket number. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
 
-Sizes come from the comp's measured cap heights, expressed as `clamp()`. The upper bound is the comp's own 1024px frame, the lower bound is what stays readable at 390px, and the middle tracks the viewport so display type keeps its proportion to the grid instead of collapsing into body copy on a phone.
+**Assistant** remains for running prose that is neither lettering nor a filled-in field: the page standfirst and section copy.
 
-`--text-detail` is a real step on that scale, carrying Guard notes, Citation rows and Advisories. Tailwind's `text-sm` sat at 14px beside 29px body copy, a jump large enough that the two read as different pages.
+Sizes come from cap heights measured off the comp and expressed as `clamp()`, each reaching its ceiling around 900px and holding there. Below that the middle term tracks the viewport, because a phone needs the display sizes to come down. Above it, extra width goes to the layout rather than the type: a single column enlarged is what a phone layout looks like on a desktop.
 
 Figures are tabular everywhere, because every number on this page is a measurement compared against the one above it.
 
@@ -39,37 +41,51 @@ Figures are tabular everywhere, because every number on this page is a measureme
 
 There are no cards, shadows, rounded corners, or icons standing in for labels, and nothing sits on a raised surface.
 
-Division is a hairline that lands on a grid line, and that hairline is what identifies a Task. Issues #62 and #65 raised the requirement, WCAG 1.4.11's 3:1 where a border is what identifies a component, and a raised surface with a 4.12:1 border was as close as a shell of stacked zinc surfaces could get. `--rule` on `--ground` measures roughly 18.9:1 and needs no surface to help it.
+Division is a ruled border, and that border is what identifies a Task. Issues #62 and #65 raised the requirement, WCAG 1.4.11's 3:1 where a border is what identifies a component, and a raised surface with a 4.12:1 border was as close as a shell of stacked zinc surfaces could get. `--rule` on `--ground` measures roughly 16:1 and needs no surface to help it.
 
-The surface also ships no rasters at all. It is flat shape systems, hairlines and type the whole way down, so the static export sends no images and a reader on cell signal in a yard waits for nothing.
+The surface also ships no rasters at all. It is flat shape systems, rules and type the whole way down, so the static export sends no images and a reader on cell signal in a yard waits for nothing.
 
 ## Components
 
-### The Tally Band
+### The Sheet
 
-The week's load as a strip of grid cells: filled for recorded, outlined for open, faint for the rest of the band. It holds 13 cells whatever the week contains, so the fill itself is the comparison and a heavy week reads as heavy against the memory of a light one. It is not a capacity and not a limit, and it overflows rather than truncating, because a Task the display dropped would be indistinguishable from one nobody thought of. It carries `aria-hidden`: the sentence beneath states the same number exactly, so the text is the accessible answer and the band is the fast one.
+A bounded object with a heavy border, because a work-order ticket has an edge you could tear along and the same content without one reads as a page that merely happens to be ruled. Inside it: a head spanning the full width, then two columns, a margin carrying the nav and the week's apparatus and a field carrying the work.
 
-### The Task Row
+The margin is what a wide screen is for. Extra width goes there so the work keeps a readable measure, instead of inflating one column until a desktop shows less than a phone does.
 
-Job name first, then the target right-aligned, then the instruction, then the evidence in accent mono. That order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, which is the absence of evidence, while the work itself sat third.
+### The Ticket Head
+
+Wordmark in one cell, ticket number and yard stacked beside it. The number is `No. <year>-<day of year>`, derived at read time. It is deliberately not the Artifact's generation date, which `StalenessBanner` already reports and which would put two dates on one sheet meaning different things.
+
+### The Job Table
+
+`JOB | TARGET | SIGN OFF`, with a bordered header row and vertical rules running its full height. Each Task is one ruled row: its number set large in the first cell, the job name, target, instruction and evidence in the second, the sign-off box in the third. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
+
+Row order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, the absence of evidence, while the work itself sat third.
+
+### The Sign-Off Box
+
+The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own, and the label wrapping the row extends that target across the job text.
+
+### Also Observed
+
+Sits directly under the week's summary rather than at the foot, because weather a homeowner should act on comes before a checklist they work through.
+
+It is exempt from the staleness de-emphasis. An Advisory is not part of a Plan (`CONTEXT.md`), so it has none of the Plan's staleness to inherit, and rain that is unlikely this week is worth acting on whether or not the daily run stopped. The block says in words that no Rule produced it, so a reader who never notices a border still cannot mistake it for cited work.
 
 ### NOT THIS WEEK
 
-Lists the Rules the yard holds that no evidence lit. This is the one part of the page that argues ADR 0001 without saying anything: the rule set is fixed, the Planner invents nothing, and evidence alone decides which Rules speak today. Guards are excluded, because a Guard creates no work and so has nothing to be silent about.
-
-### The GRID Control
-
-Switches the construction grid off, and does nothing else. It exists for accessibility rather than preference: a pattern held permanently behind body copy is a real problem for visual stress and low vision, and this world puts one there by design. The choice persists, an inline script applies it before first paint so it never flashes, and `prefers-contrast: more` removes the grid without anyone asking. The whole rule set belongs to `/rules`, and full citation detail to the disclosure each Task already carries.
+The Rules the yard holds that no evidence lit, kept in the margin. This is the one part of the page that argues ADR 0001 without saying anything: the rule set is fixed, the Planner invents nothing, and evidence alone decides which Rules speak today. Guards are excluded, because a Guard creates no work and so has nothing to be silent about.
 
 ## Motion
 
-One authored moment, belonging to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control commits instead of toggling: the fill runs out from the centre on an exponential ease-out, which reads as something landing rather than something switching. It plays once, on the way in, and has no reverse because the Occurrence has none either. Under `prefers-reduced-motion` the state arrives immediately and without the travel, because the information was never in the movement.
+One authored moment, belonging to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control stamps instead of toggling: the mark lands slightly rotated and fully formed in 140ms rather than fading up, because a stamp is a single impact and anything smoother reads as a switch. It has no reverse, because the Occurrence has none either. Under `prefers-reduced-motion` the state arrives immediately and without the travel, since the information was never in the movement.
 
 Nothing else on the page moves. A second animated thing would make this one ordinary.
 
 ## Print
 
-Paper has one scheme. The Away Card is printed and read in a hand, so print pins the light values whatever the screen was doing. The grid does not print at all: on screen it is an armature, and on paper it is noise a reader cannot switch off.
+Paper has one scheme. The Away Card is printed and read in a hand, so print pins the light values whatever the screen was doing, flattens the stamp red to ink, and drops the carbonless copy edges, which are a screen convention and on paper would be two bands of wasted toner.
 
 ## Migration Debt
 
@@ -77,4 +93,6 @@ Paper has one scheme. The Away Card is printed and read in a hand, so print pins
 
 ## Provenance
 
-The direction came from a four-round roll (seed `af87c25e`, re-roll 3, bolder register), chosen over Struck Cathode on sunlight legibility and on clearing WCAG 2.2 AA without a fight. The comps, their prompts and their approval records sit under `.impeccable/`, and the direction contract is in `.impeccable/surfaces/src-app-page-tsx.md`.
+The direction came from a four-round roll, seed `af87c25e`. The Visible Grid won that roll, was built in full, and was rejected on review: it was the least materially committed world in the hand, white and hairlines and type, and built faithfully it could only resolve into a well-typeset document. The Job Ticket was taken from the same hand in its place, where it had already been called the right ballpark.
+
+`.impeccable/mocks/this-week-job-ticket.png` is the approved comp for this world. The rest of the hand, their prompts and their approval records sit alongside it, and the direction contract is in `.impeccable/surfaces/src-app-page-tsx.md`.

@@ -144,15 +144,19 @@ function fullPage(store: Store): ReactElement {
 }
 
 describe('thisWeek', () => {
-	it('renders a group for fired work, one for approaching work, the held-back section, and the advisories', async () => {
+	// The order is the reading order, and the Advisories' place in it is a
+	// decision rather than an accident. Weather a homeowner should act on comes
+	// before a checklist they work through, so it sits directly under the week's
+	// summary instead of at the foot where it used to be easy to miss.
+	it('orders the sections as a reader works down the page', async () => {
 		await mount(fullPage(fakeStore()));
 
 		expect(screen.getAllByRole('heading', { level: 2 }).map(heading => heading.textContent)).toEqual([
 			'The week in the yard',
+			'Also observed',
 			'Ready now',
 			'Approaching',
 			'Held back',
-			'Also observed',
 		]);
 	});
 

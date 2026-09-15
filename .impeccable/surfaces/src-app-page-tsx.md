@@ -17,15 +17,15 @@ Constraints: static export, no server runtime, no browser model call. WCAG 2.2 A
 
 ## Direction contract
 
-THESIS: The plan shows its own machinery. This surface refuses the category arrangement it was measured against — a card grid of rounded tiles where the rule and the dated reading behind a task hide behind a "Why this?" link — and instead keeps the construction grid that builds the page permanently visible, with the evidence set on the cell line directly beneath the instruction it backs.
+THESIS: The plan is a work-order ticket. This surface refuses the category arrangement it was measured against, a card grid of rounded tiles where the rule and the dated reading behind a task hide behind a "Why this?" link, and states the evidence on a line of its own beneath the instruction it backs. The genre was chosen because its central gesture is already the product's: a ticket is signed off, and a signature is not taken back.
 
-OWN-WORLD: Pure white ground carrying a faint pale-blue construction grid at all times, visible but quiet. Near-black type. One saturated blue as the only accent, earned by four things and nothing else: the display numeral, the active nav underline, a checked control, and the evidence line. Every element snaps to whole grid cells — no rounded corners, no drop shadows, no soft elevation, no cards. Division is hairline rules landing exactly on grid lines. Display numerals are constructed cell by cell out of the grid itself rather than set in a typeface. Body copy is a legibility-first grotesque; evidence is monospaced and tabular. Registration furniture is the only ornament permitted: rules, cell marks, and the grid. Nothing decorative earns a place.
+OWN-WORLD: Carbonless copy stock, warm rather than white, with the canary and pink sheets under it showing as edges across the head. Dense black ink, and one rubber-stamp red rationed to a single job: work that was recorded. The sheet is a bounded object with a heavy border, ruled into cells, with a JOB / TARGET / SIGN OFF table whose vertical rules run its full height. Lettering is a heavy condensed grotesque, chosen against the font ranking because the metric winner was too light to survive being printed badly on cheap stock. Everything written on the form is typewriter. No cards, no shadows, no rounded corners, no icons standing in for labels. Registration furniture is the only ornament permitted.
 
 STORY: The reader opens the plan in sunlight and reads one constructed numeral — how many jobs the yard is owed this week. They scan the rows, each carrying the work, its target, what to actually do, and the dated reading that produced it, with nothing to expand or tap to see why. They do the work, then press one square cell-sized control that records it and refuses to take it back.
 
-FIRST VIEWPORT: App bar, wordmark at left, a one-cell GRID control at right. Nav row beneath: PLAN active under a blue cell-width underline, then YARD and RULES. Then the tally band, a full-width strip of equal square cells two cells tall: filled blue for recorded, black-outlined white for open, faint pale blue for nothing scheduled, so the week's load is countable before a word is read. Beneath it, the count in condensed caps at left and region, zone and generation date in grey at right. A black hairline on a grid line, then dense Task rows separated by hairlines: a square checkbox at the left edge shipping at a 44px minimum target, job name in bold condensed caps, target right-aligned in grey caps, the instruction in body grotesque, and the evidence in blue mono on the next cell line. The primary action is that checkbox, one per row, at the left edge where a thumb reaches. Below the last row, a quiet NOT THIS WEEK block naming the rules evidence did not light. Footer: artifact age at left in grey, open count at right in blue.
+FIRST VIEWPORT: The sheet's own border, then a head spanning its full width: wordmark in one cell, ticket number and yard stacked beside it. Below, a margin and a field. The margin carries the nav, the sign-off strip, the job and open counts, and the Rules nothing lit. The field carries the page heading, the week's summary, the Advisories directly beneath it, then the job table: bordered column heads, and each Task a ruled row with its number set large at the left, the job name and target on one line, the instruction in typewriter beneath, the evidence in stamp red below that, and the sign-off box in the last cell. The primary action is that box, one per row. The stub closes the sheet with a perforation and the count still open.
 
-FORM: The gridded type specimen, whose construction grid stays on the page as a real toggleable state. It won as a dealt challenger in the bolder register rather than as a candidate on my own grounded list, which ran irrigation controller, field notebook, inspection tag, weather console, job ticket, comparator chart, pick ticket. Seed key af87c25e, re-roll round 3, bolder register, chosen over Struck Cathode on sunlight legibility and on clearing WCAG 2.2 AA without a fight.
+FORM: The numbered work-order ticket. It was a dealt grounded candidate in re-roll round 2, where the owner called it the right ballpark, and it was taken up after the Visible Grid won the roll, was built in full and was rejected on review for being the least materially committed world in the hand. Seed key af87c25e.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
@@ -64,3 +64,18 @@ Everything from `sections` onward is therefore built as ordinary engineering and
   and full citation detail belongs to the existing Citation disclosure. NOT THIS WEEK stays a quiet grey list and does not expand.
 - Body and mono faces are not yet chosen. Atkinson Hyperlegible Next and its mono companion are the leading candidates on the binding a11y requirement, not inherited from the incumbent by default.
 - Deferred, Approaching and Completed Task states have no composition yet; today's Artifact contains none. They must be designed before this surface is called done.
+
+
+## Revision, after the Visible Grid was built and rejected
+
+The Visible Grid shipped, was reviewed against a wide viewport, and failed on four counts worth keeping on the record because they bind every surface still to come.
+
+Type sized in `vw` grows without limit, so at 1440 the opening screen held a wordmark, a heading and one sentence. That is a phone layout enlarged. Every step now reaches its ceiling around 900px and holds; extra width goes to the layout.
+
+A wide screen needs its own composition. One column enlarged is not a desktop design. The sheet is a margin and a field, and the margin is where the width goes.
+
+A saturated blue accent reads as a hyperlink and says "click here" where this colour has to say "someone marked this".
+
+Section headings set above their own prose read as a stack of small grey captions that nothing distinguishes. Sections are labelled bands with the label in the margin under a rule running the full measure.
+
+And the finding underneath all of them: the Visible Grid was white, hairlines and type, with no material to commit to. Built faithfully it could only resolve into a well-typeset document. A world with nothing to be made of cannot be rescued by execution.
