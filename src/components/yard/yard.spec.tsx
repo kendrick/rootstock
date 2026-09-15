@@ -47,6 +47,20 @@ function listRowFor(name: string): HTMLElement {
 	});
 }
 
+/**
+ * The callout for one Plant. It is aria-hidden by design, so it has no
+ * accessible name to query by; `data-plant` is what identifies it.
+ */
+function pinFor(plantId: string): HTMLElement {
+	const pin = document.querySelector<HTMLElement>(`[data-plant="${plantId}"]`);
+
+	if (pin === null) {
+		throw new Error(`no callout rendered for '${plantId}'`);
+	}
+
+	return pin;
+}
+
 describe('yard', () => {
 	it('renders the photo and the list together, with no sheet open', () => {
 		renderYard();
@@ -59,7 +73,7 @@ describe('yard', () => {
 	it('opens the sheet for the Plant whose pin was clicked', async () => {
 		renderYard();
 
-		fireEvent.click(screen.getByTitle(figPlant.name));
+		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
@@ -73,7 +87,7 @@ describe('yard', () => {
 	 */
 	it('opens the same sheet from a pin and from a list row', async () => {
 		const fromPin = renderYard();
-		fireEvent.click(screen.getByTitle(figPlant.name));
+		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 		const pinSheet = screen.getByRole('dialog').textContent;
 		fromPin.unmount();
@@ -111,7 +125,7 @@ describe('yard', () => {
 	// from it and never changed.
 	it('clears the selection when the sheet is closed, and reopens on the same Plant', async () => {
 		renderYard();
-		fireEvent.click(screen.getByTitle(figPlant.name));
+		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -119,7 +133,7 @@ describe('yard', () => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
 
-		fireEvent.click(screen.getByTitle(figPlant.name));
+		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
 		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
@@ -134,7 +148,7 @@ describe('yard', () => {
 	it('returns focus to the pin that opened the sheet, once it closes', async () => {
 		renderYard();
 
-		const pin = screen.getByTitle(figPlant.name);
+		const pin = pinFor(figPlant.id);
 		fireEvent.click(pin);
 		await settled();
 

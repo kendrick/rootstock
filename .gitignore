@@ -45,3 +45,25 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /.preview/
+
+# Design tooling working directory. Most of it is local scratch: the comp rounds
+# ran to 17 renders across four direction rolls, and archiving the worlds that
+# lost would put ~31MB of binaries in a public repo's history for no reader's
+# benefit. What survives is what DESIGN.md and the surface brief cite by path.
+.impeccable/*
+!.impeccable/surfaces/
+!.impeccable/mocks/
+.impeccable/mocks/*
+!.impeccable/mocks/this-week-job-ticket.png
+!.impeccable/mocks/this-week-job-ticket.png.json
+!.impeccable/mocks/this-week-tally.png
+!.impeccable/mocks/this-week-tally.png.json
+!.impeccable/mocks/this-week-fullpage.png
+!.impeccable/mocks/this-week-fullpage.png.json
+
+# Built by `pnpm preview` on every run, and by the review captures.
+.preview
+
+# Scratch capture script for the review screenshots. Rewritten per run and
+# never part of the build; eslint.config.mjs ignores it for the same reason.
+.shot.mjs

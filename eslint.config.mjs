@@ -57,6 +57,13 @@ export default antfu(
 			'test-results',
 			'playwright-report',
 			'.preview',
+			// Design-tooling working directory: comps, measured region specs, the
+			// generated layout scaffold and review captures. Same argument as data/
+			// and schemas/ below — it is written by a tool, and the only way to fix a
+			// complaint here is to edit the tool.
+			'.impeccable',
+			// Scratch capture script, gitignored, used to drive the review screenshots.
+			'.shot.mjs',
 			// Generated output from scripts/generate-schema.ts. Linting it would report
 			// problems that can only be fixed by editing the generator, not this file.
 			'schemas',

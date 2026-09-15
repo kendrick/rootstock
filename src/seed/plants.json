@@ -5,7 +5,7 @@
 		"kind": "lawn",
 		"status": "planted",
 		"tags": ["lawn", "turf"],
-		"position": { "x": 0.3, "y": 0.8 },
+		"position": { "x": 0.13, "y": 0.52 },
 		"site": null,
 		"lawn": {
 			"grass": "TifTuf bermuda",
@@ -24,7 +24,7 @@
 		"kind": "plant",
 		"status": "planted",
 		"tags": ["fig", "fruit", "tree"],
-		"position": { "x": 0.85, "y": 0.63 },
+		"position": { "x": 0.92, "y": 0.63 },
 		"site": "Sandy fill on a slope against a west-facing stone wall",
 		"lawn": null,
 		"notes": null
@@ -35,7 +35,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "perennial"],
-		"position": { "x": 0.66, "y": 0.13 },
+		"position": { "x": 0.68, "y": 0.11 },
 		"site": "Back patio, full sun",
 		"lawn": null,
 		"notes": null
@@ -46,7 +46,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.7, "y": 0.1 },
+		"position": { "x": 0.75, "y": 0.19 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": "Due for a repot in spring."
@@ -57,7 +57,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.74, "y": 0.14 },
+		"position": { "x": 0.75, "y": 0.11 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": null
@@ -68,7 +68,7 @@
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
-		"position": { "x": 0.71, "y": 0.18 },
+		"position": { "x": 0.72, "y": 0.1 },
 		"site": "Back patio",
 		"lawn": null,
 		"notes": null
@@ -79,7 +79,7 @@
 		"kind": "plant",
 		"status": "planned",
 		"tags": ["vine", "native", "planned"],
-		"position": null,
+		"position": { "x": 0.67, "y": 0.09 },
 		"site": "Porch trellis",
 		"lawn": null,
 		"notes": null
@@ -90,7 +90,7 @@
 		"kind": "plant",
 		"status": "planned",
 		"tags": ["vine", "native", "planned"],
-		"position": null,
+		"position": { "x": 0.7, "y": 0.08 },
 		"site": "Porch trellis",
 		"lawn": null,
 		"notes": null
@@ -101,7 +101,7 @@
 		"kind": "bed",
 		"status": "planned",
 		"tags": ["bed", "native", "planned"],
-		"position": null,
+		"position": { "x": 0.87, "y": 0.64 },
 		"site": "Around the fig, west-facing",
 		"lawn": null,
 		"notes": null

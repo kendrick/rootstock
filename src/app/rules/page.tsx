@@ -23,7 +23,7 @@ export default function RulesPage(): ReactElement {
 		<ArtifactGate artifact={artifact} status={status}>
 			{validated => (
 				<div className="space-y-6">
-					<h1 className="text-2xl font-medium tracking-tight text-foreground">Rules</h1>
+					<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase">Rules</h1>
 
 					<StalenessBanner
 						generatedAt={validated.artifact.generatedAt}

@@ -97,8 +97,8 @@ export interface PlantSheetProps {
 function Detail({ label, children }: { label: string; children: ReactNode }): ReactElement {
 	return (
 		<div className="space-y-1">
-			<dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-			<dd className="text-sm text-foreground">{children}</dd>
+			<dt className="font-display text-label font-bold tracking-widest text-muted uppercase">{label}</dt>
+			<dd className="font-mono text-detail text-foreground">{children}</dd>
 		</div>
 	);
 }
@@ -122,7 +122,7 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 				<Detail label="Tags">
 					<div className="flex flex-wrap gap-1.5">
 						{plant.tags.map(tag => (
-							<Badge key={tag} variant="secondary">{tag}</Badge>
+							<span key={tag} className="font-display text-label tracking-widest text-muted uppercase">{tag}</span>
 						))}
 					</div>
 				</Detail>
@@ -137,7 +137,7 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 					<Detail label="Soil">{lawn.soil}</Detail>
 					<Detail label="Irrigation">
 						{lawn.irrigation.schedule}
-						<span className="mt-1 block text-xs text-muted-foreground">
+						<span className="mt-1 block font-display text-label tracking-widest text-muted uppercase">
 							{IRRIGATION_SOURCE_TEXT[lawn.irrigation.source]}
 						</span>
 					</Detail>
@@ -166,14 +166,14 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
  */
 function RuleRow({ rule }: { rule: Rule }): ReactElement {
 	return (
-		<li className="space-y-2 border-b border-border px-3 py-2.5 last:border-b-0">
-			<p className="text-sm font-semibold text-foreground">{rule.name}</p>
+		<li className="space-y-2 border-b-2 border-rule px-3 py-3 last:border-b-0">
+			<p className="font-display text-body font-bold tracking-wide text-foreground uppercase">{rule.name}</p>
 			<div className="flex flex-wrap items-center gap-2">
 				<SourceBadge source={rule.source} />
 				{rule.kind === 'guard' && (
 					<Badge variant="outline">{GUARD_EFFECT_TEXT[rule.effect]}</Badge>
 				)}
-				<span className="text-xs text-muted-foreground">{rule.region.name}</span>
+				<span className="font-display text-label tracking-widest text-muted uppercase">{rule.region.name}</span>
 			</div>
 		</li>
 	);
@@ -183,11 +183,11 @@ function ApplicableRules({ rules }: { rules: Rule[] }): ReactElement {
 	// Reachable from two directions: a planned Plant, which `targets()` drops
 	// until it is in the ground, and a planted one no Rule happens to name.
 	if (rules.length === 0) {
-		return <p className="text-sm text-muted-foreground">No Rule reaches this plant.</p>;
+		return <p className="text-sm text-muted">No Rule reaches this plant.</p>;
 	}
 
 	return (
-		<ul className="flex flex-col rounded-md border border-border">
+		<ul className="flex flex-col border-2 border-rule">
 			{rules.map(rule => (
 				<RuleRow key={rule.id} rule={rule} />
 			))}
@@ -217,19 +217,19 @@ function ruleLabel(ruleId: string, rules: Rule[]): string {
  */
 function RecordedWork({ history, rules }: { history: History | null; rules: Rule[] }): ReactElement {
 	if (history === null) {
-		return <p className="text-sm text-muted-foreground">Reading what has been recorded here…</p>;
+		return <p className="text-sm text-muted">Reading what has been recorded here…</p>;
 	}
 
 	if (history.status === 'failed') {
 		return (
-			<p className="text-sm text-muted-foreground">
+			<p className="text-sm text-muted">
 				{`What has been recorded here could not be read. ${history.message}`}
 			</p>
 		);
 	}
 
 	if (history.occurrences.length === 0) {
-		return <p className="text-sm text-muted-foreground">Nothing has been recorded against this plant yet.</p>;
+		return <p className="text-sm text-muted">Nothing has been recorded against this plant yet.</p>;
 	}
 
 	return (
@@ -239,7 +239,7 @@ function RecordedWork({ history, rules }: { history: History | null; rules: Rule
 					<time dateTime={occurrence.completedAt} className="font-medium text-foreground">
 						{RECORDED_DATE_FORMAT.format(Date.parse(occurrence.completedAt))}
 					</time>
-					<span className="text-muted-foreground">{ruleLabel(occurrence.ruleId, rules)}</span>
+					<span className="text-muted">{ruleLabel(occurrence.ruleId, rules)}</span>
 				</li>
 			))}
 		</ul>
@@ -351,7 +351,19 @@ export function PlantSheet({
 		<Sheet open={plant !== null} onOpenChange={onOpenChange}>
 			{plant !== null && (
 				<SheetContent
-					className="w-full overflow-y-auto sm:max-w-lg"
+					// The sheet slides in from the edge rather than appearing. It is the one
+					// place on this surface where something arrives over the page, and a
+					// panel that pops gives a reader no sense of where it came from or
+					// where it will go back to.
+					//
+					// Faster than shadcn's defaults, which run 500ms in and 300ms out: this
+					// world's other motion is a stamp at 140ms, and a half-second slide
+					// beside it reads as a different product. Out is quicker than in,
+					// because leaving needs no explaining.
+					//
+					// Ruled and flat, like the sheet it covers: a border rather than the
+					// default shadow, since nothing in this world sits on a raised surface.
+					className="w-full overflow-y-auto border-l-2 border-rule shadow-none duration-200 data-[state=closed]:duration-150 sm:max-w-lg"
 					aria-modal="true"
 					onOpenAutoFocus={(event) => {
 						event.preventDefault();

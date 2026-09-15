@@ -5,7 +5,8 @@ import type { Artifact } from '@/artifact/artifact';
 import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant, Yard as YardRecord } from '@/yard/plant';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
 import { YardPhoto } from './yard-photo';
@@ -34,6 +35,21 @@ export interface YardProps {
  * list about which Plant a click meant.
  */
 export function Yard({ yard, plants, rules, artifact, store }: YardProps): ReactElement {
+	// One number per Plant, shared by its callout on the plate and its row in the
+	// list below. The list's own order is the numbering, so a reader reads the
+	// number off the photograph and finds the same number in the parts list
+	// without a legend in between.
+	const ordinals = useMemo(
+		() => new Map(plants.map((plant, index) => [plant.id, index + 1])),
+		[plants],
+	);
+
+	// Which Plant is under the pointer, wherever the pointer is. The plate and
+	// the parts list are siblings, so neither can own this: a callout and its row
+	// carry the same number and have to light together, or the number is the only
+	// thing joining them and the reader does the joining.
+	const [hovered, setHovered] = useState<string | null>(null);
+
 	const [selected, setSelected] = useState<Plant | null>(null);
 
 	// A pin and a list row can both open the sheet for the same Plant, so
@@ -47,29 +63,46 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 		setSelected(plant);
 	}
 
+	// Radix needs one provider above every tooltip on the surface. It sits here
+	// rather than in the shell because the plate is the only thing that uses one.
 	return (
-		<div className="space-y-6">
-			<YardPhoto yard={yard} plants={plants} onSelect={handleSelect} />
-			<PlantList plants={plants} onSelect={handleSelect} />
-			<PlantSheet
-				plant={selected}
-				rules={rules}
-				plants={plants}
-				artifact={artifact}
-				store={store}
-				// Nothing here opens the sheet. A Plant is what opens it, and Radix
-				// only reports `false` for the close control, the overlay, and Escape,
-				// so clearing the selection is the whole job.
-				onOpenChange={(open) => {
-					if (!open) {
-						setSelected(null);
-					}
-				}}
-				onCloseAutoFocus={(event) => {
-					event.preventDefault();
-					triggerRef.current?.focus();
-				}}
-			/>
-		</div>
+		<TooltipProvider delayDuration={120}>
+			<div className="space-y-6">
+				<YardPhoto
+					yard={yard}
+					plants={plants}
+					ordinals={ordinals}
+					hovered={hovered}
+					onHoverChange={setHovered}
+					onSelect={handleSelect}
+				/>
+				<PlantList
+					plants={plants}
+					ordinals={ordinals}
+					hovered={hovered}
+					onHoverChange={setHovered}
+					onSelect={handleSelect}
+				/>
+				<PlantSheet
+					plant={selected}
+					rules={rules}
+					plants={plants}
+					artifact={artifact}
+					store={store}
+					// Nothing here opens the sheet. A Plant is what opens it, and Radix
+					// only reports `false` for the close control, the overlay, and Escape,
+					// so clearing the selection is the whole job.
+					onOpenChange={(open) => {
+						if (!open) {
+							setSelected(null);
+						}
+					}}
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						triggerRef.current?.focus();
+					}}
+				/>
+			</div>
+		</TooltipProvider>
 	);
 }

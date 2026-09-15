@@ -27,6 +27,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { parseNarration } from '../src/artifact/narration';
+import { NARRATOR_BRIEF } from '../src/generation/narrator-brief';
 
 /**
  * The model, pinned in one place. A narration written by a different model reads differently, so a
@@ -147,20 +148,16 @@ function codexArgs(outputFile: string, prompt: string): readonly string[] {
 /**
  * The Plan goes in whole and verbatim. ADR 0001 makes the Plan the only thing a Narration may be
  * about, so any trimming here would let this module decide what the model may write about.
+ *
+ * The instructions come from `NARRATOR_BRIEF` rather than sitting here, because /about renders that
+ * same constant. The page's argument is that nothing on it was written for it, and a second copy of
+ * the prompt here is how that stops being true.
  */
 function buildPrompt(plan: Plan): string {
 	return [
-		'You are writing this week\'s narration for a home gardener. The plan below is final: you are selecting and wording, not planning.',
-		'',
-		'Write a short summary of the week in the yard. Then, for each task worth reading, write one plain sentence, ordered the way a person should read them. Every taskId must be copied from the plan; never invent one, and leave out any task that is not worth a sentence.',
-		'',
-		'Add an advisory only for something you noticed that no rule in the plan produced. An empty advisories array is a normal answer.',
-		'',
-		'Answer with JSON matching the supplied schema, and nothing else.',
-		'',
-		'Plan:',
-		JSON.stringify(plan),
-	].join('\n');
+		...NARRATOR_BRIEF,
+		`Plan:\n${JSON.stringify(plan)}`,
+	].join('\n\n');
 }
 
 interface CodexRun {

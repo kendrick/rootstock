@@ -15,18 +15,23 @@ if (slug === undefined || slug.trim() === '') {
  * PDF, not by eye in a print preview. `page.emulateMedia({ media: 'print' })`
  * puts the page in the exact CSS state Chromium's print pipeline reads from,
  * so the assertions below are reading the same cascade the PDF is built out
- * of. A bare byte count would still pass on an invisible wordmark, a nav that
+ * of. A bare byte count would still pass on an invisible heading, a nav that
  * never hid, or a missing date, so this checks each of #63's specific claims
  * before treating a non-trivial PDF as proof of anything.
+ *
+ * #63 asked for the wordmark in ink, and the card no longer carries one: it is
+ * the stub torn off the ticket and it brings its own sheet, so the shell's head
+ * never renders here. What identifies the printed sheet is its own heading and
+ * the date beneath it, and that is what has to survive the cascade.
  */
-test('prints the wordmark in ink, hides the nav, and carries a date and a box to tick', async ({ page, browserName }) => {
+test('prints its heading in ink, hides the nav, and carries a date and a box to tick', async ({ page, browserName }) => {
 	test.skip(browserName !== 'chromium', 'page.pdf() is only implemented in headless Chromium');
 
 	const response = await page.goto(`away/${slug}`);
 	expect(response?.status()).toBe(200);
 	await page.emulateMedia({ media: 'print' });
 
-	await expect(page.getByText('rootstock', { exact: true })).toHaveCSS('color', 'rgb(0, 0, 0)');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('color', 'rgb(0, 0, 0)');
 	await expect(page.locator('nav[aria-label="Main"]')).toBeHidden();
 	await expect(page.getByRole('button', { name: /print/i })).toBeHidden();
 

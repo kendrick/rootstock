@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import { useId } from 'react';
+import { Section } from './section';
 
 export interface TaskGroupProps {
 	heading: string;
@@ -47,16 +48,31 @@ export function TaskGroup({ heading, emptyText, description, children }: TaskGro
 	}
 
 	return (
-		<section aria-labelledby={headingId} className="space-y-3">
-			<h2 id={headingId} className="text-base font-semibold text-foreground">{heading}</h2>
-
+		<Section id={headingId} label={heading}>
 			{!empty && description !== undefined && (
-				<p className="max-w-prose text-sm text-muted-foreground">{description}</p>
+				<p className="max-w-prose text-detail text-muted">{description}</p>
 			)}
-
 			{empty
-				? <p className="text-sm text-muted-foreground">{emptyText}</p>
-				: <ul className="space-y-3">{children}</ul>}
-		</section>
+				? <p className="max-w-prose text-body text-muted">{emptyText}</p>
+				: (
+						<div className="border-2 border-rule">
+							{/* The column heads. aria-hidden because the columns are a printed
+							    convention rather than a table a screen reader should announce:
+							    each row below is one list item carrying its own labelled parts,
+							    and a reader moving by list gets the job, the target and the
+							    control in that order without the header repeating itself. */}
+							<div
+								aria-hidden="true"
+								className="grid grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
+							>
+								<span className="border-r-2 border-rule px-2 py-1.5 text-center">Job</span>
+								<span className="px-3 py-1.5">Target</span>
+								<span className="border-l-2 border-rule px-2 py-1.5 text-center">Sign off</span>
+							</div>
+
+							<ul>{children}</ul>
+						</div>
+					)}
+		</Section>
 	);
 }

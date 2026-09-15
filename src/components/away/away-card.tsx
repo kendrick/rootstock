@@ -3,7 +3,6 @@
 import type { ReactElement } from 'react';
 import type { Narration } from '@/artifact/narration';
 import type { Task } from '@/planner/task';
-import { Printer } from 'lucide-react';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { FOCUS_RING } from '@/lib/focus';
@@ -149,9 +148,12 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 					// is light text on a near-black page, and the Shell's own colours
 					// are not this component's to change. A reader who prints the card
 					// and carries it into the yard gets ink on white either way.
-					<div className="space-y-6 print:space-y-4 print:text-black">
-						<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-							<h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl print:text-black">
+					// The Away Card is the stub: the copy torn off a work-order ticket and
+					// handed to whoever does the job, on the copy sheet rather than the top
+					// one. `copy-sheet` redefines the ground for this subtree only.
+					<div className="copy-sheet border-2 border-rule bg-background text-foreground print:border-black print:text-black">
+						<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b-2 border-rule px-5 py-4 print:border-black">
+							<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase print:text-black">
 								Yard tasks this week
 							</h1>
 							{/* The one control a read-only card gets to carry: it opens the
@@ -162,11 +164,10 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 								type="button"
 								onClick={() => window.print()}
 								className={cn(
-									'inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-card print:hidden',
+									'border-2 border-rule px-3 py-1.5 font-display text-label font-bold tracking-widest uppercase print:hidden',
 									FOCUS_RING,
 								)}
 							>
-								<Printer aria-hidden="true" className="size-4" />
 								Print
 							</button>
 						</div>
@@ -177,53 +178,66 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 						    sentence below guards against. Rendered unconditionally, unlike
 						    StalenessBanner, which goes silent on a fresh Artifact—this line
 						    is what stays behind when that one has nothing to say. */}
-						<p className="text-sm text-muted-foreground print:text-black">
-							Generated
-							{' '}
-							<time dateTime={validated.artifact.generatedAt}>
-								{GENERATED_ON.format(Date.parse(validated.artifact.generatedAt))}
-							</time>
-							.
-						</p>
+						<div className="space-y-5 px-5 py-4 print:space-y-4">
+							<p className="font-mono text-detail text-muted print:text-black">
+								Generated
+								{' '}
+								<time dateTime={validated.artifact.generatedAt}>
+									{GENERATED_ON.format(Date.parse(validated.artifact.generatedAt))}
+								</time>
+								.
+							</p>
 
-						{/* Above the first item, and louder than anywhere else on the
+							{/* Above the first item, and louder than anywhere else on the
 						    site. Every other route is read in front of the machine that
 						    would show a fresher copy; this one is read in a yard, off
 						    paper, by someone with no way to check. */}
-						<StalenessBanner
-							prominent
-							generatedAt={validated.artifact.generatedAt}
-							status={validated.status}
-							now={now}
-						/>
+							<StalenessBanner
+								prominent
+								generatedAt={validated.artifact.generatedAt}
+								status={validated.status}
+								now={now}
+							/>
 
-						{shown.length === 0
-							? (
-									<p className="text-base text-muted-foreground sm:text-lg print:text-black">
-										{emptyText(ownerOnly.length + deferred.length)}
-									</p>
-								)
-							: (
-									<ul className="divide-y divide-border rounded-md border border-border print:border-black">
-										{shown.map(task => (
+							{shown.length === 0
+								? (
+										<p className="max-w-prose font-mono text-body text-muted print:text-black">
+											{emptyText(ownerOnly.length + deferred.length)}
+										</p>
+									)
+								: (
+										<ul className="border-2 border-rule print:border-black">
+											{shown.map(task => (
 											// break-inside-avoid so one task does not split across two
 											// sheets, which is the one way a printed line gets missed.
-											<li
-												key={task.id}
-												className="flex items-start gap-3 px-4 py-3 text-base sm:text-lg print:break-inside-avoid print:py-2 print:text-black"
-											>
-												{/* Empty on purpose: a helper's own pen is what marks this,
+												<li
+													key={task.id}
+													className="grid grid-cols-[3rem_minmax(0,1fr)] items-stretch border-t-2 border-rule first:border-t-0 print:break-inside-avoid print:border-black"
+												>
+													{/* Empty on purpose: a helper's own pen is what marks this,
 												    never a click. This card has no digital way to mark work
 												    done, because CONTEXT.md's Occurrence entry makes that
 												    record the owner's alone. border-current rather than a
 												    named colour so the box always matches the text beside
 												    it, on screen and on paper. */}
-												<span aria-hidden="true" className="mt-1 size-4 shrink-0 border border-current" />
-												<span>{taskText(task, validated.artifact.narration)}</span>
-											</li>
-										))}
-									</ul>
-								)}
+													<span className="flex items-start justify-center border-r-2 border-rule px-3 py-3 print:border-black">
+														{/* Empty on purpose: a helper's own pen is what marks this,
+													    never a click. This card has no digital way to mark work
+													    done, because CONTEXT.md's Occurrence entry makes that
+													    record the owner's alone. border-current rather than a
+													    named colour so the box always matches the text beside
+													    it, on screen and on paper. */}
+														<span aria-hidden="true" className="size-5 shrink-0 border-2 border-current" />
+													</span>
+													<span className="px-3 py-3 font-mono text-body leading-relaxed">
+														{taskText(task, validated.artifact.narration)}
+													</span>
+												</li>
+											))}
+										</ul>
+									)}
+
+						</div>
 
 						<WithheldCount ownerOnly={ownerOnly.length} deferred={deferred.length} />
 					</div>

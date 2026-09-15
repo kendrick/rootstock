@@ -26,7 +26,7 @@ export interface PurposeProps {
  */
 export function Purpose({ region = seedYard.region.name }: PurposeProps = {}): ReactElement {
 	return (
-		<p className="max-w-prose text-base text-muted-foreground">
+		<p className="max-w-prose text-body text-muted">
 			{`One yard in ${region}, planned again every morning. `}
 			{/*
 			 * The one sentence a reviewer has ten seconds for, so it carries the

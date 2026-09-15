@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { Section } from './section';
 
 export interface WeekSummaryProps {
 	/** `narration.summary`. Null, omitted, or blank for an Artifact the model never narrated. */
@@ -30,11 +31,8 @@ export function WeekSummary({ summary = null }: WeekSummaryProps): ReactElement 
 	}
 
 	return (
-		<section aria-labelledby="week-summary-heading" className="space-y-2">
-			<h2 id="week-summary-heading" className="text-base font-semibold text-foreground">
-				The week in the yard
-			</h2>
-			<p className="max-w-prose text-base text-foreground">{summary}</p>
-		</section>
+		<Section id="week-summary-heading" label="The week in the yard">
+			<p className="max-w-prose text-body text-foreground">{summary}</p>
+		</Section>
 	);
 }

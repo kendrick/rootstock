@@ -1,9 +1,8 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
-import { ClipboardCheck, ExternalLink, Shield, Users, UserX } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { MONTHS } from '@/planner/dates';
 import { isDelegable } from '@/planner/delegation';
@@ -208,7 +207,6 @@ export function RuleSummary({
 	// differently. The fallback exists for the Rules route, which renders Rules
 	// that produced no Task and so has no stamp to read.
 	const canDelegate = typeof delegable === 'boolean' ? delegable : isDelegable(rule, tagPolicy);
-	const DelegableIcon = canDelegate ? Users : UserX;
 
 	return (
 		<div className="space-y-2 text-sm">
@@ -259,43 +257,41 @@ export function RuleSummary({
 				)}
 			</dl>
 
-			<div className="flex flex-wrap items-center gap-2">
+			{/* Printed marks in a line, not badges. A ticket has no rounded chrome and
+			    no icon system, so each of these states itself in type. */}
+			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-display text-label tracking-widest uppercase">
 				{/*
-				 * A Guard reaching a reader outside a Task—on the Rules route,
-				 * say—looks exactly like a Rule that asks for work unless it says
-				 * otherwise on its face. CONTEXT.md's Guard entry is the sentence.
+				 * A Guard reaching a reader outside a Task—on the Rules route, say—looks
+				 * exactly like a Rule that asks for work unless it says otherwise on its
+				 * face. CONTEXT.md's Guard entry is the sentence.
 				 */}
 				{rule.kind === 'guard' && (
-					<Badge variant="outline" className="gap-1.5">
-						<Shield aria-hidden="true" className="size-3.5 shrink-0" />
-						<span>Guard &middot; creates no work</span>
-					</Badge>
+					<span className="text-muted">Guard &middot; creates no work</span>
 				)}
 
 				{/*
-				 * Word and icon shape, not colour. A reader with a colour-vision
-				 * deficiency has to be able to tell delegable work from work that stays
-				 * with the owner, and this is the flag that decides whether a Task can
-				 * be handed to somebody else while the owner is away—see the docblock
-				 * in source-badge.tsx for the longer version of the argument.
+				 * The word carries this, and nothing else does. A reader with a
+				 * colour-vision deficiency has to be able to tell delegable work from work
+				 * that stays with the owner, and this is the flag that decides whether a
+				 * Task can be handed to somebody else while the owner is away. It used to
+				 * be a word beside a glyph; the glyph is gone, which leaves the word
+				 * load-bearing on its own and means it must never become a colour.
 				 */}
-				<Badge variant={canDelegate ? 'secondary' : 'outline'} className="gap-1.5">
-					<DelegableIcon aria-hidden="true" className="size-3.5 shrink-0" />
-					<span>{canDelegate ? 'Delegable' : 'Not delegable'}</span>
-				</Badge>
+				<span className={canDelegate ? 'text-muted' : 'font-bold text-foreground'}>
+					{canDelegate ? 'Delegable' : 'Not delegable'}
+				</span>
 
 				{/*
-				 * The join the Rules route is missing today: the Artifact names every
-				 * Rule that fired, and until now nothing here said which of these Rules
-				 * that was. A Guard never produces a Task itself, so its badge asks a
+				 * The join the Rules route would otherwise be missing: the Artifact names
+				 * every Rule that fired, and without this nothing here said which of those
+				 * Rules it was. A Guard never produces a Task itself, so it answers a
 				 * different question—whether it reached one through a Deferral or an
 				 * Annotation—rather than restating the Task's own evidence.
 				 */}
 				{inCurrentPlan && (
-					<Badge variant="secondary" className="gap-1.5">
-						<ClipboardCheck aria-hidden="true" className="size-3.5 shrink-0" />
-						<span>{rule.kind === 'guard' ? 'Acted on a Task this week' : 'Produced a Task this week'}</span>
-					</Badge>
+					<span className="font-bold text-foreground">
+						{rule.kind === 'guard' ? 'Acted on a Task this week' : 'Produced a Task this week'}
+					</span>
 				)}
 			</div>
 		</div>

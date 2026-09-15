@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { staleness } from '@/artifact/staleness';
 import { cn } from '@/lib/utils';
 import { isCompleted } from '@/planner/completion';
-import { seedPlants, seedRules } from '@/seed';
+import { seedPlants, seedRules, seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
@@ -65,33 +65,6 @@ function completionInstant(asOf: string): string {
 
 function byId<T extends { id: string }>(records: T[]): ReadonlyMap<string, T> {
 	return new Map(records.map(record => [record.id, record]));
-}
-
-/**
- * Which Task's evidence is already open when the page loads.
- *
- * ADR 0001 calls the cited-Task property the architecturally interesting one,
- * and a page of closed disclosures keeps it fully present in the DOM and
- * entirely absent from the screen. #50 counted three visible tasks against
- * zero visible citations, with a 16px chevron the only thing advertising them.
- * So one panel is open before anybody clicks.
- *
- * One, not all. The panel is tall—rule, source, region, window, product label,
- * delegability, dated evidence—and three of them open would push the task list
- * off the fold to demonstrate something one of them demonstrates. The order
- * below is render order, so the open panel is the first one a reader meets
- * rather than one further down the page.
- */
-const OPEN_ORDER: readonly Task['status'][] = ['fired', 'approaching', 'deferred'];
-
-function firstCitationToOpen(tasks: Task[]): string | null {
-	for (const status of OPEN_ORDER) {
-		const task = tasks.find(candidate => candidate.status === status);
-		if (task !== undefined) {
-			return task.id;
-		}
-	}
-	return null;
 }
 
 /**
@@ -195,7 +168,21 @@ export function ThisWeek({
 	const expired = asOf !== null && staleness(artifact.generatedAt, asOf, status).band === 'expired';
 
 	const tasks = artifact.plan.tasks;
-	const openCitationId = useMemo(() => firstCitationToOpen(tasks), [tasks]);
+	/*
+	 * No Citation panel opens on its own.
+	 *
+	 * ADR 0001 calls the cited-Task property the architecturally interesting one,
+	 * and #50 found it fully present in the DOM and entirely absent from the
+	 * screen: three visible tasks, zero visible citations, a 16px chevron the only
+	 * thing advertising them. Every Task answers that by rendering its Citation on
+	 * a line of its own beneath the instruction, in the one colour this world
+	 * reserves for cited work, so a Task cannot reach the screen without its
+	 * evidence beside it.
+	 *
+	 * Opening a panel here would cost a screenful to prove what that line already
+	 * proves. The disclosure holds the full apparatus and waits to be asked.
+	 */
+	const openCitationId: string | null = null;
 
 	const completedIds = useMemo(
 		() => new Set(
@@ -254,11 +241,15 @@ export function ThisWeek({
 		setAnnouncement(UNDO_REFUSAL);
 	}
 
-	function taskItem(task: Task): ReactElement {
+	// `.map(taskItem)` hands the index through, which is where the ticket's line
+	// numbers come from. They number the run a reader is looking at rather than
+	// anything stored on the Task, so a filtered group counts from one.
+	function taskItem(task: Task, index: number): ReactElement {
 		return (
 			<TaskItem
 				key={task.id}
 				task={task}
+				ordinal={index + 1}
 				rulesById={rulesById}
 				plantsById={plantsById}
 				narrationText={narrationById.get(task.id) ?? null}
@@ -284,7 +275,7 @@ export function ThisWeek({
 			 * underneath it goes quiet.
 			 *
 			 * Muted theme tokens carry that, never an `opacity` value.
-			 * `text-muted-foreground` sits on this background all over the app and
+			 * `text-muted` sits on this background all over the app and
 			 * clears contrast, where an arbitrary opacity is a contrast claim nobody
 			 * has checked, and `tests/integration/smoke.spec.ts` runs axe over this
 			 * page in a sweep #16 is widening. The custom-property override is the half
@@ -296,7 +287,7 @@ export function ThisWeek({
 			 * None of it reaches the exported HTML, for the same reason the banner's
 			 * band does not: `asOf` stays null until the mount flag flips.
 			 */}
-			<div className={cn('space-y-8', expired && 'text-muted-foreground [--foreground:var(--muted-foreground)]')}>
+			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 				{/*
 				 * The model's own sentences about the week, which nothing rendered
 				 * until #62: the field was required, generated and committed on
@@ -306,6 +297,18 @@ export function ThisWeek({
 				 * questions.
 				 */}
 				<WeekSummary summary={artifact.narration?.summary ?? null} />
+			</div>
+
+			{/*
+			 * Outside the de-emphasis above and the one below, deliberately. An
+			 * Advisory is not part of a Plan (CONTEXT.md), so it has no Plan staleness
+			 * to inherit: rain that is unlikely this week is worth acting on whether or
+			 * not the daily run has stopped. It sits here rather than under the work
+			 * because a homeowner acts on weather before they act on a checklist.
+			 */}
+			<Advisories advisories={artifact.narration?.advisories ?? []} />
+
+			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 
 				<TaskGroup heading="Ready now" emptyText={nothingDue} description={PERMANENCE_NOTE}>
 					{tasks.filter(task => task.status === 'fired').map(taskItem)}
@@ -340,7 +343,6 @@ export function ThisWeek({
 			 * this reads the Narration directly. An unnarrated Artifact has none,
 			 * and `Advisories` renders nothing for an empty list.
 			 */}
-			<Advisories advisories={artifact.narration?.advisories ?? []} />
 
 			{/*
 			 * One region for the page rather than one per Task. Every announcement
@@ -352,6 +354,19 @@ export function ThisWeek({
 			 * the same name. `aria-live` alone carries the politeness without the
 			 * role, and `aria-atomic` makes the sentence arrive whole.
 			 */}
+			{/*
+			 * The stub, torn off and kept. It says how much of the week is still open
+			 * without naming a single job, which is the one thing a reader wants from
+			 * across the room and the thing a list of rows cannot give them.
+			 */}
+			<div className="pt-2 print:hidden">
+				<div aria-hidden="true" className="perforation" />
+				<p className="mt-3 flex flex-wrap justify-between gap-x-4 font-display text-label font-bold tracking-widest uppercase">
+					<span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>
+					<span className="text-muted">{seedYard.region.name}</span>
+				</p>
+			</div>
+
 			<div aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
 		</div>
 	);

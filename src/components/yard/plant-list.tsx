@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import type { Plant } from '@/yard/plant';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { KIND_TEXT } from './kind-text';
 
 /**
  * Two containers on the same patio (see the hibiscus pair in the seed) look
@@ -19,37 +20,53 @@ import { Badge } from '@/components/ui/badge';
  * different things, so the two lists are edited together until there is
  * somewhere to put this.
  */
-const KIND_TEXT: Record<Plant['kind'], string> = {
-	plant: 'Plant',
-	container: 'Container',
-	bed: 'Bed',
-	lawn: 'Lawn',
-};
 
 /**
  * One row's worth of identifying detail. Rendered as text rather than an
  * aria-label so a sighted reader on a phone in the yard sees the same thing a
  * screen reader announces, matching the house rule from `SourceBadge`.
  */
-function PlantRow({ plant, onSelect }: {
+function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
 	plant: Plant;
+	ordinal: number;
+	/** True while this Plant is under the pointer here or on its callout above. */
+	hovered: boolean;
+	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement {
 	return (
-		<li className="border-b border-border last:border-b-0">
+		<li className="border-b-2 border-rule last:border-b-0">
 			<button
 				type="button"
 				onClick={event => onSelect(plant, event.currentTarget)}
-				className="flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+				onPointerEnter={() => onHoverChange(plant.id)}
+				onPointerLeave={() => onHoverChange(null)}
+				onFocus={() => onHoverChange(plant.id)}
+				onBlur={() => onHoverChange(null)}
+				className={cn(
+					'grid w-full cursor-pointer grid-cols-[3.25rem_minmax(0,1fr)] items-stretch text-left transition-colors',
+					'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none',
+					// The row lights with its callout. Keyboard focus drives it too, so a
+					// reader tabbing the list still sees which Plant on the plate they are
+					// standing on, which is the half a pointer-only link would lose.
+					hovered && 'bg-rule-faint/50',
+				)}
 			>
-				<span className="flex flex-wrap items-center gap-2">
-					<span className="font-semibold text-foreground">{plant.name}</span>
-					{plant.status === 'planned' && (
-						<Badge variant="secondary" className="uppercase">Planned</Badge>
-					)}
+				{/* The number that keys this row to its callout on the plate above. */}
+				<span aria-hidden="true" className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-body leading-none font-extrabold tabular-nums">
+					{String(ordinal).padStart(2, '0')}
 				</span>
-				<span className="text-sm text-muted-foreground">
-					{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
+
+				<span className="flex flex-col gap-1 px-3 py-3">
+					<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+						<span className="font-display text-body font-bold tracking-wide text-foreground uppercase">{plant.name}</span>
+						{plant.status === 'planned' && (
+							<span className="font-display text-label tracking-widest text-muted uppercase">Planned</span>
+						)}
+					</span>
+					<span className="font-mono text-detail text-muted">
+						{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
+					</span>
 				</span>
 			</button>
 		</li>
@@ -62,15 +79,40 @@ function PlantRow({ plant, onSelect }: {
  * no `position` and so have no pin to click. Rendering every Plant here,
  * position or not, is what keeps that path equivalent rather than partial.
  */
-export function PlantList({ plants, onSelect }: {
+export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }: {
 	plants: Plant[];
+	/** Plant id to the number its callout carries on the plate above. */
+	ordinals: ReadonlyMap<string, number>;
+	/** The Plant under the pointer, here or on the plate above. */
+	hovered: string | null;
+	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement {
 	return (
-		<ul aria-label="Plants" className="flex flex-col rounded-md border border-border">
-			{plants.map(plant => (
-				<PlantRow key={plant.id} plant={plant} onSelect={onSelect} />
-			))}
-		</ul>
+		<div className="border-2 border-rule">
+			{/* The parts list's own column heads, in the sheet's grammar. aria-hidden
+			    for the reason the job table's are: they are a printed convention, and
+			    each row below is a list item carrying its own labelled parts. */}
+			<div
+				aria-hidden="true"
+				className="grid grid-cols-[3.25rem_minmax(0,1fr)] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
+			>
+				<span className="border-r-2 border-rule px-2 py-1.5 text-center">No.</span>
+				<span className="px-3 py-1.5">Plant</span>
+			</div>
+
+			<ul aria-label="Plants" className="flex flex-col">
+				{plants.map(plant => (
+					<PlantRow
+						key={plant.id}
+						plant={plant}
+						ordinal={ordinals.get(plant.id) ?? 0}
+						hovered={hovered === plant.id}
+						onHoverChange={onHoverChange}
+						onSelect={onSelect}
+					/>
+				))}
+			</ul>
+		</div>
 	);
 }

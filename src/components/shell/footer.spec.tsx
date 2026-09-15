@@ -7,7 +7,24 @@ describe('footer', () => {
 	it('renders the attribution Open-Meteo licences the data under', () => {
 		render(<Footer />);
 
-		expect(screen.getByRole('contentinfo').textContent).toBe(OPEN_METEO_ATTRIBUTION);
+		const footer = screen.getByRole('contentinfo');
+		// Strip the orientation link and what remains is the attribution, verbatim.
+		// The licence names the source rather than describing it, so this stays an
+		// exact comparison: a footer that merely contained the text would pass a
+		// looser assertion while a paraphrase slid in beside it.
+		screen.getByRole('link', { name: /how this works/i }).remove();
+
+		expect(footer.textContent).toBe(OPEN_METEO_ATTRIBUTION);
+	});
+
+	// The band above the plan is dismissed once and gone, so without this a reader
+	// who dismissed it, or who arrived on a second device, has no route back to the
+	// explanation. It is not in the nav, because the nav is the owner's route list
+	// and the owner never needs it.
+	it('offers a permanent way to the orientation page', () => {
+		render(<Footer />);
+
+		expect(screen.getByRole('link', { name: /how this works/i }).getAttribute('href')).toBe('/about');
 	});
 
 	// Open-Meteo licences the data CC BY 4.0, and the licence names the source

@@ -8,10 +8,13 @@ import { useId, useState } from 'react';
 import { CitationDisclosure } from '@/components/citation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
+import { citationLine } from './citation-line';
 import { UNDO_REFUSAL } from './permanence';
-import { taskText } from './task-text';
+import { mechanicalRemainder, taskText } from './task-text';
 
 export interface TaskItemProps {
+	/** The job's line number on the ticket. Omitted where a Task renders outside a numbered run. */
+	ordinal?: number;
 	task: Task;
 	/** Resolves the Task's own Rule and every Guard its Deferrals and Annotations name. */
 	rulesById: ReadonlyMap<string, Rule>;
@@ -55,7 +58,7 @@ function GuardNote({
 	children: ReactElement | ReactElement[];
 }): ReactElement {
 	return (
-		<p className="flex items-start gap-2 text-sm text-muted-foreground">
+		<p className="flex items-start gap-2 text-detail text-muted">
 			<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
 			<span className="min-w-0">{children}</span>
 		</p>
@@ -93,6 +96,7 @@ function GuardNote({
  */
 export function TaskItem({
 	task,
+	ordinal,
 	rulesById,
 	plantsById,
 	narrationText = null,
@@ -121,7 +125,14 @@ export function TaskItem({
 	// Shared with `ThisWeek`, which speaks the same sentence into the live region
 	// after a write. `task-text.ts` carries the reason that has to be one
 	// function rather than the same expression written out in two places.
-	const text = taskText(task.title, narrationText);
+	// With Narration on this is the model's sentence. With it off the row has
+	// already said the Rule's name and the target above, so only the clause the
+	// Planner added survives, and a Task with no clause renders no line at all.
+	const ruleName = rule?.name ?? task.ruleId;
+	const narrated = taskText(task.title, narrationText);
+	const text = narrated === task.title
+		? mechanicalRemainder(task.title, ruleName, plantName)
+		: narrated;
 
 	// Nothing has called for this work yet, so there is nothing to record having
 	// done. `isCompleted` never returns true for an approaching Task, so a box
@@ -144,9 +155,50 @@ export function TaskItem({
 	}
 
 	const body = (
-		<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
-			<span id={textId} className={cn('min-w-0', checked && 'text-muted-foreground')}>
-				{text}
+		<span className="flex min-w-0 flex-1 flex-col gap-1">
+			{/*
+			 * The job name leads, and it did not before. The approved direction puts the
+			 * work first, what to do second, and the evidence third but never folded
+			 * away. The rejected variation proved why that order matters: leading with
+			 * evidence made the largest thing on the screen read "no occurrence", which
+			 * is the absence of evidence, shouted.
+			 *
+			 * Falls back to the rule id rather than hiding. A Task whose Rule has left
+			 * the rule set is exactly the case a reader needs to see, and a blank line
+			 * would present it as ordinary work.
+			 */}
+			<span id={textId} className="flex flex-col gap-1">
+				<span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+					<span className={cn(
+						'font-display text-title leading-none font-bold tracking-wide uppercase',
+						checked && 'text-muted',
+					)}
+					>
+						{rule?.name ?? task.ruleId}
+					</span>
+
+					{plantName !== null && (
+						<span className="font-display text-label tracking-widest text-muted uppercase">
+							{plantName}
+						</span>
+					)}
+				</span>
+
+				{text !== null && (
+					<span className={cn('min-w-0', checked && 'text-muted')}>
+						{text}
+					</span>
+				)}
+			</span>
+
+			{/*
+			 * The evidence, always rendered and never behind a control. The disclosure
+			 * below still carries the full apparatus; this is the part that may not be
+			 * folded away, because a product whose whole claim is that nothing was
+			 * invented cannot put its proof behind a link the way the category does.
+			 */}
+			<span className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
+				{citationLine(task.citation)}
 			</span>
 
 			{/*
@@ -154,36 +206,15 @@ export function TaskItem({
 			 * inside a `<label>` and beside phrasing content, so a block element
 			 * here would be invalid markup the browser silently reflows.
 			 */}
-			{approaching && (
-				<span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-					Approaching
-				</span>
-			)}
 
-			{/*
-			 * The done state has to read as done without the box. A ticked box is
-			 * one cue, it is a colour cue, and it is the cue a reader scanning a
-			 * phone in the sun is least likely to catch. Not amber: that hue
-			 * means "this line is cited" and nothing else.
-			 */}
-			{checked && (
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-					<Check aria-hidden="true" className="size-3" />
-					Recorded
-				</span>
-			)}
-
-			{plantName !== null && (
-				<span className="basis-full text-xs text-muted-foreground">{plantName}</span>
-			)}
 		</span>
 	);
 
 	return (
-		<li className="rounded-md border border-card-border bg-card">
+		<li className="border-t border-rule first:border-t-0">
 			{approaching
 				? (
-						<div className="flex min-h-11 items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+						<div className="grid min-h-11 grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] items-stretch text-body text-foreground">
 							{/*
 							 * Holds the column the check-off box would have taken, so an
 							 * approaching Task lines up with the work above it. The missing box,
@@ -191,55 +222,56 @@ export function TaskItem({
 							 * one distinction, because colour alone fails a reader who cannot
 							 * see it. source-badge.tsx already made that case.
 							 */}
-							<CalendarClock
-								aria-hidden="true"
-								className="mt-0.5 size-5 shrink-0 text-muted-foreground"
-							/>
-							{body}
+							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3">
+								<CalendarClock aria-hidden="true" className="size-5 shrink-0 text-muted" />
+							</span>
+							<span className="px-3 py-3">{body}</span>
+							<span aria-hidden="true" className="border-l-2 border-rule" />
 						</div>
 					)
 				: (
 						// `min-h-11` is the 44px target the box alone never came close to,
 						// and the label is what spends it: the row, the task text and the
 						// Plant name all activate the box.
-						<label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+						<label className="grid min-h-11 cursor-pointer grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] items-stretch text-body text-foreground">
+							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold">
+								{ordinal === undefined ? '' : String(ordinal).padStart(2, '0')}
+							</span>
+							<span className="px-3 py-3">{body}</span>
+
 							{/*
-							 * Drawn from the shell's own tokens rather than left to the UA.
-							 * The page declares no `color-scheme`, so a native box painted
-							 * itself solid white on the card and read as already ticked,
-							 * and `accent-color` could not fix it: Chrome derives the
-							 * unchecked box from the accent, so a near-white accent gives a
-							 * near-white empty box. Dropping the accent hands the checked
-							 * state to the UA's blue, which would be a second hue on a page
-							 * that has exactly one.
+							 * The sign-off box: the ticket's own gesture, and the only thing on the
+							 * row a reader can touch. Unsigned it prompts; signed it carries a
+							 * stamp, because an Occurrence is append-only and a stamp is the mark
+							 * that matches. One impact, no eraser.
 							 *
-							 * Still a real `<input type="checkbox">` under the paint, so
-							 * the label, the keyboard and the accessibility tree are all
-							 * the browser's.
+							 * The input fills the box rather than sitting inside it, so the whole
+							 * cell is the target and the visible border is the control's own. The
+							 * label wrapping the row extends that target across the job text too.
 							 */}
-							<span className="relative mt-0.5 flex size-5 shrink-0 items-center justify-center">
+							<span className="relative flex items-center justify-center border-l-2 border-rule p-2">
 								<input
 									type="checkbox"
 									checked={checked}
 									onChange={handleChange}
 									aria-labelledby={textId}
-									className={cn(
-										'peer size-5 cursor-pointer appearance-none rounded-sm border border-card-border',
-										'bg-background checked:border-primary checked:bg-primary',
-										FOCUS_RING,
-									)}
+									className={cn('peer absolute inset-0 size-full cursor-pointer appearance-none', FOCUS_RING)}
 								/>
-								<Check
-									aria-hidden="true"
-									className="pointer-events-none absolute size-3.5 text-primary-foreground opacity-0 peer-checked:opacity-100"
-								/>
+								<span className="pointer-events-none font-display text-label tracking-widest text-muted uppercase peer-checked:hidden">
+									Sign off
+								</span>
+								{checked && (
+									<span className="stamp-mark pointer-events-none flex items-center gap-1 border-2 border-accent px-1.5 py-0.5 font-display text-label font-bold tracking-widest text-accent uppercase">
+										<Check aria-hidden="true" className="size-3" />
+										Recorded
+									</span>
+								)}
 							</span>
-							{body}
 						</label>
 					)}
 
 			{refused && (
-				<p className="flex items-start gap-2 px-3 pb-2.5 text-sm text-muted-foreground">
+				<p className="flex items-start gap-2 px-3 pb-2.5 text-detail text-muted">
 					<Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
 					<span>{UNDO_REFUSAL}</span>
 				</p>

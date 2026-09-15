@@ -35,24 +35,24 @@ describe('sourceBadge', () => {
 		expect(screen.queryByText('Extension')).toBeNull();
 	});
 
-	// lucide-react stamps each icon's own name onto the svg as a class, so
-	// this proves the two kinds render genuinely different icon shapes rather
-	// than the same glyph recoloured.
-	it('renders a different icon shape per kind', () => {
+	// The kind used to be carried by an icon shape and a colour on top of the
+	// text. Both are gone: this world has no icon system and no rounded chrome,
+	// and colour here is rationed to work that was recorded. What survives is the
+	// requirement underneath them, WCAG 1.4.1, that the distinction never rests on
+	// colour. The word does it, and these two assertions are what would catch the
+	// word being traded back for a swatch.
+	it('carries no icon and no colour-only distinction', () => {
 		const { container: extensionContainer } = render(<SourceBadge source={extensionSource} />);
 		const { container: ownerContainer } = render(<SourceBadge source={ownerSource} />);
 
-		const extensionIcon = extensionContainer.querySelector('svg');
-		const ownerIcon = ownerContainer.querySelector('svg');
+		expect(extensionContainer.querySelector('svg')).toBeNull();
+		expect(ownerContainer.querySelector('svg')).toBeNull();
 
-		expect(extensionIcon?.getAttribute('class')).toContain('lucide-landmark');
-		expect(ownerIcon?.getAttribute('class')).toContain('lucide-user');
-	});
-
-	it('hides the icon from screen readers so the text is not announced twice', () => {
-		const { container } = render(<SourceBadge source={extensionSource} />);
-
-		expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+		// Strip every element's classes and the two kinds still read differently.
+		const textOf = (root: HTMLElement) => root.textContent?.replace(/\s+/g, ' ').trim();
+		expect(textOf(extensionContainer)).not.toBe(textOf(ownerContainer));
+		expect(textOf(extensionContainer)).toContain('Extension');
+		expect(textOf(ownerContainer)).toContain('Owner');
 	});
 
 	it('links the source url when present', () => {
@@ -66,15 +66,5 @@ describe('sourceBadge', () => {
 		render(<SourceBadge source={ownerSource} />);
 
 		expect(screen.queryByRole('link')).toBeNull();
-	});
-
-	it('uses a different colour for each kind, on top of the text and icon', () => {
-		const { container: extensionContainer } = render(<SourceBadge source={extensionSource} />);
-		const { container: ownerContainer } = render(<SourceBadge source={ownerSource} />);
-
-		const extensionBadge = extensionContainer.firstElementChild;
-		const ownerBadge = ownerContainer.firstElementChild;
-
-		expect(extensionBadge?.getAttribute('class')).not.toBe(ownerBadge?.getAttribute('class'));
 	});
 });

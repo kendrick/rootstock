@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { Eye } from 'lucide-react';
+import { Section } from './section';
 
 export interface AdvisoriesProps {
 	advisories: readonly { text: string }[];
@@ -35,29 +36,24 @@ export function Advisories({ advisories }: AdvisoriesProps): ReactElement | null
 	}
 
 	return (
-		<section
-			aria-labelledby="advisories-heading"
-			className="space-y-3 rounded-md border border-dashed border-border p-4"
-		>
-			<div className="space-y-1">
-				<h2 id="advisories-heading" className="text-base font-semibold text-foreground">
-					Also observed
-				</h2>
-				{/* Spells out the "no Rule produced this" fact in words rather than
-				    leaving it to the dashed border, so a reader who never notices the
-				    border still can't mistake this for a cited Task. */}
-				<p className="text-sm text-muted-foreground">
-					No rule produced these—the model noticed them on its own, so none of them carries a citation.
-				</p>
-			</div>
+		<Section id="advisories-heading" label="Also observed" emphasis>
 			<ul className="space-y-2">
 				{advisories.map(advisory => (
-					<li key={advisory.text} className="flex items-start gap-2 text-sm text-foreground">
-						<Eye aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-						<span>{advisory.text}</span>
+					<li key={advisory.text} className="flex items-start gap-2 text-body text-foreground">
+						<Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-accent" />
+						<span className="max-w-prose">{advisory.text}</span>
 					</li>
 				))}
 			</ul>
-		</section>
+
+			{/* Spells out the "no Rule produced this" fact in words. CONTEXT.md is
+			    strict that an Advisory carries no Citation and never reaches the Away
+			    Card, and this section now sits above the work rather than under it, so
+			    the sentence has to carry the distinction the old dashed border was
+			    doing quietly. */}
+			<p className="max-w-prose text-detail text-muted">
+				No rule produced these. The model noticed them on its own, so none of them carries a citation, and none of them reaches the Away Card.
+			</p>
+		</Section>
 	);
 }

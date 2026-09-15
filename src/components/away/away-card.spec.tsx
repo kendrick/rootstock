@@ -388,17 +388,33 @@ describe('awayCard', () => {
 	 * the elements that need them and nothing more. Whether the card actually
 	 * fits a page and reads at 375px is Playwright's to answer, and #16 owns it.
 	 */
-	it('carries the print and phone-width rules on the elements that need them', () => {
+	// Two requirements, and the mechanism carrying one of them changed. This sheet
+	// is read on a phone and on paper, so it has to scale down and it has to print
+	// in ink. The type used to step up at the `sm` breakpoint; it now runs on the
+	// world's clamp-based tokens, which scale continuously and need no breakpoint,
+	// so the assertion follows the tokens. The print rules are unchanged: a card
+	// whose ink is a theme colour prints grey, and a task split across two sheets
+	// is the one way a printed line gets missed.
+	it('scales for a phone and prints in ink', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
 		const heading = screen.getByRole('heading', { level: 1 });
 		const list = screen.getByRole('list');
 		const first = screen.getAllByRole('listitem')[0];
 
-		expect(heading.classList.contains('sm:text-3xl')).toBe(true);
+		expect(heading.classList.contains('text-display')).toBe(true);
 		expect(heading.classList.contains('print:text-black')).toBe(true);
 		expect(list.classList.contains('print:border-black')).toBe(true);
-		expect(first?.classList.contains('sm:text-lg')).toBe(true);
 		expect(first?.classList.contains('print:break-inside-avoid')).toBe(true);
+		expect(first?.classList.contains('print:border-black')).toBe(true);
+	});
+
+	// The card is the copy torn off the ticket, so it is printed on the copy sheet
+	// rather than the top one. `copy-sheet` is what redefines the ground for this
+	// subtree, and losing it would put the household's copy on the owner's stock.
+	it('renders on the copy sheet', () => {
+		const container = renderCard(awayArtifact, awayStatus, FRESH);
+
+		expect(container.querySelector('.copy-sheet')).not.toBeNull();
 	});
 });

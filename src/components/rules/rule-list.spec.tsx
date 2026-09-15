@@ -131,55 +131,51 @@ describe('ruleList', () => {
 		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.length);
 	});
 
-	// #64: the four kinds are the spine of CONTEXT.md, and a reader had no way
-	// to tell one from another without inferring it from whichever rows a Rule
-	// happened to render.
-	it('groups non-guard rules into a section named for their kind', () => {
-		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
-
-		const windowSection = screen.getByRole('region', { name: 'Window rules' });
-		const thresholdSection = screen.getByRole('region', { name: 'Threshold rules' });
-		const cadenceSection = screen.getByRole('region', { name: 'Cadence rules' });
-
-		expect(within(windowSection).getByText(windowRule.name)).toBeDefined();
-		expect(within(thresholdSection).getByText(thresholdRule.name)).toBeDefined();
-		expect(within(cadenceSection).getByText(cadenceRule.name)).toBeDefined();
-	});
-
-	it('omits a kind section entirely when the list holds none of that kind', () => {
-		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
-
-		expect(screen.queryByRole('heading', { level: 2, name: 'Threshold rules' })).toBeNull();
-		expect(screen.queryByRole('heading', { level: 2, name: 'Cadence rules' })).toBeNull();
-	});
-
-	// The critique's other repeated line: the same Region rendered once per
-	// Rule. `hideRegion` on RuleSummary suppresses the per-Rule copy, and this
-	// component renders it once at the top instead.
-	it('renders the shared region once rather than once per rule', () => {
-		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
-
-		expect(screen.getAllByText(`${windowRule.region.name} · Zone ${windowRule.region.hardinessZone}`)).toHaveLength(1);
-	});
-
-	// A Rule name is now a heading landmark, not only a bold div, so a
-	// screen-reader user can jump between Rules the way they jump between
-	// sections.
-	it('gives every rule an h3 landmark named for it', () => {
+	// #64: the four kinds are the spine of CONTEXT.md, and a reader had no way to
+	// tell one from another without inferring it from whichever rows a Rule
+	// happened to render. The kinds no longer organise the page, because a reader
+	// asks what is next rather than what taxonomy a Rule belongs to, so every row
+	// names its own kind instead. The requirement survives; the sections do not.
+	it('names every rule\'s kind on its own row', () => {
 		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
 		for (const rule of allFixtureRules) {
-			expect(screen.getByRole('heading', { level: 3, name: rule.name })).toBeDefined();
+			expect(screen.getAllByText(`${rule.kind} rule`).length).toBeGreaterThan(0);
 		}
 	});
 
-	// Each Rule renders inside its own bordered card, so a reader tells one
-	// Rule from the next by that boundary rather than by the bold name alone.
-	it('separates each rule with a bordered card rather than the name alone', () => {
+	// A band with nothing in it is not drawn. An empty heading over an empty list
+	// reads as a rendering failure rather than as a quiet week.
+	it('omits a band entirely when no rule sits in it', () => {
+		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
+
+		expect(screen.queryByRole('region', { name: 'Guards' })).toBeNull();
+		expect(screen.queryByRole('region', { name: 'Firing now' })).toBeNull();
+		expect(screen.getByRole('region', { name: 'Waiting' })).toBeDefined();
+	});
+
+	// The mark in the first column is a letter nobody can decode on sight, so the
+	// page carries its key. The rows already name their kind in accessible text,
+	// which is why the legend is hidden from it rather than repeated into it.
+	it('explains the kind marks with a legend', () => {
 		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		const cards = container.querySelectorAll('.border-card-border');
-		expect(cards).toHaveLength(allFixtureRules.length);
+		const legend = container.querySelector('dl[aria-hidden="true"]');
+		expect(legend).not.toBeNull();
+
+		for (const label of ['Window', 'Threshold', 'Cadence', 'Guard']) {
+			expect(legend?.textContent).toContain(label);
+		}
+	});
+
+	// A reader tells one Rule from the next by a boundary rather than by the bold
+	// name alone. This world has no cards, so the boundary is the ruled row it
+	// sits in, and the requirement is the same one #64 asked for.
+	it('separates each rule with a ruled row rather than the name alone', () => {
+		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const rows = container.querySelectorAll('li.border-rule');
+		expect(rows).toHaveLength(allFixtureRules.length);
 	});
 
 	// The cross-link criterion: the Artifact names every Rule that fired, and

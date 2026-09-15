@@ -4,6 +4,11 @@ import { expect, test } from '@playwright/test';
 /** The seed Plant this file's pin- and list-based tests both open. */
 const PIN_NAME = 'Front lawn';
 
+// The callout is aria-hidden and outside the tab order, because the parts list
+// is the equivalent path to every Plant. It has no accessible name to select by,
+// so `data-plant` is what names the record a given pin points at.
+const PIN_ID = 'front-lawn';
+
 /** Every seed Plant the photo sites a pin for, by its row's accessible name prefix (`plant-list.tsx` appends kind and site). */
 const SITED_PLANT_NAMES = ['Front lawn', 'Brown Turkey fig', 'Esperanza', 'Watermelon Ruffles hardy hibiscus', 'Starry Night hardy hibiscus', 'Luna White hardy hibiscus'];
 
@@ -49,7 +54,7 @@ test('a photo pin opens its sheet on click', async ({ page }) => {
 
 	// title, not role: the pin is aria-hidden (see the dedup test below), so a
 	// role query would not find it at all, exactly like a screen reader.
-	const pin = page.locator(`button[title="${PIN_NAME}"]`);
+	const pin = page.locator(`button[data-plant="${PIN_ID}"]`);
 	await expect(pin).toHaveCount(1);
 
 	const sheet = page.getByRole('dialog');
@@ -94,7 +99,7 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('yard');
 
-	const pins = page.locator('button[title]');
+	const pins = page.locator('button[data-plant]');
 	const count = await pins.count();
 	expect(count).toBeGreaterThan(0);
 

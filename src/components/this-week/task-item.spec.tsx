@@ -108,18 +108,18 @@ describe('taskItem', () => {
 		expect(screen.getByText('front-lawn')).toBeDefined();
 	});
 
-	// #62: the Task is what gets the raised surface, and --card-border is the
-	// 4.12:1 boundary WCAG 1.4.11 asks for where a border is what identifies a
-	// component. #65 shipped the token and could not apply it, because Tasks
-	// live here.
-	it('renders on the raised surface, inside the measured boundary', () => {
+	// WCAG 1.4.11 wants 3:1 where a border is what identifies a component, and #62
+	// and #65 raised that requirement for Tasks. A hairline in --rule carries it
+	// here: near-black on near-white, roughly 18.9:1. This world has no elevation
+	// and no cards, so the boundary is the only thing doing the identifying.
+	it('is identified by a boundary, and never by a raised surface', () => {
 		const { container } = renderItem(
 			<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
 		);
 
 		const item = container.querySelector('li');
-		expect(item?.className).toContain('bg-card');
-		expect(item?.className).toContain('border-card-border');
+		expect(item?.className).toContain('border-rule');
+		expect(item?.className).not.toContain('bg-card');
 	});
 
 	it('renders one li and nothing else at the top level', () => {
@@ -191,7 +191,13 @@ describe('taskItem', () => {
 			expect(screen.getByRole('checkbox')).toBeDefined();
 		});
 
-		it('takes its accessible name from the one visible copy of the task text', () => {
+		// The name points at visible text rather than repeating it in a label, which
+		// is what keeps a second copy of the sentence out of the markup where it
+		// would drift from the first. It covers the job name, the target and the
+		// instruction, because Narration is optional and a row with the model off
+		// may have no instruction line at all, and a name that pointed only at the
+		// sentence would be empty exactly when the model is switched off.
+		it('takes its accessible name from the visible work, not a duplicate label', () => {
 			renderItem(
 				<TaskItem
 					task={firedTask}
@@ -201,9 +207,9 @@ describe('taskItem', () => {
 				/>,
 			);
 
-			expect(screen.getByRole('checkbox', { name: firedNarration })).toBeDefined();
-			// Pointing at the visible text is what keeps a second copy of the
-			// sentence out of the markup, where it would drift from the first.
+			const box = screen.getByRole('checkbox');
+			expect(box.getAttribute('aria-labelledby')).toBeTruthy();
+			expect(screen.getByRole('checkbox', { name: new RegExp(firedNarration.slice(0, 30).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeDefined();
 			expect(screen.getAllByText(firedNarration).length).toBe(1);
 		});
 
@@ -367,10 +373,15 @@ describe('taskItem', () => {
 			expect(screen.queryByRole('checkbox')).toBeNull();
 		});
 
-		it('says on its face that it has not fired', () => {
+		// The row says this in the domain's own terms, in the place a reader is
+		// already looking: the Citation line leads with Forecast, which separates a
+		// day that is expected from a run that was observed. CONTEXT.md is explicit
+		// that the two must never be confused.
+		it('says on its face that its evidence is forecast, not observed', () => {
 			renderItem(<TaskItem task={approachingTask} rulesById={rulesById} plantsById={plantsById} />);
 
-			expect(screen.getByText('Approaching')).toBeDefined();
+			expect(screen.getByText(/^Forecast \//)).toBeDefined();
+			expect(screen.queryByText(/Observed run/)).toBeNull();
 		});
 
 		// The projected date comes from CitationDisclosure's projection branch.
