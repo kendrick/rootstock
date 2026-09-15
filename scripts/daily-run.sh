@@ -73,9 +73,15 @@ export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 # that prompt, and `StrictHostKeyChecking=no` spares a rebuilt box the fingerprint question. The key
 # is write-only to one repo, so that last trade is cheap.
 #
+# `IdentityAgent=none` is the one that took a real run to find. `IdentitiesOnly=yes` restricts ssh to
+# identities named on the command line *and in ssh_config*, so a `Host github.com` block carrying an
+# `IdentityFile` still gets offered first. On the owner's Mac that block names a work key, so every
+# run presented a Slalom identity to a personal repository and only reached the deploy key because
+# the agent refused. Cutting the agent out entirely leaves exactly the key named above.
+#
 # Built up here rather than beside the push, because the fetch below needs it too.
 deploy_key="${ROOTSTOCK_DEPLOY_KEY:-$HOME/.ssh/rootstock_deploy}"
-ssh_command="ssh -i \"$deploy_key\" -o IdentitiesOnly=yes"
+ssh_command="ssh -i \"$deploy_key\" -o IdentitiesOnly=yes -o IdentityAgent=none"
 ssh_command="$ssh_command -o StrictHostKeyChecking=no -o BatchMode=yes"
 
 # A rehearsal writes to a temp directory and answers one question: is the pipeline wired up. It
@@ -188,14 +194,19 @@ if git diff --quiet -- data/status.json; then
 	exit "$generation_status"
 fi
 
-git commit --quiet --only data/status.json -m "chore: daily status $today"
+# `--no-verify` on both commits below. husky's pre-commit hook runs lint-staged, which stashes the
+# tree before running `eslint --fix` over the staged files. Both files here are generator output in
+# `data/`, which eslint.config.mjs already ignores, so the hook does no work and the stash is pure
+# hazard: a stash that fails partway through a run nobody is watching leaves a checkout the next
+# morning's dirty-tree check stops on.
+git commit --quiet --no-verify --only data/status.json -m "chore: daily status $today"
 
 # The Artifact is committed only when it changed. A failed generation leaves the committed one
 # untouched on purpose, so the site keeps serving yesterday's Plan rather than nothing.
 if git diff --quiet -- data/artifact.json; then
 	echo "daily-run: Artifact unchanged, keeping the committed Plan"
 else
-	git commit --quiet --only data/artifact.json -m "chore: daily artifact $today"
+	git commit --quiet --no-verify --only data/artifact.json -m "chore: daily artifact $today"
 fi
 
 # A rejected push means another box published first, in the window between this run's fetch and its
