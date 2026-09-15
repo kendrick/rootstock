@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeNarrator } from '../src/generation/narrator';
-import { DEFAULT_STATUS, generate, readPreviousStatus } from './generate';
+import { DEFAULT_STATUS, EXIT_SKIPPED, generate, readPreviousStatus } from './generate';
 
 const DATA_DIR = path.resolve(import.meta.dirname, '../data');
 
@@ -213,5 +213,20 @@ describe('readPreviousStatus', () => {
 		writeFileSync(statusFile, JSON.stringify(DEFAULT_STATUS));
 
 		expect(readPreviousStatus(statusFile)).toEqual(DEFAULT_STATUS);
+	});
+});
+
+// `scripts/daily-run.sh` branches on this number by hand, because bash cannot import it. Nothing
+// else in the repo would notice it changing, so this is the whole contract between the two files.
+describe('the skipped exit code', () => {
+	it('is 3, which scripts/daily-run.sh branches on', () => {
+		expect(EXIT_SKIPPED).toBe(3);
+	});
+
+	// A skip is neither the job succeeding nor the job failing, and the shell tells all three apart.
+	// Collapsing it onto either one would make a skipped run look like a crash or hide a real one.
+	it('is neither success nor failure', () => {
+		expect(EXIT_SKIPPED).not.toBe(0);
+		expect(EXIT_SKIPPED).not.toBe(1);
 	});
 });
