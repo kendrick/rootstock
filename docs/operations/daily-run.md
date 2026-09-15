@@ -1,8 +1,16 @@
 # Running the Daily Job
 
-`scripts/daily-run.sh` is the whole scheduled pipeline. It generates today's Artifact, commits the status record and the Artifact, and pushes. The push is what rebuilds the site, because GitHub Pages already watches `main`. There is no webhook to fire and no second generation running in CI.
+`scripts/daily-run.sh` is the whole pipeline. It generates today's Artifact, commits the status record and the Artifact, and pushes. The push is what rebuilds the site, because GitHub Pages already watches `main`. There is no webhook to fire and no second generation running in CI.
 
-It runs on cron, from a checkout on a box you control. That box is the only place the coordinates exist ([ADR 0004](../adr/0004-coordinates-never-enter-the-repository.md)), and it is where the codex credentials live.
+It is written to run on cron, from a checkout on a box you control. That box is the only place the coordinates exist ([ADR 0004](../adr/0004-coordinates-never-enter-the-repository.md)), and it is where the codex credentials live.
+
+## What Runs Today
+
+Nothing schedules this yet. Every step below the scheduler is proven: `scripts/daily-run.sh` ran end to end by hand on 2026-09-14, committed `4aaf111` and `5e8037c`, pushed over `GIT_SSH_COMMAND`, and `deploy.yml` fired from that push and went green. `data/status.json` has read `ok: true` with `consecutiveFailures: 0` ever since.
+
+So read the crontab block below as the procedure for a box rather than as a description of one. No machine runs it on a schedule today, and the published Artifact is only as fresh as the last time somebody ran the script by hand. The site already accounts for that: Staleness is computed at render time against the Artifact's age, because the Artifact stops being true the moment the runs stop.
+
+The scheduling work is #58, and one thing found while proving the push belongs to it. The owner's git identity is held by the 1Password SSH agent, and the push below hardcodes `-o BatchMode=yes`. An agent that wants to prompt for approval cannot serve an unattended run, so a scheduled box needs a real deploy-key file rather than the agent.
 
 ## The Crontab
 

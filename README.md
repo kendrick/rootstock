@@ -24,11 +24,13 @@ The property that matters most is the one a screenshot cannot show: **the Planne
 
 ## How a Run Works
 
-`scripts/daily-run.sh` runs on cron, on a box the owner controls. It fetches Observations from Open-Meteo, runs the Planner, narrates the finished Plan, writes `data/artifact.json` and `data/status.json`, commits both, and pushes. The push is the deploy. GitHub Pages already watches `main`, so there is no webhook to fire and no second generation running in CI. A failed run still commits its status record, which is how the site says so.
+`scripts/daily-run.sh` is the whole pipeline. It fetches Observations from Open-Meteo, runs the Planner, narrates the finished Plan, writes `data/artifact.json` and `data/status.json`, commits both, and pushes. The push is the deploy. GitHub Pages already watches `main`, so there is no webhook to fire and no second generation running in CI. A failed run still commits its status record, which is how the site says so.
 
 The site itself is a static export with no server runtime, so it makes no model call and no network fetch in the browser. The build bakes the committed Artifact in, and the page you load parses that JSON and renders it. The one figure computed at render time is Staleness, the Artifact's age, because a baked answer becomes a lie the moment the daily run stops.
 
-[docs/operations/daily-run.md](docs/operations/daily-run.md) has the crontab line, the environment that box needs, and what to do when the credential behind Narration expires.
+Nothing runs `scripts/daily-run.sh` on a schedule yet. The script is proven end to end and the last run was by hand, so the published Artifact is only as fresh as the last time somebody ran it, which is what Staleness on the page reports. [docs/operations/daily-run.md](docs/operations/daily-run.md) says what runs today, and has the crontab line a box would use, the environment it needs, and what to do when the credential behind Narration expires.
+
+The browser keeps one thing to itself. Ticking a Task writes an Occurrence to that browser's IndexedDB, and the daily run plans from the committed history in `src/seed/occurrences.json` alone, so a tick changes what that reader sees and never what the site publishes. [ADR 0006](docs/adr/0006-the-daily-run-plans-from-committed-history.md) has the argument and what it costs.
 
 ## Working with the Model Off
 
@@ -100,6 +102,7 @@ Decisions with consequences live in [docs/adr/](docs/adr/), one file each, and e
 - [ADR 0003: the artifact carries the readings the rules looked at](docs/adr/0003-the-artifact-ships-the-evaluated-window.md)
 - [ADR 0004: exact coordinates live in the generation environment and nowhere else](docs/adr/0004-coordinates-never-enter-the-repository.md)
 - [ADR 0005: a threshold rule says which way it crosses, and a crossing stays crossed](docs/adr/0005-a-threshold-crossing-names-its-direction.md)
+- [ADR 0006: the daily run plans from committed history, so a browser tick stays in that browser](docs/adr/0006-the-daily-run-plans-from-committed-history.md)
 
 ## Licence
 

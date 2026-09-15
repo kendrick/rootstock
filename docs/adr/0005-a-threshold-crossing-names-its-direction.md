@@ -1,5 +1,7 @@
 # A threshold rule says which way it crosses, and a crossing stays crossed
 
+> **Amendment, 2026-09-14.** #48 tested this decision against the real 2026 soil series and found the season fence does not do what the argument below credits it with. `direction` works: the run this ADR is named for, `58, 56, 55`, is declining and no longer fires. The fence does not, because it opens on `02-01` and the first qualifying rise that year runs `02-06` to `02-08`, off a prior day of 48.9F. That is a genuine rising crossing sitting inside the season, so the claim in **What Else Was Considered** that the season fence would catch February does not hold. Which defect counts as the root, and therefore what replaces the fence, is open in #48. Read what follows as the reasoning that shipped rather than as settled.
+
 A Threshold Rule may now declare `direction`, `rising` or `falling`, and a `season` that fences it to part of the year. A directed Rule counts a run only when the calendar day just before it sat strictly on the far side of `value`, so the run is evidence of a crossing rather than of a spell already under way. Both fields are nullable and both default to null, so a Rule naming neither behaves exactly as it does today.
 
 ## The Reasoning This Revises
