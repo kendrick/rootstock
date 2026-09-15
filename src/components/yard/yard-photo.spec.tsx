@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BASE_PATH } from '@/lib/base-path';
-import { figPlant, plantFixtures, yardFixture } from './fixtures';
+import { figPlant, isolatedPlant, plantFixtures, yardFixture } from './fixtures';
 import { YardPhoto } from './yard-photo';
 
 function positionOf(plant: Plant): Position {
@@ -124,14 +124,16 @@ describe('yardPhoto', () => {
 		}
 	});
 
-	// figPlant sits far from every other sited Plant in the seed, so the pin
-	// declutter pass (which only nudges a pin close enough to another to fail
-	// its own centre hit-test) leaves it exactly where the seed put it.
+	// isolatedPlant is placed clear of every other Pin by construction, so the
+	// declutter pass (which only nudges a pin close enough to another to fail its
+	// own centre hit-test) leaves it exactly where the fixture put it. It used to
+	// be a seed Plant that happened to sit alone, until the owner re-sited the
+	// yard and it no longer did.
 	it('places an isolated pin by its own fraction of the box, not by a pixel offset', () => {
-		const position = positionOf(figPlant);
+		const position = positionOf(isolatedPlant);
 		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
-		const pin = pinFor(figPlant.id);
+		const pin = pinFor(isolatedPlant.id);
 		expect(pin.style.left).toBe(`${position.x * 100}%`);
 		expect(pin.style.top).toBe(`${position.y * 100}%`);
 	});
