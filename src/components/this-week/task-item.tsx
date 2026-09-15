@@ -8,8 +8,9 @@ import { useId, useState } from 'react';
 import { CitationDisclosure } from '@/components/citation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
+import { citationLine } from './citation-line';
 import { UNDO_REFUSAL } from './permanence';
-import { taskText } from './task-text';
+import { mechanicalRemainder, taskText } from './task-text';
 
 export interface TaskItemProps {
 	task: Task;
@@ -55,7 +56,7 @@ function GuardNote({
 	children: ReactElement | ReactElement[];
 }): ReactElement {
 	return (
-		<p className="flex items-start gap-2 text-sm text-muted-foreground">
+		<p className="flex items-start gap-2 text-detail text-muted">
 			<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
 			<span className="min-w-0">{children}</span>
 		</p>
@@ -121,7 +122,14 @@ export function TaskItem({
 	// Shared with `ThisWeek`, which speaks the same sentence into the live region
 	// after a write. `task-text.ts` carries the reason that has to be one
 	// function rather than the same expression written out in two places.
-	const text = taskText(task.title, narrationText);
+	// With Narration on this is the model's sentence. With it off the row has
+	// already said the Rule's name and the target above, so only the clause the
+	// Planner added survives, and a Task with no clause renders no line at all.
+	const ruleName = rule?.name ?? task.ruleId;
+	const narrated = taskText(task.title, narrationText);
+	const text = narrated === task.title
+		? mechanicalRemainder(task.title, ruleName, plantName)
+		: narrated;
 
 	// Nothing has called for this work yet, so there is nothing to record having
 	// done. `isCompleted` never returns true for an approaching Task, so a box
@@ -144,9 +152,50 @@ export function TaskItem({
 	}
 
 	const body = (
-		<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
-			<span id={textId} className={cn('min-w-0', checked && 'text-muted-foreground')}>
-				{text}
+		<span className="flex min-w-0 flex-1 flex-col gap-1">
+			{/*
+			 * The job name leads, and it did not before. The approved direction puts the
+			 * work first, what to do second, and the evidence third but never folded
+			 * away. The rejected variation proved why that order matters: leading with
+			 * evidence made the largest thing on the screen read "no occurrence", which
+			 * is the absence of evidence, shouted.
+			 *
+			 * Falls back to the rule id rather than hiding. A Task whose Rule has left
+			 * the rule set is exactly the case a reader needs to see, and a blank line
+			 * would present it as ordinary work.
+			 */}
+			<span id={textId} className="flex flex-col gap-1">
+				<span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+					<span className={cn(
+						'font-display text-title leading-none font-bold tracking-wide uppercase',
+						checked && 'text-muted',
+					)}
+					>
+						{rule?.name ?? task.ruleId}
+					</span>
+
+					{plantName !== null && (
+						<span className="font-display text-label tracking-widest text-muted uppercase">
+							{plantName}
+						</span>
+					)}
+				</span>
+
+				{text !== null && (
+					<span className={cn('min-w-0', checked && 'text-muted')}>
+						{text}
+					</span>
+				)}
+			</span>
+
+			{/*
+			 * The evidence, always rendered and never behind a control. The disclosure
+			 * below still carries the full apparatus; this is the part that may not be
+			 * folded away, because a product whose whole claim is that nothing was
+			 * invented cannot put its proof behind a link the way the category does.
+			 */}
+			<span className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
+				{citationLine(task.citation)}
 			</span>
 
 			{/*
@@ -154,36 +203,26 @@ export function TaskItem({
 			 * inside a `<label>` and beside phrasing content, so a block element
 			 * here would be invalid markup the browser silently reflows.
 			 */}
-			{approaching && (
-				<span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-					Approaching
-				</span>
-			)}
 
 			{/*
-			 * The done state has to read as done without the box. A ticked box is
-			 * one cue, it is a colour cue, and it is the cue a reader scanning a
-			 * phone in the sun is least likely to catch. Not amber: that hue
-			 * means "this line is cited" and nothing else.
+			 * The done state has to read as done without the box. A ticked box is one
+			 * cue, it is a colour cue, and it is the cue a reader scanning a phone in
+			 * the sun is least likely to catch.
 			 */}
 			{checked && (
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+				<span className="inline-flex items-center gap-1 font-display text-label font-bold tracking-widest text-muted uppercase">
 					<Check aria-hidden="true" className="size-3" />
 					Recorded
 				</span>
-			)}
-
-			{plantName !== null && (
-				<span className="basis-full text-xs text-muted-foreground">{plantName}</span>
 			)}
 		</span>
 	);
 
 	return (
-		<li className="rounded-md border border-card-border bg-card">
+		<li className="border-t border-rule first:border-t-0">
 			{approaching
 				? (
-						<div className="flex min-h-11 items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+						<div className="flex min-h-11 items-start gap-4 py-4 text-body text-foreground">
 							{/*
 							 * Holds the column the check-off box would have taken, so an
 							 * approaching Task lines up with the work above it. The missing box,
@@ -193,7 +232,7 @@ export function TaskItem({
 							 */}
 							<CalendarClock
 								aria-hidden="true"
-								className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+								className="mt-0.5 size-5 shrink-0 text-muted"
 							/>
 							{body}
 						</div>
@@ -202,7 +241,7 @@ export function TaskItem({
 						// `min-h-11` is the 44px target the box alone never came close to,
 						// and the label is what spends it: the row, the task text and the
 						// Plant name all activate the box.
-						<label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5 text-sm text-foreground">
+						<label className="flex min-h-11 cursor-pointer items-start gap-4 py-4 text-body text-foreground">
 							{/*
 							 * Drawn from the shell's own tokens rather than left to the UA.
 							 * The page declares no `color-scheme`, so a native box painted
@@ -217,21 +256,21 @@ export function TaskItem({
 							 * the label, the keyboard and the accessibility tree are all
 							 * the browser's.
 							 */}
-							<span className="relative mt-0.5 flex size-5 shrink-0 items-center justify-center">
+							<span className="relative mt-0.5 flex size-11 shrink-0 items-center justify-center">
 								<input
 									type="checkbox"
 									checked={checked}
 									onChange={handleChange}
 									aria-labelledby={textId}
 									className={cn(
-										'peer size-5 cursor-pointer appearance-none rounded-sm border border-card-border',
-										'bg-background checked:border-primary checked:bg-primary',
+										'record-control peer size-9 cursor-pointer appearance-none border-2 border-rule',
+										'bg-background checked:border-accent checked:bg-accent',
 										FOCUS_RING,
 									)}
 								/>
 								<Check
 									aria-hidden="true"
-									className="pointer-events-none absolute size-3.5 text-primary-foreground opacity-0 peer-checked:opacity-100"
+									className="pointer-events-none absolute size-6 text-accent-foreground opacity-0 peer-checked:opacity-100"
 								/>
 							</span>
 							{body}
@@ -239,7 +278,7 @@ export function TaskItem({
 					)}
 
 			{refused && (
-				<p className="flex items-start gap-2 px-3 pb-2.5 text-sm text-muted-foreground">
+				<p className="flex items-start gap-2 px-3 pb-2.5 text-detail text-muted">
 					<Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
 					<span>{UNDO_REFUSAL}</span>
 				</p>

@@ -1,38 +1,53 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
-import { Atkinson_Hyperlegible_Next } from 'next/font/google';
+import { Assistant, Atkinson_Hyperlegible_Mono, Economica } from 'next/font/google';
 import { Footer } from '@/components/shell/footer';
+import { GRID_PREFERENCE_SCRIPT } from '@/components/shell/grid-preference';
 import { Header } from '@/components/shell/header';
 import { WORDMARK } from '@/components/shell/name';
 import './globals.css';
 
 /**
- * This plan gets read one-handed and outdoors in full sun, so the shell uses a
- * typeface drawn for legibility rather than for style: Atkinson Hyperlegible
- * Next comes from the Braille Institute and separates the characters that
- * collapse into each other at a glance, which matters on a page of rule ids,
- * dates and product-label numbers.
+ * Three faces, and two of them were chosen by measurement rather than by taste.
  *
- * `next/font/google` self-hosts the file at build time, so the static export
- * sends no request to Google and causes no layout shift. One variable file
- * covers weight 200 to 800, which is what lets globals.css open the type scale
- * without shipping a second weight.
+ * Economica and Assistant won the font-match ranking against the approved comp:
+ * the tool measures cap height, advance width and stroke density off the render
+ * and ranks a catalog against those numbers, so the face follows the design
+ * instead of the design following a favourite.
  *
- * The custom property is not named --font-sans, because globals.css maps
- * Tailwind's --font-sans onto it and a property that resolves to itself is
- * circular.
- *
- * The build warns that it found no font override values for this family and
- * skipped the adjusted fallback, because Next's metrics table predates it. That
- * is a known cost, not a misconfiguration: the file is preloaded from our own
- * origin at roughly 34KB, so it is normally in hand before first paint, and
- * `display: 'swap'` is left at its default rather than moving to `optional`
- * because a reader who gets the system font instead loses the one property this
- * typeface was chosen for.
+ * Economica ships an explicit weight pair because it has no variable axis. 400
+ * and 700 are both used: 700 carries job names and the wordmark, 400 the quieter
+ * labels.
  */
-const atkinson = Atkinson_Hyperlegible_Next({
+const economica = Economica({
 	subsets: ['latin'],
-	variable: '--font-atkinson',
+	weight: ['400', '700'],
+	variable: '--font-economica',
+});
+
+const assistant = Assistant({
+	subsets: ['latin'],
+	weight: 'variable',
+	variable: '--font-assistant',
+});
+
+/**
+ * The one face chosen against the ranking, and the reason is a product
+ * constraint rather than a preference. PRODUCT.md records a binding need for
+ * characters that stay distinct where rule ids, dates and product-label figures
+ * are read down a column and compared with their neighbours, outdoors, at a
+ * glance. That is precisely the evidence line and nowhere else, so this face
+ * carries evidence only and never body copy.
+ *
+ * The metric winner for that region was unusable anyway: the region boxes at the
+ * spec's grid resolution could not separate a task's title from its instruction
+ * from its evidence, so the measurement came back mixed and ranked serif faces
+ * against a monospaced line.
+ */
+const atkinsonMono = Atkinson_Hyperlegible_Mono({
+	subsets: ['latin'],
+	weight: 'variable',
+	variable: '--font-atkinson-mono',
 });
 
 export const metadata: Metadata = {
@@ -46,17 +61,28 @@ export const metadata: Metadata = {
 // typecheck and CI fails on any order that lints before it builds.
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
 	return (
-		<html lang="en" className={atkinson.variable}>
-			{/* Every route here is a single placeholder line until #12 through #15
-			    fill them. Without the column, the footer would float halfway up the
-			    viewport on all three. */}
-			<body className="flex min-h-dvh flex-col bg-background text-foreground">
+		<html
+			lang="en"
+			className={`${economica.variable} ${assistant.variable} ${atkinsonMono.variable}`}
+		>
+			<body
+				className="construction-grid flex min-h-dvh flex-col bg-background text-foreground [--cell:1.5rem]"
+			>
+				{/*
+				 * Runs before anything paints. A reader who switched the construction
+				 * grid off did it because the pattern behind the text was a problem for
+				 * them, and showing it again for one frame on every navigation is the
+				 * defect the control exists to prevent. Nothing else can do this: the
+				 * preference lives in localStorage, which no server render can read.
+				 */}
+				{/* eslint-disable-next-line react/dom-no-dangerously-set-innerhtml -- the payload is a module constant with no interpolation of anything a reader controls; it is the only way to apply a stored preference before paint */}
+				<script dangerouslySetInnerHTML={{ __html: GRID_PREFERENCE_SCRIPT }} />
 				<Header />
 				{/* The main landmark sits in the layout so the error state lands inside
-				    one too. The gate renders in place of the route rather than around
-				    it, so a page that owned its own main would lose the landmark on
-				    exactly the render where a lost reader needs it. */}
-				<main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
+					one too. The gate renders in place of the route rather than around
+					it, so a page that owned its own main would lose the landmark on
+					exactly the render where a lost reader needs it. */}
+				<main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
 				<Footer />
 			</body>
 		</html>

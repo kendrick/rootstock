@@ -369,7 +369,7 @@ describe('thisWeek', () => {
 
 		const wrapper = taskListWrapper();
 
-		expect(wrapper.className).toContain('text-muted-foreground');
+		expect(wrapper.className).toContain('text-muted');
 		expect(wrapper.className).toContain('[--foreground:var(--muted-foreground)]');
 
 		// The held-back section is inside the de-emphasis and the advisories are
@@ -390,7 +390,7 @@ describe('thisWeek', () => {
 			/>,
 		);
 
-		expect(taskListWrapper().className).not.toContain('text-muted-foreground');
+		expect(taskListWrapper().className).not.toContain('text-muted');
 	});
 
 	/*
@@ -431,30 +431,36 @@ describe('thisWeek', () => {
 	});
 
 	/*
-	 * ADR 0001 calls the cited-Task property the architecturally interesting
-	 * one, and #50 found it fully present in the DOM and entirely absent from
-	 * the screen: three visible tasks, zero open disclosures. One open, not
-	 * three—the panel is tall, and three of them would push the list off the
-	 * fold to demonstrate what one demonstrates.
+	 * ADR 0001 calls the cited-Task property the architecturally interesting one,
+	 * and #50 found it fully present in the DOM and entirely absent from the
+	 * screen: three visible tasks, zero open disclosures. The answer then was to
+	 * open the first panel on load.
+	 *
+	 * The answer now is that no Task can be on screen without its evidence beside
+	 * it, so nothing has to be opened on the reader's behalf. These two tests are
+	 * the same requirement as #50's, asserted against the mechanism that replaced
+	 * the one it asked for: evidence visible without a click, on every Task rather
+	 * than on one.
 	 */
-	it('opens the first Task\'s evidence on load and leaves the rest closed', async () => {
+	it('shows every Task\'s evidence without a click, and opens no panel', async () => {
 		const { container } = await mount(fullPage(fakeStore()));
 
-		const open = [...container.querySelectorAll('details[open]')];
-		expect(open).toHaveLength(1);
-
-		const firstFired = combinedNarratedArtifact.plan.tasks.find(task => task.status === 'fired');
-		expect(firstFired).toBeDefined();
+		expect(container.querySelectorAll('details[open]')).toHaveLength(0);
 
 		const ready = screen.getByRole('region', { name: 'Ready now' });
-		const firstItem = within(ready).getAllByRole('listitem')[0];
-		expect(firstItem?.contains(open[0] as Node)).toBe(true);
+		const items = within(ready).getAllByRole('listitem');
+		expect(items.length).toBeGreaterThan(0);
+
+		// Every Task carries a rendered Citation line, not a promise of one. The
+		// window date is the evidence the seeded fired Tasks were cited on.
+		for (const item of items) {
+			expect(item.textContent).toMatch(/Window \/|Observed run \/|Forecast \/|occurrence|days since/i);
+		}
 	});
 
-	// Nothing fired and nothing approaching still leaves held work with a
-	// Citation worth demonstrating, so the open panel falls to it rather than
-	// to nothing.
-	it('opens the held-back Task\'s evidence when nothing else is on the page', async () => {
+	// Held work is cited the same way as work that is ready, and is equally
+	// unreliant on anyone opening anything.
+	it('shows held-back evidence without a click either', async () => {
 		const { container } = await mount(
 			<ThisWeek
 				artifact={artifactWithStatuses(['deferred'])}
@@ -465,9 +471,10 @@ describe('thisWeek', () => {
 			/>,
 		);
 
-		const open = container.querySelectorAll('details[open]');
-		expect(open).toHaveLength(1);
-		expect(screen.getByRole('region', { name: 'Held back' }).contains(open[0] as Node)).toBe(true);
+		expect(container.querySelectorAll('details[open]')).toHaveLength(0);
+
+		const held = screen.getByRole('region', { name: 'Held back' });
+		expect(held.textContent).toMatch(/Window \/|Observed run \/|Forecast \/|occurrence|days since/i);
 	});
 
 	// #62: marking a task done has to say the record is permanent before or as

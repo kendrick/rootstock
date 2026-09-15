@@ -79,10 +79,16 @@ test.describe('the brief sentence, at 1440x900', () => {
 	// Visible tasks against visible citations, which is the count the critique
 	// ran and got 3 to 0 on. The property ADR 0001 calls the architecturally
 	// interesting one has to be on the screen, not merely in the DOM.
-	test('shows a citation without anyone clicking a chevron', async ({ page }) => {
+	//
+	// It used to be met by opening one disclosure on load. It is now met by every
+	// Task rendering its Citation as a line of its own, so the count is tasks to
+	// citations one for one rather than three to one, and nothing has to be opened
+	// on the reader's behalf for the page to show its work.
+	test('shows a citation on every Task without anyone clicking a chevron', async ({ page }) => {
 		await page.goto('');
 
-		await expect(page.locator('main details[open]')).toHaveCount(1);
+		// Nothing is opened for the reader. The evidence does not depend on it.
+		await expect(page.locator('main details[open]')).toHaveCount(0);
 
 		/*
 		 * A label rather than a bare chevron, on every Task: the evidence says
@@ -99,10 +105,13 @@ test.describe('the brief sentence, at 1440x900', () => {
 
 		for (let index = 0; index < count; index += 1) {
 			await expect(tasks.nth(index).getByText('Rule and reading')).toHaveCount(1);
-		}
 
-		// The open one is showing real evidence rather than an empty panel.
-		await expect(page.locator('main details[open]')).toContainText('Region');
+			// And the dated evidence itself, rendered, not promised. Every Citation
+			// kind leads with the word that says which kind it is.
+			await expect(
+				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No occurrence|\d+ days since) /),
+			).toHaveCount(1);
+		}
 	});
 
 	// Confirms the inversion is righted rather than merely restyled: the Task

@@ -48,14 +48,14 @@ export function TaskGroup({ heading, emptyText, description, children }: TaskGro
 
 	return (
 		<section aria-labelledby={headingId} className="space-y-3">
-			<h2 id={headingId} className="text-base font-semibold text-foreground">{heading}</h2>
+			<h2 id={headingId} className="font-display text-label font-bold tracking-widest text-muted uppercase">{heading}</h2>
 
 			{!empty && description !== undefined && (
-				<p className="max-w-prose text-sm text-muted-foreground">{description}</p>
+				<p className="max-w-prose text-body text-muted">{description}</p>
 			)}
 
 			{empty
-				? <p className="text-sm text-muted-foreground">{emptyText}</p>
+				? <p className="max-w-prose text-body text-muted">{emptyText}</p>
 				: <ul className="space-y-3">{children}</ul>}
 		</section>
 	);

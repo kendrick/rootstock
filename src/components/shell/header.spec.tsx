@@ -21,9 +21,30 @@ describe('header', () => {
 		// Strip the nav and what remains is the header's own copy. A tagline would
 		// land there and fail this assertion.
 		screen.getByRole('navigation').remove();
+		// And strip the grid control, for the same reason and not a weaker one.
+		// What this test protects is the wordmark standing alone against branding:
+		// no logo, no tagline, nothing competing for the name's place. A control is
+		// neither, and the approved comp puts this one in the header's top-right
+		// corner, so moving it out to satisfy a string comparison would recompose an
+		// approved design to keep a test convenient. Its presence is pinned below
+		// instead, which is the assertion that would actually catch it going missing.
+		screen.getByRole('button', { name: /grid/i }).remove();
 
 		expect(banner.textContent?.trim()).toBe(WORDMARK);
 		expect(banner.querySelectorAll('img, svg')).toHaveLength(0);
+	});
+
+	// The construction grid sits permanently behind body copy, which is a real
+	// problem for visual stress and low vision, and this control is the reader's
+	// way out of it. That makes it an accessibility affordance rather than a
+	// preference toy, so losing it silently is the failure worth a test.
+	it('offers the grid control as a real pressable button', () => {
+		render(<Header />);
+
+		const toggle = screen.getByRole('button', { name: /grid/i });
+
+		expect(toggle).toBeTruthy();
+		expect(toggle.tagName).toBe('BUTTON');
 	});
 
 	// ADR 0004: the Away Card stays reachable and unadvertised, because whether

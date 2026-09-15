@@ -11,12 +11,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { staleness } from '@/artifact/staleness';
 import { cn } from '@/lib/utils';
 import { isCompleted } from '@/planner/completion';
-import { seedPlants, seedRules } from '@/seed';
+import { seedPlants, seedRules, seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
+import { NotLit } from './not-lit';
 import { PERMANENCE_NOTE, recordedAnnouncement, UNDO_REFUSAL } from './permanence';
+import { TallyBand } from './tally-band';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
 import { taskText } from './task-text';
@@ -65,33 +67,6 @@ function completionInstant(asOf: string): string {
 
 function byId<T extends { id: string }>(records: T[]): ReadonlyMap<string, T> {
 	return new Map(records.map(record => [record.id, record]));
-}
-
-/**
- * Which Task's evidence is already open when the page loads.
- *
- * ADR 0001 calls the cited-Task property the architecturally interesting one,
- * and a page of closed disclosures keeps it fully present in the DOM and
- * entirely absent from the screen. #50 counted three visible tasks against
- * zero visible citations, with a 16px chevron the only thing advertising them.
- * So one panel is open before anybody clicks.
- *
- * One, not all. The panel is tall—rule, source, region, window, product label,
- * delegability, dated evidence—and three of them open would push the task list
- * off the fold to demonstrate something one of them demonstrates. The order
- * below is render order, so the open panel is the first one a reader meets
- * rather than one further down the page.
- */
-const OPEN_ORDER: readonly Task['status'][] = ['fired', 'approaching', 'deferred'];
-
-function firstCitationToOpen(tasks: Task[]): string | null {
-	for (const status of OPEN_ORDER) {
-		const task = tasks.find(candidate => candidate.status === status);
-		if (task !== undefined) {
-			return task.id;
-		}
-	}
-	return null;
 }
 
 /**
@@ -195,7 +170,21 @@ export function ThisWeek({
 	const expired = asOf !== null && staleness(artifact.generatedAt, asOf, status).band === 'expired';
 
 	const tasks = artifact.plan.tasks;
-	const openCitationId = useMemo(() => firstCitationToOpen(tasks), [tasks]);
+	/*
+	 * No Citation panel opens on its own.
+	 *
+	 * ADR 0001 calls the cited-Task property the architecturally interesting one,
+	 * and #50 found it fully present in the DOM and entirely absent from the
+	 * screen: three visible tasks, zero visible citations, a 16px chevron the only
+	 * thing advertising them. Every Task answers that by rendering its Citation on
+	 * a line of its own beneath the instruction, in the one colour this world
+	 * reserves for cited work, so a Task cannot reach the screen without its
+	 * evidence beside it.
+	 *
+	 * Opening a panel here would cost a screenful to prove what that line already
+	 * proves. The disclosure holds the full apparatus and waits to be asked.
+	 */
+	const openCitationId: string | null = null;
 
 	const completedIds = useMemo(
 		() => new Set(
@@ -284,7 +273,7 @@ export function ThisWeek({
 			 * underneath it goes quiet.
 			 *
 			 * Muted theme tokens carry that, never an `opacity` value.
-			 * `text-muted-foreground` sits on this background all over the app and
+			 * `text-muted` sits on this background all over the app and
 			 * clears contrast, where an arbitrary opacity is a contrast claim nobody
 			 * has checked, and `tests/integration/smoke.spec.ts` runs axe over this
 			 * page in a sweep #16 is widening. The custom-property override is the half
@@ -296,7 +285,25 @@ export function ThisWeek({
 			 * None of it reaches the exported HTML, for the same reason the banner's
 			 * band does not: `asOf` stays null until the mount flag flips.
 			 */}
-			<div className={cn('space-y-8', expired && 'text-muted-foreground [--foreground:var(--muted-foreground)]')}>
+			{/*
+			 * The load before the work. A reader in the yard asks how much before they
+			 * ask what, and the band answers without language, which is what makes it
+			 * survive a glance in full sun. The sentence under it is the same answer in
+			 * words, and the accessible one.
+			 */}
+			<div className="space-y-2">
+				<TallyBand total={tasks.length} recorded={completedIds.size} />
+				<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+					<p className="font-display text-label font-bold tracking-widest uppercase">
+						{`${tasks.length} ${tasks.length === 1 ? 'job' : 'jobs'} / ${completedIds.size} recorded / ${tasks.length - completedIds.size} open`}
+					</p>
+					<p className="font-display text-label tracking-widest text-muted uppercase">
+						{`${seedYard.region.name} / Zone ${seedYard.region.hardinessZone}`}
+					</p>
+				</div>
+			</div>
+
+			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 				{/*
 				 * The model's own sentences about the week, which nothing rendered
 				 * until #62: the field was required, generated and committed on
@@ -340,6 +347,8 @@ export function ThisWeek({
 			 * this reads the Narration directly. An unnarrated Artifact has none,
 			 * and `Advisories` renders nothing for an empty list.
 			 */}
+			<NotLit rules={rules} tasks={tasks} />
+
 			<Advisories advisories={artifact.narration?.advisories ?? []} />
 
 			{/*

@@ -46,14 +46,14 @@ export function Advisories({ advisories }: AdvisoriesProps): ReactElement | null
 				{/* Spells out the "no Rule produced this" fact in words rather than
 				    leaving it to the dashed border, so a reader who never notices the
 				    border still can't mistake this for a cited Task. */}
-				<p className="text-sm text-muted-foreground">
+				<p className="text-detail text-muted">
 					No rule produced these—the model noticed them on its own, so none of them carries a citation.
 				</p>
 			</div>
 			<ul className="space-y-2">
 				{advisories.map(advisory => (
-					<li key={advisory.text} className="flex items-start gap-2 text-sm text-foreground">
-						<Eye aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+					<li key={advisory.text} className="flex items-start gap-2 text-detail text-foreground">
+						<Eye aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted" />
 						<span>{advisory.text}</span>
 					</li>
 				))}

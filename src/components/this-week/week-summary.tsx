@@ -31,10 +31,10 @@ export function WeekSummary({ summary = null }: WeekSummaryProps): ReactElement 
 
 	return (
 		<section aria-labelledby="week-summary-heading" className="space-y-2">
-			<h2 id="week-summary-heading" className="text-base font-semibold text-foreground">
+			<h2 id="week-summary-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
 				The week in the yard
 			</h2>
-			<p className="max-w-prose text-base text-foreground">{summary}</p>
+			<p className="max-w-prose text-body text-foreground">{summary}</p>
 		</section>
 	);
 }

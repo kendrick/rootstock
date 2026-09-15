@@ -19,3 +19,37 @@ export function taskText(title: string, narrated: string | null | undefined): st
 		? narrated
 		: title;
 }
+
+/**
+ * What a mechanical Task title still has to say once the job name and the
+ * target are already on screen.
+ *
+ * `titleFor` in the Planner builds a title as the Rule's name, the Plant's name
+ * in brackets, and sometimes a clause the Rule added: "Feed the Esperanza
+ * (Esperanza), never recorded". This row already renders the first two as its
+ * heading and its target, so printing the whole title underneath says the same
+ * words twice.
+ *
+ * That matters because Narration is optional by construction. With the model
+ * off, every Task falls back to its mechanical title, and without this every
+ * row on the page would read its own name twice. The README's promise is that
+ * turning the model off changes the prose and nothing else, so the structure
+ * has to survive the switch as well as the sentences do.
+ *
+ * Returns null when the title carries nothing the row has not already said, and
+ * the clause alone when it does.
+ */
+export function mechanicalRemainder(title: string, ruleName: string, plantName: string | null): string | null {
+	const subject = plantName === null ? ruleName : `${ruleName} (${plantName})`;
+
+	if (!title.startsWith(subject)) {
+		// A title the Planner built some other way is information this row cannot
+		// account for, so it passes through whole rather than being trimmed by a
+		// rule that no longer describes it.
+		return title.trim() === '' ? null : title;
+	}
+
+	const remainder = title.slice(subject.length).replace(/^,\s*/, '').trim();
+
+	return remainder === '' ? null : remainder;
+}

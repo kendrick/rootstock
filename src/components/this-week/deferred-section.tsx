@@ -68,10 +68,10 @@ export function DeferredSection({
 	return (
 		<section aria-labelledby="deferred-heading" className="space-y-3">
 			<div className="space-y-1">
-				<h2 id="deferred-heading" className="text-base font-semibold text-foreground">
+				<h2 id="deferred-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
 					Held back
 				</h2>
-				<p className="max-w-prose text-sm text-muted-foreground">
+				<p className="max-w-prose text-body text-muted">
 					{tasks.length > 0 ? SOMETHING_HELD : NOTHING_HELD}
 				</p>
 
@@ -85,7 +85,7 @@ export function DeferredSection({
 				 * to anyone looking at the screen.
 				 */}
 				{tasks.length > 0 && (
-					<p className="max-w-prose text-sm text-muted-foreground">{PERMANENCE_NOTE}</p>
+					<p className="max-w-prose text-body text-muted">{PERMANENCE_NOTE}</p>
 				)}
 			</div>
 

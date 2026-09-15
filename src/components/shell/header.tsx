@@ -1,31 +1,31 @@
 import type { ReactElement } from 'react';
+import { GridToggle } from './grid-toggle';
 import { WORDMARK } from './name';
 import { Nav } from './nav';
 
 /**
- * The wordmark does not link home, because the nav already points at `/` under
- * the name This Week, and two links to one route under different accessible
- * names give assistive technology two answers to one question. It is not a
- * heading either: every page owns its own h1, and a banner-level h1 would put a
- * second one on every route and break the heading order #16 runs axe against.
+ * The shell's top edge: the wordmark, the grid control, and the nav beneath
+ * them.
+ *
+ * No bottom border. In this world a hairline is a structural division that
+ * lands on a grid line, and spending one here would divide the header from the
+ * plan when they are the same sheet. The tally band below is what the eye stops
+ * at.
  */
 export function Header(): ReactElement {
 	return (
-		<header className="border-b border-border bg-background">
-			<div className="mx-auto flex max-w-3xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-3">
-				{/*
-				 * The wordmark carries the evidence hue rather than a second brand
-				 * colour, so the shell has one hue and not two. It stretches the
-				 * token's job past "this line is cited", which is deliberate: a name
-				 * is not a content line, and This Week renders every citation
-				 * collapsed, so without this the landing route shows no hue at all.
-				 */}
-				{/* print:text-black because --evidence is tuned against --background, a
-				    dark surface print never reproduces; on paper the token has no
-				    contrast guarantee against the white the page actually prints on. */}
-				<span className="text-lg font-medium tracking-tight text-evidence print:text-black">{WORDMARK}</span>
-				<Nav />
+		<header className="mx-auto w-full max-w-5xl px-6 pt-5">
+			<div className="flex items-start justify-between gap-4">
+				{/* print:text-black because --accent is tuned against the screen grounds
+				    and paper is neither of them; the print block in globals.css already
+				    flattens the token, and this keeps the wordmark honest if that
+				    override is ever scoped tighter. */}
+				<span className="font-display text-wordmark leading-none font-bold tracking-tight text-foreground print:text-black">
+					{WORDMARK}
+				</span>
+				<GridToggle />
 			</div>
+			<Nav />
 		</header>
 	);
 }

@@ -21,7 +21,7 @@ describe('nav', () => {
 		const links = screen.getAllByRole('link').map(link => [link.textContent, link.getAttribute('href')]);
 
 		expect(links).toEqual([
-			['This Week', '/'],
+			['Plan', '/'],
 			['Yard', '/yard'],
 			['Rules', '/rules'],
 		]);
@@ -31,7 +31,7 @@ describe('nav', () => {
 	// marked all three links, so the test collects every marked link and expects
 	// exactly one.
 	it.each([
-		['/', 'This Week'],
+		['/', 'Plan'],
 		['/yard', 'Yard'],
 		['/rules', 'Rules'],
 	])('marks %s as the current page and leaves the other links unmarked', (pathname, label) => {
