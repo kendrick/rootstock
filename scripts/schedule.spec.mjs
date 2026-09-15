@@ -245,17 +245,31 @@ describe('resolvePathEntries', () => {
 
 	// The most likely cause of a job that works for six weeks and then stops: the baked path carries
 	// a node version number, and the next `nvm install` moves it.
-	it('warns when node resolves inside a version-pinned nvm directory', () => {
+	it('warns when the nvm copy is the node the job would actually get', () => {
+		const nvmBin = '/Users/someone/.nvm/versions/node/v24.21.0/bin';
 		const resolved = resolvePathEntries(
-			name => (name === 'node'
-				? '/Users/someone/.nvm/versions/node/v24.21.0/bin/node'
-				: `/usr/bin/${name}`),
+			name => (name === 'node' ? `${nvmBin}/node` : `/usr/bin/${name}`),
 			'/Users/someone',
 			'darwin',
+			target => target === `${nvmBin}/node`,
 		);
 
 		expect(resolved.missing).toEqual([]);
 		expect(resolved.warnings.join(' ')).toContain('nvm');
+	});
+
+	// The entries are reordered, so a stable node earlier in the list shadows the pinned one and
+	// nothing is wrong. Warning anyway is how a real warning gets ignored the day it matters.
+	it('stays quiet when a stable node shadows the nvm one', () => {
+		const nvmBin = '/Users/someone/.nvm/versions/node/v24.21.0/bin';
+		const resolved = resolvePathEntries(
+			name => (name === 'node' ? `${nvmBin}/node` : `/opt/homebrew/bin/${name}`),
+			'/Users/someone',
+			'darwin',
+			target => target === '/opt/homebrew/bin/node' || target === `${nvmBin}/node`,
+		);
+
+		expect(resolved.warnings.join(' ')).not.toContain('nvm');
 	});
 
 	it('only warns about a missing codex, because a run without prose still publishes', () => {

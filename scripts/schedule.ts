@@ -133,6 +133,7 @@ export function resolvePathEntries(
 	which: (name: string) => string | undefined,
 	home: string,
 	platform: string,
+	exists: (target: string) => boolean = () => false,
 ): ResolvedPath {
 	const entries: string[] = [];
 	const warnings: string[] = [];
@@ -153,13 +154,6 @@ export function resolvePathEntries(
 		add(path.dirname(resolved));
 	}
 
-	const nvmPrefix = path.join(home, '.nvm', 'versions', 'node');
-	if (entries.some(entry => entry.startsWith(nvmPrefix))) {
-		warnings.push(
-			`PATH includes a version-pinned nvm directory under ${nvmPrefix}. The next \`nvm install\` will break this job silently. Install node another way, or set PATH in ${defaultEnvFile(home)}, which the script reads after the scheduler's.`,
-		);
-	}
-
 	for (const name of OPTIONAL_COMMANDS) {
 		if (missing.includes(name)) {
 			warnings.push(`\`${name}\` is not on this PATH. The run will still publish a Plan; ${name === 'codex' ? 'it will carry the Planner\'s mechanical prose rather than the model\'s' : 'but pnpm will have to find its own runtime'}.`);
@@ -171,6 +165,18 @@ export function resolvePathEntries(
 	}
 	for (const entry of ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']) {
 		add(entry);
+	}
+
+	// Warn only when the nvm copy is the one the job would actually get. The entries are reordered
+	// above, so a stable node earlier in the list shadows a version-pinned one later, and warning on
+	// mere presence would fire on a machine where nothing is wrong. A warning that cries wolf is one
+	// nobody reads the day it is right.
+	const nvmPrefix = path.join(home, '.nvm', 'versions', 'node');
+	const winner = entries.find(entry => exists(path.join(entry, 'node')));
+	if (winner !== undefined && winner.startsWith(nvmPrefix)) {
+		warnings.push(
+			`This job would run node from ${winner}, a version-pinned nvm directory. The next \`nvm install\` moves it and the job stops without saying so. Install node somewhere stable, or set PATH in ${defaultEnvFile(home)}, which the script reads after the scheduler's.`,
+		);
 	}
 
 	return { entries, warnings, missing: missing.filter(name => (REQUIRED_COMMANDS as readonly string[]).includes(name)) };
@@ -488,7 +494,7 @@ export function main(argv: readonly string[], effects: Effects): number {
 		}
 	}
 
-	const resolved = resolvePathEntries(effects.which, effects.home, effects.platform);
+	const resolved = resolvePathEntries(effects.which, effects.home, effects.platform, effects.exists);
 	if (resolved.missing.length > 0 && !status) {
 		effects.warn(`Cannot schedule a job that will not run: ${resolved.missing.join(', ')} not found on PATH. Install ${resolved.missing.length === 1 ? 'it' : 'them'} and try again.`);
 		return 2;
