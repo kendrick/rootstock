@@ -232,6 +232,42 @@ switch off. */
 }
 
 @layer components {
+	/* The Away Card is the copy you tear off and hand over, so it is printed on
+		the copy sheet rather than the top one. On a carbonless form the sheet that
+		leaves the shop is a different colour, and that is the whole signal: a
+		household member holding this is holding a copy, not the record.
+
+		Tokens are redefined for the subtree rather than the page, because Tailwind
+		resolves them at the point of use. --muted darkens against the lighter
+		ground: the top sheet's value measures 4.52:1 here and clears AA by too
+		little to be safe, where this one holds 5.79:1. */
+	.copy-sheet {
+		--ground: #f2e2a8;
+		--background: #f2e2a8;
+		--muted: #5a544a;
+		--rule-faint: #d8c98f;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.copy-sheet {
+			--ground: #2a2417;
+			--background: #2a2417;
+			--muted: #a09789;
+			--rule-faint: #3c3524;
+		}
+	}
+
+	/* On paper the copy is white, whatever colour the screen showed. A full-bleed
+		yellow sheet is toner nobody asked for, and the card exists to be printed. */
+	@media print {
+		.copy-sheet {
+			--ground: #fff;
+			--background: #fff;
+			--muted: #3a3a3a;
+			--rule-faint: #9a9a9a;
+		}
+	}
+
 	/* The one authored moment on this surface, and it belongs to the only action
 		that cannot be taken back.
 

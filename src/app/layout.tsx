@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 import { Assistant, Atkinson_Hyperlegible_Mono, Saira_Condensed } from 'next/font/google';
 import { Footer } from '@/components/shell/footer';
-import { Header } from '@/components/shell/header';
 import { WORDMARK } from '@/components/shell/name';
-import { RailApparatus, RailNotLit } from '@/components/shell/rail';
+import { SheetFrame } from '@/components/shell/sheet-frame';
 import './globals.css';
 
 /**
@@ -95,32 +94,8 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 					<div className="h-1 bg-copy-pink" />
 				</div>
 
-				{/*
-				 * The sheet is a bounded object, and the border is what makes it one. A
-				 * work-order ticket has an edge you could tear along; without it the same
-				 * content reads as a page that merely happens to be ruled.
-				 */}
-				<div className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
-					<div className="flex h-full flex-col border-2 border-rule">
-						<Header />
+				<SheetFrame>{children}</SheetFrame>
 
-						<div className="flex flex-1 flex-col lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-stretch">
-							<div className="min-w-0 px-5 pb-4 lg:col-start-1 lg:row-start-1 lg:border-r-2 lg:border-rule lg:px-5 lg:pt-6">
-								<RailApparatus />
-							</div>
-
-							{/* The main landmark sits in the layout so the error state lands inside
-						one too. The gate renders in place of the route rather than around
-						it, so a page that owned its own main would lose the landmark on
-						exactly the render where a lost reader needs it. */}
-							<main className="min-w-0 px-5 py-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">{children}</main>
-
-							<div className="min-w-0 px-5 pb-6 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
-								<RailNotLit />
-							</div>
-						</div>
-					</div>
-				</div>
 				<Footer />
 			</body>
 		</html>

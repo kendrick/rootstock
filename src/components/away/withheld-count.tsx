@@ -47,7 +47,7 @@ export function WithheldCount({ ownerOnly, deferred }: { ownerOnly: number; defe
 	}
 
 	return (
-		<div className="space-y-1 border-t border-border pt-4 text-sm text-muted-foreground sm:text-base print:border-black print:break-inside-avoid print:text-black">
+		<div className="space-y-1 border-t-2 border-rule px-5 py-4 font-mono text-detail text-muted print:border-black print:break-inside-avoid print:text-black">
 			{ownerOnly > 0 && <p>{ownerSentence(ownerOnly)}</p>}
 			{deferred > 0 && <p>{waitingSentence(deferred)}</p>}
 			{/* Phrased without pointing at the list, because on the week every
