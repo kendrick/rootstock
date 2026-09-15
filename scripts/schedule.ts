@@ -430,6 +430,7 @@ function usage(): void {
   --at         time of day, local, 24-hour, zero-padded. Default 06:00
   --scheduler  override detection, mostly so --print can render another machine's config
   --env-file   where daily-run.sh reads the coordinates from. Default ~/.config/rootstock/env
+  --checkout   the checkout the job runs in. Default this one; prefer a clone that only holds main
 
 docs: docs/operations/daily-run.md`);
 }
@@ -467,6 +468,12 @@ export function main(argv: readonly string[], effects: Effects): number {
 	let minute = 0;
 	let scheduler: Scheduler | undefined;
 	let envFile = defaultEnvFile(effects.home);
+	/*
+	 * The checkout the job runs in, which is usually not this one. A tree shared with development
+	 * sits on a feature branch half the time, and `daily-run.sh` refuses to publish from one, so a
+	 * scheduled job wants a clone that only ever holds main.
+	 */
+	let checkout = effects.repoRoot;
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const flag = argv[index];
@@ -487,6 +494,12 @@ export function main(argv: readonly string[], effects: Effects): number {
 				}
 				envFile = value;
 			}
+			else if (flag === '--checkout') {
+				if (value === undefined) {
+					throw new Error('--checkout wants a path to a checkout of this repository.');
+				}
+				checkout = value;
+			}
 		}
 		catch (cause) {
 			effects.warn(cause instanceof Error ? cause.message : String(cause));
@@ -502,7 +515,7 @@ export function main(argv: readonly string[], effects: Effects): number {
 
 	const context: ScheduleContext = {
 		scheduler: scheduler ?? detectScheduler(effects.platform, effects),
-		repoRoot: effects.repoRoot,
+		repoRoot: checkout,
 		home: effects.home,
 		hour,
 		minute,

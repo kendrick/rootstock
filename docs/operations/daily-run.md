@@ -16,6 +16,7 @@ Run `pnpm schedule --status` on any machine to see whether that is still true th
 
 ```sh
 pnpm schedule            # write the config for this machine and load it
+pnpm schedule --checkout ~/.local/share/rootstock-daily   # point it at another tree
 pnpm schedule --print    # render what it would write, and touch nothing
 pnpm schedule --status   # report what is actually loaded here
 pnpm schedule --uninstall
@@ -26,6 +27,20 @@ It picks the scheduler for the machine in front of it: a launchd agent on macOS,
 Default is 06:00 local, and `--at HH:MM` moves it. launchd and systemd timers both read the machine's own clock, so there is no UTC arithmetic to redo twice a year.
 
 No plist or unit file is pasted here on purpose. Run `pnpm schedule --print` and you get the one for your machine, with the paths already resolved.
+
+### Give the Job Its Own Checkout
+
+A checkout shared with development sits on a feature branch a good part of the time, and the run refuses to publish from one. Rather than remembering to switch back every evening, give the job a clone that only ever holds `main`:
+
+```sh
+git clone --branch main git@github_personal:kendrick/rootstock.git ~/.local/share/rootstock-daily
+cd ~/.local/share/rootstock-daily && pnpm install --frozen-lockfile
+pnpm schedule --checkout ~/.local/share/rootstock-daily
+```
+
+Run that last command from wherever you develop; `--checkout` decides which tree the job runs in, not which one you typed it in. The env file and the deploy key already live outside the repository, so the second clone needs neither copied.
+
+That tree is nobody's working copy, so nothing runs `pnpm install` in it by hand. The script watches the lockfile across its own fast-forward and installs when it moves, which is what keeps a dependency bump on `main` from breaking the next morning's run at whatever the new dependency was for.
 
 ### The Env File
 
@@ -66,7 +81,7 @@ Stagger the two schedules, twenty minutes apart or so. A full run is one weather
 
 Four things stop a run before it spends anything, each with its own line on stderr:
 
-- `on 'x' rather than main`: the checkout is on a feature branch. A run there would commit the day's Artifact to that branch and push it, which reports success and leaves main, and so the site, a day older. This matters most when the scheduled checkout is also the one somebody develops in.
+- `on 'x' rather than main`: the checkout is on a feature branch. A run there would commit the day's Artifact to that branch and push it, which reports success and leaves main, and so the site, a day older. Giving the job its own checkout retires this one for good.
 - `could not reach origin`: the deploy key or the network. The box cannot tell whether another one already ran, so it refuses to guess.
 - `the checkout has uncommitted changes`: either a previous run died before committing, or somebody edited the checkout. Both want a person.
 - `has diverged from origin`: this box committed something the other does not have. Reconciling that unattended would invent a merge nobody reviewed.

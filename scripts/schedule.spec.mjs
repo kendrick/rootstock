@@ -443,6 +443,24 @@ describe('main', () => {
 		expect(calls.log.join('\n')).toContain('Persistent=true');
 	});
 
+	// A checkout shared with development sits on a feature branch half the time, and daily-run.sh
+	// refuses to publish from one, so the scheduled job wants a clone that only ever holds main.
+	it('points the job at the checkout --checkout names, not the one it was run from', () => {
+		const { calls, effects } = seams();
+		main(['--print', '--checkout', '/Users/someone/.local/share/rootstock-daily'], effects);
+
+		const printed = calls.log.join('\n');
+		expect(printed).toContain('<string>/Users/someone/.local/share/rootstock-daily/scripts/daily-run.sh</string>');
+		expect(printed).not.toContain(`${CONTEXT.repoRoot}/scripts/daily-run.sh`);
+	});
+
+	it('refuses a --checkout with no path', () => {
+		const { calls, effects } = seams();
+
+		expect(main(['--checkout'], effects)).toBe(2);
+		expect(calls.writeFile).toEqual([]);
+	});
+
 	it('leaves the env file and the deploy key alone on uninstall', () => {
 		const { calls, effects } = seams();
 
