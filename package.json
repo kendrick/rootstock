@@ -20,6 +20,7 @@
 		"preview": "rm -rf .preview && mkdir -p .preview && cp -R out .preview/rootstock && serve .preview --listen ${E2E_PORT:-3000} --no-clipboard",
 		"schedule": "tsx scripts/schedule.ts",
 		"schema": "tsx scripts/generate-schema.ts",
+		"site-plants": "tsx scripts/site-plants.ts",
 		"start": "next start",
 		"test": "vitest run",
 		"test:e2e": "playwright test",
