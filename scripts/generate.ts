@@ -25,6 +25,7 @@ import { seedOccurrences, seedPlants, seedRules, seedTagPolicy, seedYard } from 
 import { readLocationFromEnv } from '../src/weather/location';
 import { fetchObservations } from '../src/weather/open-meteo';
 import { createCodexNarrator } from './codex-narrator';
+import { todaysRun } from './todays-run';
 
 /**
  * Everything one invocation needs, with nothing defaulted. Three members are arguments only so a
@@ -121,6 +122,20 @@ export async function generate(options: GenerateOptions): Promise<GenerationResu
 const DATA_DIR = path.resolve(import.meta.dirname, '../data');
 
 /**
+ * The exit code a skipped run reports, distinct from both success and failure because
+ * `scripts/daily-run.sh` has to tell three outcomes apart and only two of them are its own.
+ *
+ * Not 0: the shell reads an unchanged `data/status.json` as "the generator died before writing a
+ * record", and a skip leaves it unchanged for an entirely different reason. Not 1: a skip is the
+ * job working, and a scheduler that alerts on it would page somebody every day the second machine
+ * did its job.
+ *
+ * This number crosses into bash with no compiler in between, which is why it is a named constant
+ * here, a pinned spec case, and a commented literal there.
+ */
+export const EXIT_SKIPPED = 3;
+
+/**
  * Where tonight's two files go. A dry run gets a fresh temp directory each time so two rehearsals
  * cannot read each other's output, and so nothing has to be cleaned up before the next one.
  */
@@ -139,9 +154,36 @@ function outputDirectory(dryRun: boolean): string {
  * `previousStatus` comes from the real `data/status.json` even on a dry run. `consecutiveFailures`
  * is an input to the record the run produces, so a rehearsal that read a blank one would report a
  * different streak than the real run it stands in for.
+ *
+ * It also decides whether to run at all. The owner schedules this on more than one machine, and a
+ * generation reaches Open-Meteo and then spends a `codex exec` call, so a box that finds today's
+ * Plan already published returns {@link EXIT_SKIPPED} without touching either output file. Nothing
+ * is written on that path, which matters: a skip that left a status record behind would raise
+ * `consecutiveFailures` and paint a failure banner on a site that is perfectly healthy.
  */
 async function main(argv: readonly string[]): Promise<number> {
 	const dryRun = argv.includes('--dry-run');
+	const force = argv.includes('--force');
+
+	// Read before the skip check rather than inside the call below, because the check needs all
+	// three. A missing ROOTSTOCK_TIME_ZONE still throws here, which is the right order: a box that
+	// cannot say which day it is locally must not be the one deciding today is already done.
+	const location = readLocationFromEnv();
+	const previousStatus = readPreviousStatus(path.join(DATA_DIR, 'status.json'));
+	const now = new Date();
+
+	// A dry run never skips. It answers one question—is the pipeline wired up—and a rehearsal that
+	// short-circuits on yesterday's bookkeeping answers nothing.
+	if (!dryRun && !force) {
+		const today = todaysRun({ status: previousStatus, now, timeZone: location.timeZone });
+		if (today.ran) {
+			// Both values, because a reader finding this line in a log needs to tell "today is
+			// genuinely done" from "ROOTSTOCK_TIME_ZONE is wrong and this box thinks it is yesterday".
+			console.log(`skipped: ${today.asOf} already has a plan, published at ${today.artifactGeneratedAt}. Pass --force to generate anyway.`);
+			return EXIT_SKIPPED;
+		}
+	}
+
 	const directory = outputDirectory(dryRun);
 	const statusFile = path.join(directory, 'status.json');
 	const artifactFile = path.join(directory, 'artifact.json');
@@ -157,9 +199,9 @@ async function main(argv: readonly string[]): Promise<number> {
 			occurrences: seedOccurrences,
 			tagPolicy: seedTagPolicy,
 		},
-		location: readLocationFromEnv(),
-		previousStatus: readPreviousStatus(path.join(DATA_DIR, 'status.json')),
-		now: new Date(),
+		location,
+		previousStatus,
+		now,
 		statusFile,
 		artifactFile,
 	});
