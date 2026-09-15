@@ -33,12 +33,12 @@ No plist or unit file is pasted here on purpose. Run `pnpm schedule --print` and
 A checkout shared with development sits on a feature branch a good part of the time, and the run refuses to publish from one. Rather than remembering to switch back every evening, give the job a clone that only ever holds `main`:
 
 ```sh
-git clone --branch main git@github_personal:kendrick/rootstock.git ~/.local/share/rootstock-daily
+git clone --branch main git@github.com:kendrick/rootstock.git ~/.local/share/rootstock-daily
 cd ~/.local/share/rootstock-daily && pnpm install --frozen-lockfile
 pnpm schedule --checkout ~/.local/share/rootstock-daily
 ```
 
-Run that last command from wherever you develop; `--checkout` decides which tree the job runs in, not which one you typed it in. The env file and the deploy key already live outside the repository, so the second clone needs neither copied.
+Run that last command from wherever you develop; `--checkout` decides which tree the job runs in, not which one you typed it in. The env file and the deploy key live outside the repository, so a second checkout on a machine that already runs the job needs neither of them again. A second _machine_ needs both, and "Adding a Machine" below walks through it.
 
 That tree is nobody's working copy, so nothing runs `pnpm install` in it by hand. The script watches the lockfile across its own fast-forward and installs when it moves, which is what keeps a dependency bump on `main` from breaking the next morning's run at whatever the new dependency was for.
 
@@ -85,6 +85,64 @@ Four things stop a run before it spends anything, each with its own line on stde
 - `could not reach origin`: the deploy key or the network. The box cannot tell whether another one already ran, so it refuses to guess.
 - `the checkout has uncommitted changes`: either a previous run died before committing, or somebody edited the checkout. Both want a person.
 - `has diverged from origin`: this box committed something the other does not have. Reconciling that unattended would invent a merge nobody reviewed.
+
+## Adding a Machine
+
+Every step runs on the new machine, and nothing is copied from an existing one. The deploy key is per machine on purpose, and the coordinates are typed rather than synced.
+
+Install Node 24 or newer, pnpm 10, git, and codex first. `pnpm schedule` refuses to install a job whose `pnpm`, `git`, or `ssh` it cannot find, which is the failure worth having at install time rather than at 06:00.
+
+Give the job its own checkout:
+
+```sh
+git clone --branch main git@github.com:kendrick/rootstock.git ~/.local/share/rootstock-daily
+cd ~/.local/share/rootstock-daily && pnpm install --frozen-lockfile
+```
+
+Give this machine its own deploy key and register it:
+
+```sh
+ssh-keygen -t ed25519 -N '' -C 'rootstock daily-run' -f ~/.ssh/rootstock_deploy
+gh repo deploy-key add ~/.ssh/rootstock_deploy.pub --repo kendrick/rootstock \
+  --title "rootstock daily-run (whichever machine this is)" --allow-write
+```
+
+No passphrase, because the push runs under `BatchMode=yes` and cannot answer a prompt. Give each machine its own key: copying one between them means revoking a lost laptop stops every other box too.
+
+Write the env file, at mode 0600:
+
+```sh
+install -m 600 /dev/null ~/.config/rootstock/env
+$EDITOR ~/.config/rootstock/env
+```
+
+It needs `ROOTSTOCK_LATITUDE`, `ROOTSTOCK_LONGITUDE`, and `ROOTSTOCK_TIME_ZONE`. Type them in. Do not sync this file between machines, and do not put it anywhere a backup will carry it off the box, which is what ADR 0004 is about. Skipping this step is survivable: `pnpm schedule` writes the file blank and then names what is still missing.
+
+Sign in to codex and set a committer, both per machine:
+
+```sh
+codex login && codex login status
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+Schedule it at a time no other machine is using:
+
+```sh
+pnpm schedule --checkout ~/.local/share/rootstock-daily --at 06:20
+pnpm schedule --status
+```
+
+Then prove it before leaving it alone. This runs the job with the environment as bare as launchd gives it, which is the part a shell that has read your profile cannot tell you:
+
+```sh
+env -i HOME="$HOME" \
+  PATH="$(/usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables:PATH' \
+    ~/Library/LaunchAgents/com.rootstock.daily-run.plist)" \
+  ~/.local/share/rootstock-daily/scripts/daily-run.sh
+```
+
+On a day another machine has already published, that prints `daily-run: today's plan is already published, so nothing ran` and exits 0. That one line means the env file was read, the deploy key reached origin, and the branch and lockfile checks passed, none of which cost a model call to find out.
 
 ## The Crontab (a Linux Box Without systemd)
 
