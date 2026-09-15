@@ -6,11 +6,11 @@ It runs from a checkout on a box you control, on a schedule `pnpm schedule` inst
 
 ## What Runs Today
 
-Nothing schedules this yet. Every step below the scheduler is proven: `scripts/daily-run.sh` ran end to end by hand on 2026-09-14, committed `4aaf111` and `5e8037c`, pushed over `GIT_SSH_COMMAND`, and `deploy.yml` fired from that push and went green. `data/status.json` has read `ok: true` with `consecutiveFailures: 0` ever since.
+A launchd agent labelled `com.rootstock.daily-run`, at 06:00 local, on the owner's personal Mac. It runs from a checkout of its own at `~/.local/share/rootstock-daily` rather than from a tree anybody develops in, for the reason "Give the Job Its Own Checkout" gives.
 
-No machine runs it on a schedule yet, so the published Artifact is only as fresh as the last time somebody ran the script by hand. The site already accounts for that: Staleness is computed at render time against the Artifact's age, because the Artifact stops being true the moment the runs stop.
+The first unattended run was 2026-09-15. It committed `76fd5a0` and `78308fe`, pushed, and `deploy.yml` went green from that push. `data/status.json` has read `ok: true` with `consecutiveFailures: 0` since.
 
-Run `pnpm schedule --status` on any machine to see whether that is still true there.
+No other machine is scheduled. `pnpm schedule --status` on any machine reports what is actually loaded there, which is the only answer that cannot go stale in this file.
 
 ## Scheduling It
 
@@ -193,6 +193,10 @@ Git also needs a committer on the box, `git config user.name` and `user.email`, 
 `--force`, on the script and forwarded to the generator. It bypasses the already-published check and the main-branch check, and nothing else: a forced run on a dirty or diverged checkout still stops where it would have.
 
 `--ephemeral`, `--skip-git-repo-check` and `-s read-only` on `codex exec`, inside the narrator. It is a one-shot call that leaves nothing behind: keep it out of session history, let it run from any directory, and give it a sandbox that cannot write, because the call asks for prose.
+
+`-o IdentityAgent=none` on every ssh the job runs. This one took a real unattended run to find. `IdentitiesOnly=yes` restricts ssh to identities named on the command line **and in `ssh_config`**, so a `Host github.com` block carrying an `IdentityFile` is still offered first. On the owner's Mac that block names a work key, and `ssh -v` showed the job authenticating to GitHub with it wherever the 1Password agent was unlocked enough to sign. Cutting the agent out leaves exactly the key `-i` names.
+
+`--no-verify` on both daily commits. husky's pre-commit hook runs lint-staged, which stashes the tree before running `eslint --fix` over the staged files. Both files are generator output under `data/`, which `eslint.config.mjs` already ignores, so the hook does no work. The stash is the problem: one that fails partway through a run nobody is watching leaves a checkout the next morning's dirty-tree check stops on.
 
 `-o BatchMode=yes` on the push. A key that no longer works should fail the push rather than sit at a passphrase prompt in front of a terminal nobody is at.
 
