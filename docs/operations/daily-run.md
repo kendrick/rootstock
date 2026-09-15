@@ -64,8 +64,9 @@ Only a **successful** run closes the day. A failed one leaves it open on purpose
 
 Stagger the two schedules, twenty minutes apart or so. A full run is one weather fetch and one `codex exec`, so twenty minutes closes the window where both boxes could look, both see an open day, and both start. If they do collide, the loser's push is rejected, it discards its own two commits, and exits 0; nothing is left wedged, and the cost is one wasted model call.
 
-Three things stop a run before it spends anything, each with its own line on stderr:
+Four things stop a run before it spends anything, each with its own line on stderr:
 
+- `on 'x' rather than main`: the checkout is on a feature branch. A run there would commit the day's Artifact to that branch and push it, which reports success and leaves main, and so the site, a day older. This matters most when the scheduled checkout is also the one somebody develops in.
 - `could not reach origin`: the deploy key or the network. The box cannot tell whether another one already ran, so it refuses to guess.
 - `the checkout has uncommitted changes`: either a previous run died before committing, or somebody edited the checkout. Both want a person.
 - `has diverged from origin`: this box committed something the other does not have. Reconciling that unattended would invent a merge nobody reviewed.
@@ -116,7 +117,7 @@ Git also needs a committer on the box, `git config user.name` and `user.email`, 
 
 `pnpm exec tsx scripts/generate.ts` rather than `pnpm generate`. `pnpm run` prints an `ELIFECYCLE` banner on any non-zero exit, and a run that correctly skipped would leave that line in a log somebody reads for failures.
 
-`--force`, on the script and forwarded to the generator. It bypasses the already-published check and nothing else: a forced run on a diverged checkout still cannot push.
+`--force`, on the script and forwarded to the generator. It bypasses the already-published check and the main-branch check, and nothing else: a forced run on a dirty or diverged checkout still stops where it would have.
 
 `--ephemeral`, `--skip-git-repo-check` and `-s read-only` on `codex exec`, inside the narrator. It is a one-shot call that leaves nothing behind: keep it out of session history, let it run from any directory, and give it a sandbox that cannot write, because the call asks for prose.
 

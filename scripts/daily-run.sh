@@ -15,7 +15,7 @@ set -euo pipefail
 usage() {
 	echo "usage: ${0##*/} [--dry-run] [--force]" >&2
 	echo "  --dry-run  rehearse the pipeline into a temp directory; reaches no git command" >&2
-	echo "  --force    generate even when today's plan is already published" >&2
+	echo "  --force    generate anyway: today already published, or not on main" >&2
 	echo "  env: \$ROOTSTOCK_ENV_FILE, default ~/.config/rootstock/env" >&2
 	echo "  schedule it: pnpm schedule      docs: docs/operations/daily-run.md" >&2
 }
@@ -95,6 +95,16 @@ fi
 # `symbolic-ref` and not `rev-parse --abbrev-ref`: the latter prints "HEAD" on a detached checkout
 # and carries on, and a detached box has no branch to fast-forward or to push.
 branch=$(git symbolic-ref --short HEAD)
+
+# The scheduled job publishes to whatever branch it finds, and this checkout is usually also the one
+# somebody develops in. A run that fired during an afternoon on a feature branch would commit the
+# day's Artifact there and push it, which reports success, puts nothing on main, and leaves the site
+# quietly a day older. Refusing is the cheap half of the fix; a checkout dedicated to the job is the
+# thorough one.
+if [ "$branch" != "main" ] && [ "$force" != true ]; then
+	echo "daily-run: on '$branch' rather than main, so this run would publish where nobody reads it; pass --force if that is what you meant" >&2
+	exit 1
+fi
 
 # Each check below runs inside `if !`, which suspends `set -e` for that one command so the failure
 # can say what it was instead of exiting silently on a bare number.
