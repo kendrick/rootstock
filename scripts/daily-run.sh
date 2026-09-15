@@ -125,9 +125,23 @@ fi
 # `--ff-only`, never a merge and never a rebase. A diverged checkout means this box committed
 # something the other one does not have, and reconciling that unattended would either invent a merge
 # commit nobody reviewed or replay local commits onto a remote this script cannot test.
+lockfile_before=$(git rev-parse "HEAD:pnpm-lock.yaml")
 if ! git merge --ff-only --quiet "origin/$branch"; then
 	echo "daily-run: local $branch has diverged from origin/$branch; reconcile the two checkouts by hand" >&2
 	exit 1
+fi
+
+# A checkout dedicated to this job is never the one somebody runs `pnpm install` in, so a dependency
+# bump landing on main would leave it running against a node_modules from before the bump. That
+# fails at whatever the new dependency was for, which is a long way from the cause. Comparing the
+# lockfile's git object across the fast-forward costs nothing on the overwhelmingly common day when
+# it did not move.
+if [ "$lockfile_before" != "$(git rev-parse "HEAD:pnpm-lock.yaml")" ]; then
+	echo "daily-run: the lockfile moved, installing before generating"
+	if ! pnpm install --frozen-lockfile; then
+		echo "daily-run: pnpm install failed after a lockfile change, so the generator was not run" >&2
+		exit 1
+	fi
 fi
 
 # `pnpm exec` and not `pnpm generate`: `pnpm run` prints an ELIFECYCLE banner on any non-zero exit,
