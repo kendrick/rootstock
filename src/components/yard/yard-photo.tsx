@@ -8,9 +8,14 @@ import { withBasePath } from '@/lib/base-path';
 import { declutteredPositions } from './pin-layout';
 import { PlantPin } from './plant-pin';
 
-export function YardPhoto({ yard, plants, onSelect }: {
+export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSelect }: {
 	yard: Yard;
 	plants: Plant[];
+	/** Plant id to its line number in the parts list, so a callout and its row carry the same number. */
+	ordinals: ReadonlyMap<string, number>;
+	/** The Plant under the pointer, here or on its row below. */
+	hovered: string | null;
+	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
 	const { photo } = yard;
@@ -32,7 +37,7 @@ export function YardPhoto({ yard, plants, onSelect }: {
 		return (
 			<div
 				style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
-				className="flex w-full items-center justify-center rounded-lg border border-border bg-muted"
+				className="flex w-full items-center justify-center border-2 border-rule"
 			>
 				<p className="px-4 text-center text-sm text-muted-foreground">
 					The yard photo could not be loaded.
@@ -49,7 +54,7 @@ export function YardPhoto({ yard, plants, onSelect }: {
 			// percentage offset lands on the same blade of grass on a phone and on
 			// a desktop, and the browser reserves the space before the image loads.
 			style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
-			className="relative w-full overflow-hidden rounded-lg border border-border"
+			className="relative w-full overflow-hidden border-2 border-rule"
 		>
 			<Image
 				// next/image prefixes basePath onto a static import automatically but
@@ -80,7 +85,15 @@ export function YardPhoto({ yard, plants, onSelect }: {
 				the inventory carries it, position and all.
 			*/}
 			{plants.map(plant => (
-				<PlantPin key={plant.id} plant={plant} position={positions.get(plant.id)} onSelect={onSelect} />
+				<PlantPin
+					key={plant.id}
+					plant={plant}
+					position={positions.get(plant.id)}
+					ordinal={ordinals.get(plant.id) ?? 0}
+					hovered={hovered === plant.id}
+					onHoverChange={onHoverChange}
+					onSelect={onSelect}
+				/>
 			))}
 		</div>
 	);

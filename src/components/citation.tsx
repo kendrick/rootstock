@@ -256,7 +256,7 @@ export function CitationDisclosure({
 		<details open={defaultOpen} className="group border-t border-border">
 			<summary
 				className={cn(
-					'flex list-none items-center gap-2 px-3 py-2 text-sm',
+					'flex list-none items-center gap-2 px-3 py-2 text-detail',
 					'cursor-pointer [&::-webkit-details-marker]:hidden',
 					FOCUS_RING,
 				)}
@@ -273,7 +273,7 @@ export function CitationDisclosure({
 				</span>
 			</summary>
 
-			<div className="space-y-3 border-t border-border px-3 py-3 text-sm">
+			<div className="space-y-3 border-t border-border px-3 py-3 text-detail">
 				{/*
 				 * An Artifact outlives the rule set that produced it. The daily run commits a Plan,
 				 * and a Rule cited by that Plan can leave `src/seed/rules.json` before anyone reads

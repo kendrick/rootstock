@@ -40,7 +40,38 @@ export const lawnPlant: Plant = findPlant('front-lawn');
 export const figPlant: Plant = findPlant('fig-1');
 
 /** A seed planned plant, `position: null` because it has never been sited. */
-export const plannedPlant: Plant = findPlant('crossvine-1');
+/**
+ * A Plant that is planned and has never been sited.
+ *
+ * Synthesised rather than found, for the same reason `unplacedPlantedPlant` is.
+ * Whether the real yard currently holds an unsited Plant is the owner's
+ * business, and it stops being true the moment they site one: `pnpm site-plants`
+ * placed every Pin in the seed and took three specs with it, each of which was
+ * borrowing a state from live data instead of carrying it. A test that needs a
+ * Plant with no Pin has to bring one.
+ */
+export const plannedPlant: Plant = {
+	...findPlant('crossvine-1'),
+	id: 'fixture-planned-unsited',
+	name: 'Fixture: planned and unsited',
+	status: 'planned',
+	position: null,
+};
+
+/**
+ * A Plant far enough from every other Pin that the declutter pass leaves it
+ * exactly where it was put.
+ *
+ * Also synthesised, and for the same reason: which seed Plants sit clear of
+ * their neighbours is a fact about where the owner's plants actually are, and
+ * the spec that checks an un-nudged Pin needs one that is clear by construction.
+ */
+export const isolatedPlant: Plant = {
+	...findPlant('fig-1'),
+	id: 'fixture-isolated',
+	name: 'Fixture: isolated',
+	position: { x: 0.04, y: 0.95 },
+};
 
 /*
  * The seed has no planted plant with a null position—every planted record
@@ -57,7 +88,7 @@ export const unplacedPlantedPlant: Plant = {
 };
 
 /** The seed's own plants, plus the one gap it leaves: a planted plant with no position. */
-export const plantFixtures: Plant[] = [...seedPlants, unplacedPlantedPlant];
+export const plantFixtures: Plant[] = [...seedPlants, unplacedPlantedPlant, plannedPlant, isolatedPlant];
 
 /** The seed's task-creating Rules and its Guards together, exactly as the Planner reads them. */
 export const ruleFixtures: Rule[] = seedRules;

@@ -79,10 +79,16 @@ test.describe('the brief sentence, at 1440x900', () => {
 	// Visible tasks against visible citations, which is the count the critique
 	// ran and got 3 to 0 on. The property ADR 0001 calls the architecturally
 	// interesting one has to be on the screen, not merely in the DOM.
-	test('shows a citation without anyone clicking a chevron', async ({ page }) => {
+	//
+	// It used to be met by opening one disclosure on load. It is now met by every
+	// Task rendering its Citation as a line of its own, so the count is tasks to
+	// citations one for one rather than three to one, and nothing has to be opened
+	// on the reader's behalf for the page to show its work.
+	test('shows a citation on every Task without anyone clicking a chevron', async ({ page }) => {
 		await page.goto('');
 
-		await expect(page.locator('main details[open]')).toHaveCount(1);
+		// Nothing is opened for the reader. The evidence does not depend on it.
+		await expect(page.locator('main details[open]')).toHaveCount(0);
 
 		/*
 		 * A label rather than a bare chevron, on every Task: the evidence says
@@ -99,24 +105,47 @@ test.describe('the brief sentence, at 1440x900', () => {
 
 		for (let index = 0; index < count; index += 1) {
 			await expect(tasks.nth(index).getByText('Rule and reading')).toHaveCount(1);
-		}
 
-		// The open one is showing real evidence rather than an empty panel.
-		await expect(page.locator('main details[open]')).toContainText('Region');
+			// And the dated evidence itself, rendered, not promised. Every Citation
+			// kind leads with the word that says which kind it is.
+			await expect(
+				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No occurrence|\d+ days since) /),
+			).toHaveCount(1);
+		}
 	});
 
-	// Confirms the inversion is righted rather than merely restyled: the Task
-	// carries the raised surface the Advisory used to have.
-	test('puts the Tasks on the raised surface and the Advisory off it', async ({ page }) => {
+	// A Task and an Advisory must never read as the same kind of thing: one was
+	// derived from a Rule and carries a Citation, the other was noticed by the
+	// model and carries none (CONTEXT.md). Nothing here sits on a raised surface
+	// any more, so the separation is carried by the boundary a Task has and the
+	// words the Advisory block says about itself.
+	test('keeps a Task and an Advisory visibly different kinds of thing', async ({ page }) => {
 		await page.goto('');
 
-		const surfaceOf = (selector: string) =>
-			page.locator(selector).first().evaluate(node => getComputedStyle(node).backgroundColor);
-
 		const pageSurface = await page.locator('body').evaluate(node => getComputedStyle(node).backgroundColor);
+		// A Task is the list item carrying a disclosure. Advisories now sit above the
+		// work and are list items too, so the bare selector would grab one of those.
+		const task = page.locator('main li').filter({ has: page.locator('details') }).first();
+		const taskSurface = await task.evaluate(node => getComputedStyle(node).backgroundColor);
 
-		expect(await surfaceOf('main li')).not.toBe(pageSurface);
-		expect(await surfaceOf('main section:has(> div > h2:text("Also observed"))')).toBe('rgba(0, 0, 0, 0)');
+		// No card, no fill: a Task paints no surface of its own and lets the page's
+		// ground show through. Engines disagree on how they report that, so both
+		// honest answers pass and any third colour fails.
+		expect([pageSurface, 'rgba(0, 0, 0, 0)', 'transparent']).toContain(taskSurface);
+
+		// What identifies it is a boundary, per WCAG 1.4.11 and #62. The check runs
+		// on the second Task rather than the first: the first row drops its own top
+		// rule because the section's rule already sits directly above it, and two
+		// hairlines stacked read as a thicker one.
+		const tasks = page.locator('main li').filter({ has: page.locator('details') });
+		expect(await tasks.count()).toBeGreaterThan(1);
+
+		const taskBorder = await tasks.nth(1).evaluate(node => getComputedStyle(node).borderTopWidth);
+		expect(Number.parseFloat(taskBorder)).toBeGreaterThan(0);
+
+		// And the Advisory says in words that no Rule produced it, so a reader who
+		// never notices a border still cannot mistake it for cited work.
+		await expect(page.getByText(/No rule produced these/)).toHaveCount(1);
 	});
 });
 

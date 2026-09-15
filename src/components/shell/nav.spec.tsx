@@ -15,13 +15,26 @@ function renderAt(pathname: string): void {
 }
 
 describe('nav', () => {
+	// ADR 0004: the Away Card stays reachable and unadvertised, because whether
+	// the household has an away mode is the one thing the design keeps to itself.
+	// The nav is where a careless edit would add it, so the assertion lives here.
+	it('does not link the Away Card', () => {
+		renderAt('/');
+
+		const hrefs = screen.getAllByRole('link').map(link => link.getAttribute('href'));
+
+		expect(hrefs).toEqual(['/', '/yard', '/rules']);
+		expect(hrefs.some(href => href?.includes('away'))).toBe(false);
+		expect(screen.queryByRole('link', { name: /away/i })).toBeNull();
+	});
+
 	it('links exactly the three routes, in order, with their domain labels', () => {
 		renderAt('/');
 
 		const links = screen.getAllByRole('link').map(link => [link.textContent, link.getAttribute('href')]);
 
 		expect(links).toEqual([
-			['This Week', '/'],
+			['Plan', '/'],
 			['Yard', '/yard'],
 			['Rules', '/rules'],
 		]);
@@ -31,7 +44,7 @@ describe('nav', () => {
 	// marked all three links, so the test collects every marked link and expects
 	// exactly one.
 	it.each([
-		['/', 'This Week'],
+		['/', 'Plan'],
 		['/yard', 'Yard'],
 		['/rules', 'Rules'],
 	])('marks %s as the current page and leaves the other links unmarked', (pathname, label) => {

@@ -1,109 +1,311 @@
 @import 'tailwindcss';
 
-/* Roles, not palette entries. components.json already commits this repo to
-   shadcn's token vocabulary, so the shell names what a color is for and lets
-   the value live in one place. `@theme inline` is what lets these resolve
-   against another custom property rather than being frozen at build time.
-   Single dark palette, no `.dark` class: the shell has one theme, built from
-   the zinc scale components.json already names as the base color. */
+/* The enter and exit utilities the vendored shadcn components already reference.
+	Without this they resolve to nothing, which is why the plant sheet appeared
+	and vanished with no transition at all despite carrying the classes for one. */
+@import 'tw-animate-css';
+
+/* Roles, not palette entries. Values are sampled from the approved comp
+(.impeccable/mocks/this-week-tally.png) rather than typed from the prompt
+that produced it, because the prompt asked for pure white and the render
+settled on an off-white that reads better under glare.
+
+Light, not dark, and not by category habit: this page is read outdoors in
+full Texas sun on a phone held one-handed, where a dark shell loses to
+reflected skylight. PRODUCT.md records that scene; it is what picks the
+ground. */
 :root {
-	--background: var(--color-zinc-950);
-	--foreground: var(--color-zinc-50);
+	/* Carbonless copy stock: the top sheet of a numbered work-order ticket, the
+		kind that moves with a job through a shop and gets signed off box by box.
+		Warm rather than white, because a ticket is paper somebody handled. */
+	--ground: #f7f4ec;
+	--ink: #1a1815;
 
-	/* One step above --background, not equal to it. While the two matched,
-	`bg-card` did nothing and a 1.34:1 border was the only thing identifying a
-	component, which is also why the two least important blocks on This Week
-	read as more raised than the Tasks (#65). */
-	--card: var(--color-zinc-900);
-	--card-foreground: var(--color-zinc-50);
+	/* The two sheets under the top copy, showing as thin edges. They are the
+		genre's signature and they carry no information, so they appear once, at
+		the sheet's head, and nowhere else. */
+	--copy-canary: #f2e2a8;
+	--copy-pink: #e8c4c0;
 
-	/* WCAG 1.4.11 wants 3:1 where a border is what identifies a component. No
-	pair of zinc surfaces reaches 3:1 without giving up the dark shell, so the
-	boundary carries it: zinc-500 measures 4.12:1 on --background and 3.67:1
-	on --card. --border stays quiet for shell hairlines, which identify
-	nothing and would shout at this value. */
-	--card-border: var(--color-zinc-500);
-	--popover: var(--color-zinc-900);
-	--popover-foreground: var(--color-zinc-50);
-	--primary: var(--color-zinc-50);
-	--primary-foreground: var(--color-zinc-900);
-	--secondary: var(--color-zinc-800);
-	--secondary-foreground: var(--color-zinc-50);
-	--muted: var(--color-zinc-800);
-	--muted-foreground: var(--color-zinc-400);
-	--accent: var(--color-zinc-800);
-	--accent-foreground: var(--color-zinc-50);
-	--destructive: var(--color-red-900);
-	--destructive-foreground: var(--color-zinc-50);
-	--border: var(--color-zinc-800);
-	--input: var(--color-zinc-800);
+	/* Rubber-stamp red, and it is rationed to one job: work that was recorded.
+		Nothing else on the sheet takes it, so a stamp always means the same thing.
+		5.98:1 on --ground, and white clears 6.57:1 on it. */
+	--accent: #b02a1f;
+	--accent-foreground: #fff;
 
-	/* The one hue in the product, and it has a job: amber means this line is
-	cited. It marks the citation affordance, the provenance badge and the
-	focus ring, and nothing else takes it. Green was the obvious pick for a
-	yard app and reads as success, which collides with a ticked Task.
-	11.55:1 on --background, 10.29:1 on --card. */
-	--evidence: var(--color-amber-400);
-	--evidence-foreground: var(--color-zinc-950);
-	--ring: var(--color-amber-400);
+	/* 5.32:1. Secondary ink on a warm stock, tinted from the ground rather than
+		grey, so it reads as lighter printing instead of a different material. */
+	--muted: #6b6459;
+
+	/* A ticket is ruled, not shadowed. The heavy rule divides the sheet's own
+		regions and the faint one divides rows inside them; nothing here is a card
+		and nothing sits on a raised surface. */
+	--rule: #1a1815;
+	--rule-faint: #d8d2c4;
+
+	--background: var(--ground);
+	--foreground: var(--ink);
+}
+
+/* The same world after dark, not a second one. The sheet inverts and the grid
+goes with it, because the armature is the design and a page that loses it at
+night loses its identity rather than its decoration.
+
+The accent cannot come along unchanged: #1156f8 measures 3.1:1 on a near-black
+ground and fails 1.4.3 for the evidence line, which is body-sized text. It
+brightens to hold 7.4:1 while staying the same hue, so "cited" reads as one
+colour across both schemes.
+
+Auto only, keyed to the reader's system. There is no toggle, because the scene
+that picks the scheme is the ambient light the phone is already measuring. */
+@media (prefers-color-scheme: dark) {
+	:root {
+		/* The carbon copy rather than the top sheet: the same ticket read at night,
+			still warm, with the ink and the stock exchanged. */
+		--ground: #14120f;
+		--ink: #f2efe6;
+		--copy-canary: #6b5c2e;
+		--copy-pink: #6b3f3c;
+
+		/* #b02a1f measures 1.9:1 on this ground and fails outright. The stamp lifts
+			to 7.34:1 and keeps its hue, so a recorded row reads the same in both. */
+		--accent: #ff7a6a;
+		--accent-foreground: #14120f;
+
+		--muted: #a09789;
+		--rule: #f2efe6;
+		--rule-faint: #2e2a24;
+	}
+}
+
+/* Paper has one scheme. The Away Card is printed and read in a hand, and a dark
+ground there is a sheet of wasted toner that still reproduces badly, so print
+pins the light values whatever the screen was doing. The grid does not print
+at all: it is an on-screen armature, and on paper it is noise a reader cannot
+switch off. */
+@media print {
+	:root {
+		--ground: #fff;
+		--ink: #000;
+		--copy-canary: transparent;
+		--copy-pink: transparent;
+		--accent: #000;
+		--accent-foreground: #fff;
+		--muted: #3a3a3a;
+		--rule: #000;
+		--rule-faint: #9a9a9a;
+	}
 }
 
 @theme inline {
-	/* Atkinson Hyperlegible Next, loaded in layout.tsx. The font's own custom
-	property is read here rather than named --font-sans at the source, because
-	a --font-sans that resolves to var(--font-sans) is circular. */
-	--font-sans: var(--font-atkinson);
+	/* Three faces, each chosen for a different reason.
 
-	/* h1 24px against a 16px h2 left nothing reading as more important than
-	anything else, and a section heading sat 2px above the body text it
-	governs. Raising these widens the gap without editing a route file, since
-	every heading already reaches the scale through the utilities it uses:
-	--text-base carries the h2s on This Week, --text-2xl the page h1. --text-sm
-	carries body copy and does not move, so the gap opens upward. */
-	--text-base: 1.125rem;
-	--text-lg: 1.25rem;
-	--text-xl: 1.5rem;
-	--text-2xl: 2rem;
+	Economica carries display and every label: it won the font-match ranking
+	against the approved comp's lead text region on measured cap height,
+	advance width and stroke density, rather than on anyone's taste.
 
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-card: var(--card);
-	--color-card-foreground: var(--card-foreground);
-	--color-card-border: var(--card-border);
-	--color-popover: var(--popover);
-	--color-popover-foreground: var(--popover-foreground);
-	--color-primary: var(--primary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-secondary: var(--secondary);
-	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
+	Assistant carries body copy, and won the same ranking for the instruction
+	region.
+
+	Atkinson Hyperlegible Mono carries evidence only. PRODUCT.md records a
+	binding need for characters that stay distinct where rule ids, dates and
+	product-label figures are read down a column and compared against their
+	neighbours, and that is exactly the evidence line. It is the one place a
+	stated product constraint outranks the metric winner. */
+	--font-display: var(--font-display-face);
+	--font-sans: var(--font-assistant);
+	--font-mono: var(--font-atkinson-mono);
+
+	--color-ground: var(--ground);
+	--color-ink: var(--ink);
+	--color-copy-canary: var(--copy-canary);
+	--color-copy-pink: var(--copy-pink);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
-	--color-destructive: var(--destructive);
-	--color-destructive-foreground: var(--destructive-foreground);
-	--color-border: var(--border);
-	--color-input: var(--input);
-	--color-evidence: var(--evidence);
-	--color-evidence-foreground: var(--evidence-foreground);
-	--color-ring: var(--ring);
+	--color-muted: var(--muted);
+	--color-rule: var(--rule);
+	--color-rule-faint: var(--rule-faint);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+
+	/* The old shell's vocabulary, remapped onto this world rather than deleted.
+	Yard, Rules and the Away Card have not had their own passes yet and still
+	speak these names; dropping the tokens would leave three routes rendering
+	unstyled while a fourth looked finished.
+
+	They are not a second palette. Every one resolves to a value above, so the
+	untouched routes inherit the new ground, ink and accent instead of keeping
+	the dark shell this replaced. Each dies as its surface is redesigned, and
+	the last one out takes this block with it. */
+	--color-card: var(--ground);
+	--color-card-foreground: var(--ink);
+	--color-card-border: var(--rule);
+	--color-popover: var(--ground);
+	--color-popover-foreground: var(--ink);
+	--color-primary: var(--accent);
+	--color-primary-foreground: var(--accent-foreground);
+	--color-secondary: var(--ground);
+	--color-secondary-foreground: var(--ink);
+	--color-muted-foreground: var(--muted);
+	--color-accent-hover: var(--accent);
+	--color-border: var(--rule-faint);
+	--color-input: var(--rule-faint);
+	--color-ring: var(--accent);
+	--color-destructive: #a3231b;
+	--color-destructive-foreground: #fff;
+	--color-evidence: var(--accent);
+	--color-evidence-foreground: var(--accent-foreground);
+
+	/* The scale stops growing well before the viewport does.
+
+		Sizes were derived from cap heights measured off a portrait 1024 comp and
+		expressed in vw, which grows without limit: at 1440 the first screen held a
+		wordmark, a headline and one sentence, which is a phone layout enlarged
+		rather than a desktop one. A wide viewport should carry more of the week,
+		not a bigger version of less of it.
+
+		So each step reaches its ceiling around 900px and holds there. Below that
+		the middle term still tracks the viewport, because a phone genuinely needs
+		the display sizes to come down. Above it, extra width goes to the layout. */
+	--text-wordmark: clamp(1.5rem, 3.2vw, 2rem);
+	--text-display: clamp(1.875rem, 4.4vw, 2.75rem);
+	--text-title: clamp(1.125rem, 2.4vw, 1.5rem);
+	--text-body: clamp(0.9375rem, 1.5vw, 1.0625rem);
+	--text-label: clamp(0.6875rem, 1.1vw, 0.8125rem);
+	--text-evidence: clamp(0.75rem, 1.2vw, 0.875rem);
+	--text-detail: clamp(0.75rem, 1.2vw, 0.875rem);
 }
 
 @layer base {
-	/* Tailwind leaves --tw-ring-offset-color at white, so every focused control
-	on a near-black page got a white halo nobody chose. */
+	/* Tailwind leaves --tw-ring-offset-color at white, which is nearly the ground
+	here and makes a focus ring on a pale surface read as a gap. */
 	*,
 	::after,
 	::before {
-		--tw-ring-offset-color: var(--background);
+		--tw-ring-offset-color: var(--ground);
 	}
 
-	/* Atkinson Hyperlegible Next draws proportional figures: its digits run 407
-	to 648 units wide, so a column of soil temperatures or dates shifts sideways
-	as the values change. Nearly every number in this app is a measurement read
-	down a column against its neighbours, so tabular is the default here and
-	running prose pays the small cost. */
+	/* Every number on this page is a measurement compared against the one above
+	it: soil temperatures, dates, counts, intervals. Proportional figures shift
+	a column sideways as values change, so tabular is the default and running
+	prose pays the small cost. */
 	html {
 		font-variant-numeric: tabular-nums;
+	}
+
+	body {
+		font-family: var(--font-sans);
+	}
+
+	/* Anything that responds to a click says so under the pointer.
+
+		Browsers ship a plain arrow on a <button>, which is a holdover from native
+		widgets and reads as inert on a page. Every interactive thing here takes the
+		hand: the sign-off boxes, the plate's callouts, the plant rows, the
+		disclosures. :disabled is excluded, because a control that cannot be used
+		should not invite the click. */
+	button:not(:disabled),
+	summary,
+	[role='button']:not([aria-disabled='true']),
+	label:has(input:not(:disabled)) {
+		cursor: pointer;
+	}
+
+	/* The browser surfaces nobody draws still carry the design. Left at their
+	defaults they belong to no design system and quietly say the page was
+	assembled rather than built. */
+	::selection {
+		background-color: var(--accent);
+		color: var(--accent-foreground);
+	}
+
+	:root {
+		accent-color: var(--accent);
+		caret-color: var(--accent);
+
+		/* Both, so the browser paints its own surfaces from whichever scheme the
+		reader is actually in: form controls, scrollbars, and the space behind a
+		rubber-band scroll. Naming one scheme here is how a dark page ends up with
+		a white scrollbar nobody chose. */
+		color-scheme: light dark;
+	}
+}
+
+@layer components {
+	/* The Away Card is the copy you tear off and hand over, so it is printed on
+		the copy sheet rather than the top one. On a carbonless form the sheet that
+		leaves the shop is a different colour, and that is the whole signal: a
+		household member holding this is holding a copy, not the record.
+
+		Tokens are redefined for the subtree rather than the page, because Tailwind
+		resolves them at the point of use. --muted darkens against the lighter
+		ground: the top sheet's value measures 4.52:1 here and clears AA by too
+		little to be safe, where this one holds 5.79:1. */
+	.copy-sheet {
+		--ground: #f2e2a8;
+		--background: #f2e2a8;
+		--muted: #5a544a;
+		--rule-faint: #d8c98f;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.copy-sheet {
+			--ground: #2a2417;
+			--background: #2a2417;
+			--muted: #a09789;
+			--rule-faint: #3c3524;
+		}
+	}
+
+	/* On paper the copy is white, whatever colour the screen showed. A full-bleed
+		yellow sheet is toner nobody asked for, and the card exists to be printed. */
+	@media print {
+		.copy-sheet {
+			--ground: #fff;
+			--background: #fff;
+			--muted: #3a3a3a;
+			--rule-faint: #9a9a9a;
+		}
+	}
+
+	/* The one authored moment on this surface, and it belongs to the only action
+		that cannot be taken back.
+
+		Recording work writes an append-only Occurrence: there is no undo, and the
+		page refuses one out loud. So the control does not toggle, it stamps. The
+		mark lands slightly rotated and fully formed rather than fading up, because
+		a stamp is a single impact and anything smoother would read as a switch.
+
+		Nothing else on the page moves. A second animated thing would make this one
+		ordinary. */
+	@keyframes stamp-down {
+		from {
+			opacity: 0;
+			transform: rotate(-4deg) scale(1.35);
+		}
+
+		to {
+			opacity: 1;
+			transform: rotate(-4deg) scale(1);
+		}
+	}
+
+	.stamp-mark {
+		animation: stamp-down 140ms cubic-bezier(0.2, 0.9, 0.3, 1);
+		transform: rotate(-4deg);
+	}
+
+	/* The information was never in the movement. */
+	@media (prefers-reduced-motion: reduce) {
+		.stamp-mark {
+			animation: none;
+		}
+	}
+
+	/* The perforation across the stub at the foot of the sheet. Drawn rather than
+		imaged so it takes the ink colour in both schemes and disappears on paper. */
+	.perforation {
+		background-image: repeating-linear-gradient(to right, var(--rule) 0 6px, transparent 6px 12px);
+		block-size: 1px;
 	}
 }

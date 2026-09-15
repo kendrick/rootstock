@@ -131,9 +131,9 @@ describe('deferredSection', () => {
 		expect(copy).not.toContain('Deferral');
 	});
 
-	// #62 moves the raised surface onto the Tasks. This section keeps its
-	// heading and its prose and gives up the card it never earned.
-	it('renders flat, leaving the raised surface to the Tasks inside it', () => {
+	// The section is flat and the Tasks inside it carry the boundary. #62 settled
+	// where that boundary belongs: on the work, not on the container around it.
+	it('renders flat, leaving the boundary to the Tasks inside it', () => {
 		const { container } = render(
 			<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />,
 		);
@@ -141,7 +141,7 @@ describe('deferredSection', () => {
 		const section = container.querySelector('section');
 		expect(section?.className).not.toContain('bg-muted');
 		expect(section?.className).not.toContain('bg-card');
-		expect(container.querySelector('li')?.className).toContain('bg-card');
+		expect(container.querySelector('li')?.className).toContain('border-rule');
 	});
 
 	/*
