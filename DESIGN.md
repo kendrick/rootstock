@@ -41,6 +41,8 @@ Figures are tabular everywhere, because every number on this page is a measureme
 
 There are no cards, shadows, rounded corners, or icons standing in for labels, and nothing sits on a raised surface.
 
+Anything that responds to a click says so under the pointer. Browsers ship a plain arrow on a `<button>`, which is a holdover from native widgets and reads as inert on a page, so a base rule gives the hand to every button, summary, and label wrapping an enabled input. A disabled control keeps the arrow, because it should not invite the click.
+
 Division is a ruled border, and that border is what identifies a Task. Issues #62 and #65 raised the requirement, WCAG 1.4.11's 3:1 where a border is what identifies a component, and a raised surface with a 4.12:1 border was as close as a shell of stacked zinc surfaces could get. `--rule` on `--ground` measures roughly 16:1 and needs no surface to help it.
 
 The surface also ships no rasters at all. It is flat shape systems, rules and type the whole way down, so the static export sends no images and a reader on cell signal in a yard waits for nothing.
@@ -63,6 +65,16 @@ Wordmark in one cell, ticket number and yard stacked beside it. The number is `N
 
 Row order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, the absence of evidence, while the work itself sat third.
 
+### The Plate and the Parts List
+
+The Yard's photograph is a plate: a ruled frame with numbered callouts keyed to a parts list beneath it, the way a work order handles a diagram. A ring of identical dots says a Plant is there and nothing about which one; the number answers that with no legend, and the row carries the same number.
+
+A callout is filled for a Plant in the ground and drawn as an outline for one that is only planned. Shape rather than colour, because it sits on a photograph whose own colours cannot be relied on and which `ADR 0004` allows to be swapped.
+
+Hovering either a callout or its row lights both. The callout grows rather than changing colour, for the same reason: scale reads on any ground. Keyboard focus on a row drives it too, so a reader tabbing the list still sees which Plant on the plate they are standing on.
+
+Callouts are `aria-hidden` and outside the tab order, because the parts list is the equivalent path to every Plant and an integration test pins that each Plant reaches the tab order once rather than twice. Their tooltip is therefore pointer-only by design, and everything it says is in the row the number points at.
+
 ### The Sign-Off Box
 
 The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own, and the label wrapping the row extends that target across the job text.
@@ -79,9 +91,15 @@ The Rules the yard holds that no evidence lit, kept in the margin. This is the o
 
 ## Motion
 
-One authored moment, belonging to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control stamps instead of toggling: the mark lands slightly rotated and fully formed in 140ms rather than fading up, because a stamp is a single impact and anything smoother reads as a switch. It has no reverse, because the Occurrence has none either. Under `prefers-reduced-motion` the state arrives immediately and without the travel, since the information was never in the movement.
+Two moments, and the distinction between them is the rule.
 
-Nothing else on the page moves. A second animated thing would make this one ordinary.
+**The stamp** belongs to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control stamps instead of toggling: the mark lands slightly rotated and fully formed in 140ms rather than fading up, because a stamp is a single impact and anything smoother reads as a switch. It has no reverse, because the Occurrence has none either.
+
+**The plant sheet** slides in from the edge and back out, 200ms in and 150ms out. It is the one thing on any surface that arrives over the page, and a panel that pops gives a reader no sense of where it came from or where it returns to. Out is quicker than in, because leaving needs no explaining. shadcn's defaults ran 500ms and 300ms, which beside a 140ms stamp read as a different product.
+
+Nothing else moves. The rule is not a count: motion here earns its place by carrying meaning that the still frame cannot, either the weight of an irreversible act or the continuity of something entering and leaving. Anything that moves to be noticed does not qualify, and a third such moment would make the first two ordinary.
+
+Under `prefers-reduced-motion` both arrive immediately and without the travel, since the information was never in the movement.
 
 ## Print
 

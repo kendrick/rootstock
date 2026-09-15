@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* The enter and exit utilities the vendored shadcn components already reference.
+	Without this they resolve to nothing, which is why the plant sheet appeared
+	and vanished with no transition at all despite carrying the classes for one. */
+@import 'tw-animate-css';
+
 /* Roles, not palette entries. Values are sampled from the approved comp
 (.impeccable/mocks/this-week-tally.png) rather than typed from the prompt
 that produced it, because the prompt asked for pure white and the render
@@ -190,6 +195,20 @@ switch off. */
 
 	body {
 		font-family: var(--font-sans);
+	}
+
+	/* Anything that responds to a click says so under the pointer.
+
+		Browsers ship a plain arrow on a <button>, which is a holdover from native
+		widgets and reads as inert on a page. Every interactive thing here takes the
+		hand: the sign-off boxes, the plate's callouts, the plant rows, the
+		disclosures. :disabled is excluded, because a control that cannot be used
+		should not invite the click. */
+	button:not(:disabled),
+	summary,
+	[role='button']:not([aria-disabled='true']),
+	label:has(input:not(:disabled)) {
+		cursor: pointer;
 	}
 
 	/* The browser surfaces nobody draws still carry the design. Left at their

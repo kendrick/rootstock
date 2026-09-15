@@ -29,7 +29,7 @@ export default function YardPage(): ReactElement {
 					    word and `tests/integration/` drives the built export by heading
 					    text, so a friendlier wording here passes every unit test and
 					    breaks the end-to-end run. */}
-					<h1 className="text-2xl font-medium tracking-tight text-foreground">Yard</h1>
+					<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase">Yard</h1>
 
 					<StalenessBanner
 						generatedAt={validated.artifact.generatedAt}

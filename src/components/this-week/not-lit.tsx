@@ -50,11 +50,11 @@ export function NotLit({ rules, tasks }: NotLitProps): ReactElement | null {
 			 * comma-joined string would arrive as one long run of words. The
 			 * separators are drawn by CSS so they stay out of the accessible name.
 			 */}
-			<ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+			<ul className="mt-2 flex min-w-0 flex-col gap-y-1 lg:block">
 				{silent.map(rule => (
 					<li
 						key={rule.id}
-						className="font-display text-label tracking-wide text-muted uppercase before:mr-3 before:content-['·'] first:before:content-none"
+						className="font-display text-label leading-snug tracking-wide break-words text-muted uppercase"
 					>
 						{rule.name}
 					</li>

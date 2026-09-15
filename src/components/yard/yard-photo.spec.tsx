@@ -1,8 +1,9 @@
 import type { Plant, Position, Yard } from '@/yard/plant';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { BASE_PATH } from '@/lib/base-path';
-import { figPlant, plantFixtures, unplacedPlantedPlant, yardFixture } from './fixtures';
+import { figPlant, plantFixtures, yardFixture } from './fixtures';
 import { YardPhoto } from './yard-photo';
 
 function positionOf(plant: Plant): Position {
@@ -34,6 +35,36 @@ function resolvedImageSrc(src: string): string {
 }
 
 const sitedPlants = plantFixtures.filter(plant => plant.position !== null);
+const unsitedPlants = plantFixtures.filter(plant => plant.position === null);
+
+/**
+ * The numbering the component would receive from `Yard`: the parts list's own
+ * order. Declared here so a call site reads as one Plant rather than as a Map
+ * literal, and so a change to how the numbering is derived lands in one place.
+ */
+function ordinalsFor(plants: { id: string }[]): ReadonlyMap<string, number> {
+	return new Map(plants.map((plant, index) => [plant.id, index + 1]));
+}
+
+/**
+ * The callout for one Plant. It is aria-hidden by design, so it has no
+ * accessible name to query by; `data-plant` is what identifies it.
+ */
+function pinFor(plantId: string): HTMLElement {
+	const pin = document.querySelector<HTMLElement>(`[data-plant="${plantId}"]`);
+
+	if (pin === null) {
+		throw new Error(`no callout rendered for '${plantId}'`);
+	}
+
+	return pin;
+}
+
+/**
+ * The callouts carry tooltips, and Radix requires a provider above them. `Yard`
+ * supplies one on the real surface; this stands in for it here.
+ */
+const withTooltip = { wrapper: TooltipProvider } as const;
 
 describe('yardPhoto', () => {
 	// A raw <img> would skip basePath and serve /yard.jpg from the domain root,
@@ -44,7 +75,7 @@ describe('yardPhoto', () => {
 	// '/rootstock/yard.jpg' too, so a substring check here would pass on the
 	// broken output exactly the way the one it replaces did.
 	it('renders the photo from yard.photo.path, prefixed with the deployed base path', () => {
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		const photo = screen.getByRole('img');
 		expect(resolvedImageSrc(photo.getAttribute('src') ?? ''))
@@ -52,7 +83,7 @@ describe('yardPhoto', () => {
 	});
 
 	it('describes the yard in the alt text', () => {
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		expect(screen.getByRole('img').getAttribute('alt')).toContain(yardFixture.region.name);
 	});
@@ -62,7 +93,7 @@ describe('yardPhoto', () => {
 	// the style attribute rather than element.style.aspectRatio, because jsdom's
 	// CSS parser drops properties it does not implement.
 	it('shapes the wrapper by the photo\'s own aspect ratio', () => {
-		const { container } = render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		const { container } = render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 		const photo = photoOf(yardFixture);
 
 		const style = container.firstElementChild?.getAttribute('style') ?? '';
@@ -74,7 +105,7 @@ describe('yardPhoto', () => {
 	it('renders nothing when the yard has no photo', () => {
 		const photoless: Yard = { ...yardFixture, photo: null };
 
-		const { container } = render(<YardPhoto yard={photoless} plants={plantFixtures} onSelect={vi.fn()} />);
+		const { container } = render(<YardPhoto yard={photoless} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		expect(container.firstChild).toBeNull();
 	});
@@ -83,10 +114,14 @@ describe('yardPhoto', () => {
 	// three planned ones. Counting against the sited subset catches a stray pin
 	// parked at the origin.
 	it('renders one pin per sited Plant and none for the rest', () => {
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		expect(screen.getAllByRole('button', { hidden: true })).toHaveLength(sitedPlants.length);
-		expect(screen.queryByTitle(unplacedPlantedPlant.name)).toBeNull();
+		// A Plant with no stored position has no Pin and is reached through the
+		// list instead (CONTEXT.md), so none of them draws a callout here.
+		for (const plant of unsitedPlants) {
+			expect(document.querySelector(`[data-plant="${plant.id}"]`)).toBeNull();
+		}
 	});
 
 	// figPlant sits far from every other sited Plant in the seed, so the pin
@@ -94,9 +129,9 @@ describe('yardPhoto', () => {
 	// its own centre hit-test) leaves it exactly where the seed put it.
 	it('places an isolated pin by its own fraction of the box, not by a pixel offset', () => {
 		const position = positionOf(figPlant);
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
-		const pin = screen.getByTitle(figPlant.name);
+		const pin = pinFor(figPlant.id);
 		expect(pin.style.left).toBe(`${position.x * 100}%`);
 		expect(pin.style.top).toBe(`${position.y * 100}%`);
 	});
@@ -107,14 +142,14 @@ describe('yardPhoto', () => {
 	// data rather than a synthetic fixture, since the crowding is a property of
 	// where the owner actually sited these plants.
 	it('spreads a crowded cluster of pins apart, rather than rendering their raw fractions', () => {
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		const esperanza = plantFixtures.find(plant => plant.id === 'esperanza-1');
 		if (esperanza?.position == null) {
 			throw new Error('seed plant \'esperanza-1\' carries no position: this test has nothing to compare against.');
 		}
 
-		const pin = screen.getByTitle(esperanza.name);
+		const pin = pinFor(esperanza.id);
 		expect(pin.style.left).not.toBe(`${esperanza.position.x * 100}%`);
 	});
 
@@ -122,9 +157,9 @@ describe('yardPhoto', () => {
 	// up rather than its id.
 	it('hands the selected Plant to onSelect', () => {
 		const onSelect = vi.fn();
-		render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={onSelect} />);
+		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={onSelect} />, withTooltip);
 
-		screen.getByTitle(figPlant.name).click();
+		pinFor(figPlant.id).click();
 
 		expect(onSelect).toHaveBeenCalledWith(figPlant, expect.any(HTMLElement));
 	});
@@ -135,7 +170,7 @@ describe('yardPhoto', () => {
 	// rule out on its own since a correct URL can still 404 or time out.
 	describe('when the photo fails to load', () => {
 		it('shows a fallback in place of the broken image', () => {
-			render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+			render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 			fireEvent.error(screen.getByRole('img'));
 
@@ -146,7 +181,7 @@ describe('yardPhoto', () => {
 		// A pin over a blank frame is what made the 404 invisible in the first
 		// place: nothing anchored it to a photo, so nothing looked wrong.
 		it('renders no pins over the fallback', () => {
-			render(<YardPhoto yard={yardFixture} plants={plantFixtures} onSelect={vi.fn()} />);
+			render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 			fireEvent.error(screen.getByRole('img'));
 

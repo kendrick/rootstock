@@ -105,7 +105,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 						<Header />
 
 						<div className="flex flex-1 flex-col lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-stretch">
-							<div className="px-5 pb-4 lg:col-start-1 lg:row-start-1 lg:border-r-2 lg:border-rule lg:px-5 lg:pt-6">
+							<div className="min-w-0 px-5 pb-4 lg:col-start-1 lg:row-start-1 lg:border-r-2 lg:border-rule lg:px-5 lg:pt-6">
 								<RailApparatus />
 							</div>
 
@@ -115,7 +115,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 						exactly the render where a lost reader needs it. */}
 							<main className="min-w-0 px-5 py-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">{children}</main>
 
-							<div className="px-5 pb-6 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
+							<div className="min-w-0 px-5 pb-6 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
 								<RailNotLit />
 							</div>
 						</div>
