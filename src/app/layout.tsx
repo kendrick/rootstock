@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { Assistant, Atkinson_Hyperlegible_Mono, Saira_Condensed } from 'next/font/google';
 import { Footer } from '@/components/shell/footer';
 import { WORDMARK } from '@/components/shell/name';
+import { ORIENTED_SCRIPT } from '@/components/shell/orientation';
 import { SheetFrame } from '@/components/shell/sheet-frame';
 import './globals.css';
 
@@ -83,6 +84,14 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 				 * the margin's second row on a wide screen without moving them in the
 				 * DOM, so the tab order matches the reading order at every width.
 				 */}
+				{/*
+				 * Runs before anything paints, so a reader who dismissed the orientation
+				 * band never sees it flash back on the next navigation. The answer lives
+				 * in localStorage, which no prerender can read.
+				 */}
+				{/* eslint-disable-next-line react/dom-no-dangerously-set-innerhtml -- a module constant with no interpolation of anything a reader controls */}
+				<script dangerouslySetInnerHTML={{ __html: ORIENTED_SCRIPT }} />
+
 				{/*
 				 * The two carbonless copies under the top sheet, showing as edges across
 				 * its whole width. It is the one decorative mark in this world and it

@@ -3,6 +3,7 @@
 import type { ReactElement } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
+import { FirstVisitBand } from '@/components/shell/first-visit-band';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { Purpose } from '@/components/this-week/purpose';
 import { ThisWeek } from '@/components/this-week/this-week';
@@ -30,6 +31,8 @@ export default function ThisWeekPage(): ReactElement {
 		<ArtifactGate artifact={artifact} status={status}>
 			{validated => (
 				<div className="space-y-6">
+					<FirstVisitBand />
+
 					<div className="space-y-3">
 						<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase">This Week</h1>
 

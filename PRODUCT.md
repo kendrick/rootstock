@@ -12,9 +12,9 @@ The primary reader is the property owner, standing in the yard, deciding what to
 
 The second reader is the rest of the household, who read the Away Card: a printable, read-only list of work that may be delegated. They have standing to do the work on that card and no standing to judge what is missing from it, which is why a Deferred Task is counted there but never named.
 
-The third reader is someone arriving cold with no idea what this is—mostly a household member handed a link, and some of the time a stranger who found the public URL. Weight them roughly 60/40 in that order. This reader is real but secondary: the product is built for the household, and written so an outsider is not confused either. It is never sold to them.
+The third reader is someone arriving cold with no idea what this is—mostly a household member handed a link, and some of the time a stranger who found the public URL. Weight them roughly 60/40 in that order. This reader is real but secondary: the product is built for the household, and written so an outsider is not confused either. There is nothing to sell them. `/about` makes its case out of the committed Artifact and the real rule set, so a reader who doubts a claim can go and check it against the plan.
 
-Today there is nowhere for that reader to land. The site opens on This Week, which states the plan without establishing what produced it or why it should be trusted, and arriving there cold is disorienting. An orientation surface is owed and does not yet exist.
+That reader lands on `/about`, because This Week states the plan without establishing what produced it or why it should be trusted. The page annotates a real row from this morning's ticket and sets out what the model may and may not do. It also quotes the instruction the Narrator is handed, word for word. This Week stays at `/` for the owner who opens the site daily, and a dismissible band there points a first-time visitor across.
 
 ## Product Purpose
 
@@ -42,7 +42,7 @@ Those two properties are the product. A neighboring yard-task app can copy the l
 ## Capabilities and Constraints
 
 - Four Rule kinds—Window, Threshold, Cadence, Guard—stored as data, not code. Guards create no work.
-- Routes today: This Week (`/`), Yard (`/yard`), Rules (`/rules`), and the Away Card at `/away/[slug]`. A fifth surface is owed: a homepage that orients a cold arrival before the plan is stated. The Away Card is never linked from the nav, because the slug is deliberately not a `NEXT_PUBLIC_` variable and never reaches the browser bundle.
+- Routes today: This Week (`/`), Yard (`/yard`), Rules (`/rules`), About (`/about`), and the Away Card at `/away/[slug]`. The Away Card is never linked from the nav, because the slug is deliberately not a `NEXT_PUBLIC_` variable and never reaches the browser bundle.
 - Exact coordinates never enter the repository. They live in the generation environment and nowhere else, and a spec walks the generated JSON Schema failing on any property named for a latitude or longitude (ADR 0004). The Away Card slug is the same problem in a different shape.
 - Seed data is the documented add-a-plant path for this release, so its JSON shape is the import format rather than an internal convenience.
 - Next 16, React 19, Tailwind 4, Radix primitives, Zod schemas, static export. Node 24+, pnpm 10.

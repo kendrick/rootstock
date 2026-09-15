@@ -85,6 +85,18 @@ Sits directly under the week's summary rather than at the foot, because weather 
 
 It is exempt from the staleness de-emphasis. An Advisory is not part of a Plan (`CONTEXT.md`), so it has none of the Plan's staleness to inherit, and rain that is unlikely this week is worth acting on whether or not the daily run stopped. The block says in words that no Rule produced it, so a reader who never notices a border still cannot mistake it for cited work.
 
+### The Annotated Specimen
+
+`/about` has to argue to somebody who has never seen the plan, and the only honest way to do that is with the plan. The page is built from the ticket's own parts: a real row out of this morning's Artifact, set in the job table's grammar, with superscript callouts numbered into a list beneath it. What the Planner authored this morning is what the reader gets.
+
+The model's boundary takes a two-column spec table, MAY against MAY NOT. A paragraph describing a limit reads as reassurance; a table reads as a specification. Under it sits the instruction the Narrator is handed, word for word, and then the same job written both ways, so the difference the model makes is on the page rather than claimed.
+
+Nothing here was written for the page. `NARRATOR_BRIEF` lives in `src/generation/narrator-brief.ts` and both the daily run and this page read it, because a second copy of the prompt is how the page drifts into a flattering paraphrase of what the model was actually asked.
+
+### The New Here Band
+
+One band above the plan, bordered in the stamp red. It says what the page guarantees rather than what the product is, since the guarantee is the part a stranger cannot infer by looking, and it points at `/about`. The daily reader owes a banner nothing, so a dismissal is permanent. The browser that saw it keeps that answer, which is the right behaviour for a household where the card gets opened on somebody else's phone.
+
 ### NOT THIS WEEK
 
 The Rules the yard holds that no evidence lit, kept in the margin. This is the one part of the page that argues ADR 0001 without saying anything: the rule set is fixed, the Planner invents nothing, and evidence alone decides which Rules speak today. Guards are excluded, because a Guard creates no work and so has nothing to be silent about.
@@ -107,7 +119,7 @@ Paper has one scheme. The Away Card is printed and read in a hand, so print pins
 
 ## Migration Debt
 
-`globals.css` carries the old shell's token vocabulary (`--color-card`, `--color-muted-foreground`, and the rest) remapped onto this world. Yard, Rules and the Away Card have not had their own passes yet and still speak those names, and dropping the tokens would leave three routes unstyled while a fourth looked finished. They are not a second palette, since every one resolves to a value above. Each dies as its surface is redesigned, and the last one out takes the block with it.
+`globals.css` carries the old shell's token vocabulary (`--color-card`, `--color-muted-foreground`, and the rest) remapped onto this world. The shared pieces every route pulls in—`citation.tsx`, `staleness-banner.tsx`, `rule-summary.tsx`, `artifact-error.tsx`, `soil-sparkline.tsx`—still speak those names, and dropping the tokens would leave parts of every surface unstyled at once. They are not a second palette, since every one resolves to a value above. Each dies as its component is redrawn, and the last one out takes the block with it.
 
 ## Provenance
 
