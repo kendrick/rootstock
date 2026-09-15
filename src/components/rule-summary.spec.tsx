@@ -209,17 +209,26 @@ describe('ruleSummary', () => {
 		expect(screen.getByText('Not delegable')).toBeDefined();
 	});
 
-	// Both states carry a word and a distinct icon shape, so the distinction
-	// survives a screen that renders no colour.
-	it('distinguishes delegability by icon shape as well as by word', () => {
+	// Delegability used to be a word beside a distinct icon shape, so the
+	// distinction survived a screen rendering no colour. The icons are gone with
+	// the rest of the icon system, which leaves the word carrying it alone. The
+	// requirement is the same one, WCAG 1.4.1: this must never be a colour, and
+	// the two states have to read differently as plain text.
+	it('distinguishes delegability in words, with no icon and no colour-only cue', () => {
 		const { container: yes } = render(<RuleSummary rule={seedRule('last-nitrogen')} />);
 		const { container: no } = render(<RuleSummary rule={seedRule('fall-pre-emergent')} />);
 
-		const shapes = (root: HTMLElement): string[] =>
-			[...root.querySelectorAll('svg')].map(svg => svg.getAttribute('class') ?? '');
+		const flagOf = (root: HTMLElement): string => {
+			const match = [...root.querySelectorAll('span')]
+				.map(span => span.textContent?.trim() ?? '')
+				.find(text => text === 'Delegable' || text === 'Not delegable');
 
-		expect(shapes(yes).some(shape => shape.includes('lucide-users'))).toBe(true);
-		expect(shapes(no).some(shape => shape.includes('lucide-user-x'))).toBe(true);
+			return match ?? '';
+		};
+
+		expect(flagOf(yes)).toBe('Delegable');
+		expect(flagOf(no)).toBe('Not delegable');
+		expect(flagOf(yes)).not.toBe(flagOf(no));
 	});
 
 	// #14 reuses this component untouched, so every kind in rules.json has to

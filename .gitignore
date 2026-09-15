@@ -63,3 +63,7 @@ next-env.d.ts
 
 # Built by `pnpm preview` on every run, and by the review captures.
 .preview
+
+# Scratch capture script for the review screenshots. Rewritten per run and
+# never part of the build; eslint.config.mjs ignores it for the same reason.
+.shot.mjs
