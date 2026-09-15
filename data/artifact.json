@@ -1,8 +1,8 @@
 {
 	"version": 1,
-	"generatedAt": "2026-09-14T20:06:59.039Z",
+	"generatedAt": "2026-09-15T11:00:09.566Z",
 	"plan": {
-		"asOf": "2026-09-14",
+		"asOf": "2026-09-15",
 		"tasks": [
 			{
 				"id": "fall-pre-emergent@front-lawn",
@@ -11,7 +11,7 @@
 				"status": "fired",
 				"citation": {
 					"kind": "window",
-					"date": "2026-09-14"
+					"date": "2026-09-15"
 				},
 				"deferrals": [],
 				"annotations": [
@@ -35,7 +35,7 @@
 				"status": "fired",
 				"citation": {
 					"kind": "window",
-					"date": "2026-09-14"
+					"date": "2026-09-15"
 				},
 				"deferrals": [],
 				"annotations": [],
@@ -68,28 +68,6 @@
 			}
 		],
 		"window": [
-			{
-				"date": "2026-08-16",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 0,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-08-16",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 96.175,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
 			{
 				"date": "2026-08-17",
 				"variable": "precipitation-probability",
@@ -711,9 +689,9 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 0,
+				"value": 1,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -722,9 +700,9 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 93.52083333333336,
+				"value": 93.73750000000001,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -733,7 +711,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 1,
+				"value": 0,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -744,7 +722,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 93.43333333333334,
+				"value": 94.53750000000001,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -766,7 +744,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 94.95833333333331,
+				"value": 95.46250000000002,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -777,7 +755,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 4,
+				"value": 2,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -788,7 +766,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 93.60833333333335,
+				"value": 94.66249999999998,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -799,7 +777,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 3,
+				"value": 1,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -810,7 +788,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 92.89166666666665,
+				"value": 93.04583333333335,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -821,7 +799,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 3,
+				"value": 2,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -832,7 +810,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 93.25833333333334,
+				"value": 93.54583333333335,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -843,7 +821,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 13,
+				"value": 19,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -854,7 +832,29 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 93.01249999999999,
+				"value": 92.85416666666667,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-21",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 35,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-09-21",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 94.30000000000001,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -863,7 +863,7 @@
 		]
 	},
 	"narration": {
-		"summary": "It is a lawn-care week, with fall weed prevention and the year's last nitrogen feeding, plus a feeding for the Esperanza.",
+		"summary": "It is a lawn-focused week: handle the fall weed-prevention application, make the season’s final nitrogen feeding, and feed the Esperanza container.",
 		"tasks": [
 			{
 				"taskId": "fall-pre-emergent@front-lawn",
@@ -875,12 +875,12 @@
 			},
 			{
 				"taskId": "esperanza-feeding@esperanza-1",
-				"text": "Feed the Esperanza in its container."
+				"text": "Feed the Esperanza container."
 			}
 		],
 		"advisories": [
 			{
-				"text": "Rain chances are very low this week, so plan to provide the water needed after the pre-emergent application."
+				"text": "Rain is unlikely for most of the coming week, so make sure newly applied lawn products receive the water their labels require."
 			}
 		]
 	},
