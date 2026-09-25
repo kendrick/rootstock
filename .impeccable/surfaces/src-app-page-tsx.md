@@ -89,4 +89,5 @@ The owner ruled on these, and they supersede the direction contract above where 
 - The nav's first link reads This Week, matching the route's heading.
 - A Task that is not delegable says so on its row, in ink.
 - The approved comp is `.impeccable/mocks/this-week-job-ticket.png`, as DESIGN.md's Provenance says. The tally comp named above was approved first and belongs to the earlier round.
-
+- The Task instruction stays in Assistant, not the comp's typewriter; mono carries only the evidence line and the ticket number.
+- Row numbers restart at 01 in each group, by the owner's choice.

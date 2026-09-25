@@ -270,7 +270,8 @@ export function ThisWeek({
 
 	// `.map(taskItem)` hands the index through, which is where the ticket's line
 	// numbers come from. They number the run a reader is looking at rather than
-	// anything stored on the Task, so a filtered group counts from one.
+	// anything stored on the Task, so a filtered group counts from one. The owner
+	// kept per-group numbering on 2026-09-25 over numbering the whole sheet.
 	function taskItem(task: Task, index: number): ReactElement {
 		return (
 			<TaskItem
