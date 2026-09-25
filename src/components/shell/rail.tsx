@@ -1,11 +1,16 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import type { Plan } from '@/planner/plan';
+import { useEffect, useMemo, useState } from 'react';
 import { safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
 import { NotLit } from '@/components/this-week/not-lit';
+import { onRecorded, recordedDates, weekCounts } from '@/components/this-week/recorded';
 import { TallyBand } from '@/components/this-week/tally-band';
+import { cn } from '@/lib/utils';
 import { seedRules } from '@/seed';
+import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { Nav } from './nav';
 
 /**
@@ -24,27 +29,106 @@ import { Nav } from './nav';
  * the wordmark and the nav, which is the honest answer: the page below it is
  * already rendering the error.
  */
-function weekCounts(): { total: number; recorded: number } | null {
+function committedPlan(): Plan | null {
 	const parsed = safeParseArtifact(loadArtifact().artifact);
+	return parsed.ok ? parsed.value.plan : null;
+}
 
-	if (!parsed.ok) {
+const rulesById = new Map(seedRules.map(rule => [rule.id, rule]));
+
+/**
+ * How many of the week's Tasks this browser has recorded, or null while that is
+ * unknown.
+ *
+ * Read from the browser Store. A margin that counted nothing recorded would say
+ * three open beside a stub saying one of three. The hook re-reads when the Task
+ * list says an Occurrence landed, and counts through the same function the list
+ * does.
+ *
+ * Null covers the prerender, the first paint, and a Store that will not open.
+ * The page states the last case in words. The margin leaves the Open figure
+ * out, because nobody could vouch for the count.
+ */
+function useRecordedIds(plan: Plan | null): ReadonlySet<string> | null {
+	const [recorded, setRecorded] = useState<ReadonlySet<string> | null>(null);
+
+	useEffect(() => {
+		if (plan === null) {
+			return;
+		}
+
+		let live = true;
+
+		async function read(): Promise<void> {
+			try {
+				const history = await listOccurrences(await openBrowserStore());
+				if (live) {
+					setRecorded(new Set(recordedDates(plan?.tasks ?? [], history, plan?.asOf ?? '', rulesById).keys()));
+				}
+			}
+			catch {
+				if (live) {
+					setRecorded(null);
+				}
+			}
+		}
+
+		void read();
+		const stop = onRecorded(() => void read());
+
+		return () => {
+			live = false;
+			stop();
+		};
+	}, [plan]);
+
+	return recorded;
+}
+
+/**
+ * The week's counts as this browser knows them, or null before the Store has
+ * answered. Shared by the margin and the phone's count beside the heading, so
+ * the two can't disagree.
+ */
+function useWeekCounts(): { plan: Plan; counts: ReturnType<typeof weekCounts>; known: boolean } | null {
+	const plan = useMemo(committedPlan, []);
+	const recorded = useRecordedIds(plan);
+
+	if (plan === null) {
 		return null;
 	}
 
-	// Recorded is derived from the browser's own Occurrence history on This Week,
-	// and the margin has no access to it here. The band shows the week's shape,
-	// and the page below it is where a tick lands.
-	return { total: parsed.value.plan.tasks.length, recorded: 0 };
+	return { plan, counts: weekCounts(plan.tasks, recorded ?? new Set()), known: recorded !== null };
+}
+
+/**
+ * The open count set beside the page heading on a phone, where the margin's
+ * counts are hidden. It answers "how much is left" without the reader
+ * scrolling to the stub. Renders nothing until the Store has answered.
+ */
+export function OpenCount({ className }: { className?: string }): ReactElement | null {
+	const week = useWeekCounts();
+
+	if (week === null || !week.known || week.counts.signable === 0) {
+		return null;
+	}
+
+	return (
+		<p className={cn('font-display text-label font-bold tracking-widest text-foreground uppercase tabular-nums', className)}>
+			{`${week.counts.open} of ${week.counts.signable} open`}
+		</p>
+	);
 }
 
 export function RailApparatus(): ReactElement | null {
-	const counts = weekCounts();
+	const week = useWeekCounts();
 
-	if (counts === null) {
+	if (week === null) {
 		return null;
 	}
 
-	const open = counts.total - counts.recorded;
+	const { counts } = week;
+	const open = week.known ? counts.open : null;
 
 	/*
 	 * A margin block on a wide screen and one compact row on a phone. Stacked at
@@ -58,23 +142,38 @@ export function RailApparatus(): ReactElement | null {
 		// since these figures support the plan rather than being it.
 		<aside
 			aria-label="The week at a glance"
-			className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 print:hidden lg:mt-8 lg:block lg:space-y-3"
+			className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 print:hidden sm:mt-6 lg:mt-8 lg:block lg:space-y-3"
 		>
 			<Nav />
 
-			<div className="w-full lg:w-auto">
-				<TallyBand total={counts.total} recorded={counts.recorded} />
+			{/* Off below sm. The band repeats the counts beside it, and on a phone
+			    its row is space the first Task needs more. */}
+			<div className="hidden w-full sm:block lg:w-auto">
+				<TallyBand total={counts.signable} recorded={counts.recorded} />
 			</div>
 
-			<dl className="flex gap-x-6 font-display text-label tracking-widest uppercase lg:block lg:space-y-1">
+			{/* Off below sm, where `OpenCount` beside the heading carries the one
+			    figure a phone reader needs and this row would cost a line. */}
+			<dl className="hidden gap-x-6 font-display text-label tracking-widest uppercase sm:flex lg:block lg:space-y-1">
 				<div className="flex gap-x-2 lg:justify-between">
-					<dt className="text-muted">Jobs</dt>
-					<dd className="shrink-0 tabular-nums text-foreground">{counts.total}</dd>
+					<dt className="text-muted">Tasks</dt>
+					<dd className="shrink-0 tabular-nums text-foreground">{counts.signable}</dd>
 				</div>
-				<div className="flex gap-x-2 lg:justify-between">
-					<dt className="text-muted">Open</dt>
-					<dd className="shrink-0 tabular-nums text-accent">{open}</dd>
-				</div>
+				{open !== null && (
+					<div className="flex gap-x-2 lg:justify-between">
+						<dt className="text-muted">Open</dt>
+						<dd className="shrink-0 tabular-nums text-foreground">{open}</dd>
+					</div>
+				)}
+				{/* Its own line, never folded into Tasks or Open. Approaching work
+				    cannot be signed off yet, and counting it as open would keep a
+				    finished week open forever. */}
+				{counts.approaching > 0 && (
+					<div className="flex gap-x-2 lg:justify-between">
+						<dt className="text-muted">Approaching</dt>
+						<dd className="shrink-0 tabular-nums text-foreground">{counts.approaching}</dd>
+					</div>
+				)}
 			</dl>
 
 		</aside>

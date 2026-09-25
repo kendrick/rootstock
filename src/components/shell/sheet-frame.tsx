@@ -15,7 +15,7 @@ import { RailApparatus, RailNotLit } from './rail';
  * gets out of its way rather than framing one sheet inside another.
  *
  * The margin is the reason this is a decision rather than a layout preference.
- * It carries the job and open counts for the whole Plan and the Rules nothing
+ * It carries the Task and open counts for the whole Plan and the Rules nothing
  * lit, and the Away Card's entire discipline is that a household reader is shown
  * Delegable work and told how much is withheld, in which of two senses, and
  * never what it is (CONTEXT.md, Withheld). A rail reporting the raw total sits
@@ -40,7 +40,7 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
+		<div className="mx-auto w-full max-w-7xl flex-1 p-2 sm:p-6">
 			{/*
 			 * The sheet is a bounded object, and the border is what makes it one. A
 			 * work-order ticket has an edge you could tear along; without it the same
@@ -55,13 +55,17 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 				 * column enlarged is what a phone layout looks like on a desktop, so the
 				 * extra width goes to the margin and the work keeps a readable measure.
 				 *
+				 * Gutters tighten below sm. At 390, 20px gutters leave the instruction
+				 * column 154px wide, so one sentence wraps to seven lines and a Rule
+				 * name breaks mid-word. The sheet's edge still reads at 8px.
+				 *
 				 * Source order is margin, work, silent rules, which is the reading a
 				 * narrow screen wants. The grid placement moves the silent rules into
 				 * the margin's second row on a wide screen without moving them in the
 				 * DOM, so the tab order matches the reading order at every width.
 				 */}
 				<div className="flex flex-1 flex-col lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-stretch">
-					<div className="min-w-0 px-5 pb-4 lg:col-start-1 lg:row-start-1 lg:border-r-2 lg:border-rule lg:pt-6">
+					<div className="min-w-0 px-3 pb-4 sm:px-5 lg:col-start-1 lg:row-start-1 lg:border-r-2 lg:border-rule lg:pt-6">
 						<RailApparatus />
 					</div>
 
@@ -69,11 +73,11 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 					    The gate renders in place of the route rather than around it, so a
 					    page that owned its own main would lose the landmark on exactly the
 					    render where a lost reader needs it. */}
-					<main className="min-w-0 px-5 py-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+					<main className="min-w-0 px-3 pt-3 pb-6 sm:px-5 sm:py-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
 						{children}
 					</main>
 
-					<div className="min-w-0 px-5 pb-6 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
+					<div className="min-w-0 px-3 pb-6 sm:px-5 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
 						<RailNotLit />
 					</div>
 				</div>

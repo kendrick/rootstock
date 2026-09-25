@@ -7,16 +7,16 @@ import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant } from '@/yard/plant';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { staleness } from '@/artifact/staleness';
 import { cn } from '@/lib/utils';
-import { isCompleted } from '@/planner/completion';
 import { seedPlants, seedRules, seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
-import { PERMANENCE_NOTE, recordedAnnouncement, UNDO_REFUSAL } from './permanence';
+import { CANCELLED, NOT_SAVED, pendingAnnouncement, permanenceNote, recordedAnnouncement, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
+import { announceRecorded, recordedDates, weekCounts } from './recorded';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
 import { taskText } from './task-text';
@@ -42,6 +42,8 @@ export interface ThisWeekProps {
 	 * line de-emphasizes itself without a reload.
 	 */
 	now?: Date;
+	/** Overrides the sign-off wait. Specs shorten it; the route never passes it. */
+	recordDelayMs?: number;
 }
 
 /**
@@ -92,6 +94,7 @@ export function ThisWeek({
 	plants = seedPlants,
 	store = openBrowserStore,
 	now,
+	recordDelayMs,
 }: ThisWeekProps): ReactElement {
 	const rulesById = useMemo(() => byId(rules), [rules]);
 	const plantsById = useMemo(() => byId(plants), [plants]);
@@ -109,6 +112,7 @@ export function ThisWeek({
 	// would open a second database for one write.
 	const [opened, setOpened] = useState<Store | null>(null);
 	const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+	const [storeFailed, setStoreFailed] = useState(false);
 
 	useEffect(() => {
 		// `openBrowserStore` reaches for `globalThis.indexedDB`, and
@@ -119,24 +123,31 @@ export function ThisWeek({
 		let live = true;
 
 		async function load(): Promise<void> {
-			const resolved = typeof store === 'function' ? await store() : store;
-			const history = await listOccurrences(resolved);
+			try {
+				const resolved = typeof store === 'function' ? await store() : store;
+				const history = await listOccurrences(resolved);
 
-			// A Store that answers after the reader has navigated away has nothing
-			// to update, and setting state on the way out is how a second mount
-			// against a different Store ends up showing the first one's history.
-			if (!live) {
-				return;
+				// A Store that answers after the reader has navigated away has nothing
+				// to update, and setting state on the way out is how a second mount
+				// against a different Store ends up showing the first one's history.
+				if (!live) {
+					return;
+				}
+
+				setOpened(resolved);
+				setOccurrences(history);
 			}
-
-			setOpened(resolved);
-			setOccurrences(history);
+			catch {
+				// Caught so it can be said on the page. Left to reject, a Store that
+				// will not open leaves every box unticked and taps doing nothing, which
+				// looks like a yard where nothing has been done. The notice is the
+				// trace the reader sees.
+				if (live) {
+					setStoreFailed(true);
+				}
+			}
 		}
 
-		// No catch, on purpose. A Store that will not open leaves every box
-		// unticked, and swallowing the reason would make a broken Store look like a
-		// yard where nothing has been done. The browser's unhandled-rejection
-		// report is the only trace this component can leave.
 		void load();
 
 		return () => {
@@ -175,27 +186,24 @@ export function ThisWeek({
 	 * and #50 found it fully present in the DOM and entirely absent from the
 	 * screen: three visible tasks, zero visible citations, a 16px chevron the only
 	 * thing advertising them. Every Task answers that by rendering its Citation on
-	 * a line of its own beneath the instruction, in the one colour this world
-	 * reserves for cited work, so a Task cannot reach the screen without its
-	 * evidence beside it.
+	 * a line of its own beneath the instruction, in typewriter ink, so a Task
+	 * cannot reach the screen without its evidence beside it.
 	 *
 	 * Opening a panel here would cost a screenful to prove what that line already
 	 * proves. The disclosure holds the full apparatus and waits to be asked.
 	 */
 	const openCitationId: string | null = null;
 
-	const completedIds = useMemo(
-		() => new Set(
-			tasks
-				// The Rule is resolved here and handed down rather than looked up
-				// inside `isCompleted`, per that function's own docblock: the same
-				// resolution drives the "not in the current rule set" line, so one
-				// lookup keeps completion and presentation from disagreeing.
-				.filter(task => isCompleted(task, occurrences, artifact.plan.asOf, rulesById.get(task.ruleId) ?? null))
-				.map(task => task.id),
-		),
+	// The Rule is resolved through the same map the rows render from, per
+	// `isCompleted`'s docblock: one lookup keeps completion and presentation from
+	// disagreeing. The shell's margin counts through the same function.
+	const recordedOn = useMemo(
+		() => recordedDates(tasks, occurrences, artifact.plan.asOf, rulesById),
 		[tasks, occurrences, artifact.plan.asOf, rulesById],
 	);
+	const completedIds = useMemo(() => new Set(recordedOn.keys()), [recordedOn]);
+
+	const noteId = useId();
 
 	/*
 	 * What the live region below is currently saying. Empty until a reader acts,
@@ -209,7 +217,11 @@ export function ThisWeek({
 	 */
 	const [announcement, setAnnouncement] = useState('');
 
-	function handleComplete(task: Task): void {
+	function spokenText(task: Task): string {
+		return taskText(task.title, narrationById.get(task.id));
+	}
+
+	async function handleComplete(task: Task): Promise<void> {
 		// A tick that lands before the Store has answered goes nowhere. The box is
 		// controlled by what the Store says, so React puts it straight back, and
 		// nothing half-written is left behind to reconcile.
@@ -217,7 +229,7 @@ export function ThisWeek({
 			return;
 		}
 
-		void (async () => {
+		try {
 			await recordOccurrence(opened, {
 				ruleId: task.ruleId,
 				plantId: task.plantId,
@@ -229,21 +241,37 @@ export function ThisWeek({
 			// reload, so the render after a tick comes from the same read the next
 			// mount will do.
 			setOccurrences(await listOccurrences(opened));
+		}
+		catch (error) {
+			setAnnouncement(NOT_SAVED);
+			// Rethrown so the row learns the write failed and says so in place.
+			throw error;
+		}
 
-			// After the read, not before it. The sentence claims the yard holds the
-			// record, and the only moment that claim is true is once the Store has
-			// been asked again and said so.
-			setAnnouncement(recordedAnnouncement(taskText(task.title, narrationById.get(task.id))));
-		})();
+		// After the read, not before it. The sentence claims the yard holds the
+		// record, and the only moment that claim is true is once the Store has
+		// been asked again and said so. The margin is nudged at the same moment.
+		setAnnouncement(recordedAnnouncement(spokenText(task)));
+		announceRecorded();
 	}
 
-	function handleUndoAttempt(): void {
-		setAnnouncement(UNDO_REFUSAL);
+	function handleUndoAttempt(_task: Task, late: boolean): void {
+		setAnnouncement(late ? TOO_LATE : UNDO_REFUSAL);
 	}
+
+	const signOff = {
+		onComplete: handleComplete,
+		onUndoAttempt: handleUndoAttempt,
+		onRecordStart: (task: Task) => setAnnouncement(pendingAnnouncement(spokenText(task))),
+		onRecordCancel: () => setAnnouncement(CANCELLED),
+		recordDelayMs,
+		signOffDisabled: storeFailed,
+	};
 
 	// `.map(taskItem)` hands the index through, which is where the ticket's line
 	// numbers come from. They number the run a reader is looking at rather than
-	// anything stored on the Task, so a filtered group counts from one.
+	// anything stored on the Task, so a filtered group counts from one. The owner
+	// kept per-group numbering on 2026-09-25 over numbering the whole sheet.
 	function taskItem(task: Task, index: number): ReactElement {
 		return (
 			<TaskItem
@@ -255,12 +283,22 @@ export function ThisWeek({
 				narrationText={narrationById.get(task.id) ?? null}
 				window={artifact.plan.window}
 				checked={completedIds.has(task.id)}
+				recordedOn={recordedOn.get(task.id) ?? null}
 				citationOpen={task.id === openCitationId}
-				onComplete={handleComplete}
-				onUndoAttempt={handleUndoAttempt}
+				{...signOff}
+				describedBy={noteId}
 			/>
 		);
 	}
+
+	/*
+	 * The week closes when every Task a reader can sign off is recorded.
+	 * Approaching work is left out of that count, because it cannot be signed
+	 * off at all and would otherwise keep a finished week open forever. The
+	 * closed mark is ink, because the rows above already carry the stamps.
+	 */
+	const counts = weekCounts(tasks, completedIds);
+	const closed = counts.signable > 0 && counts.open === 0;
 
 	// This sentence reports the Plan and nothing else. Whether the runner that
 	// built it is still working is a second question, and `StalenessBanner` above
@@ -310,7 +348,13 @@ export function ThisWeek({
 
 			<div className={cn('space-y-8', expired && 'text-muted [--foreground:var(--muted-foreground)]')}>
 
-				<TaskGroup heading="Ready now" emptyText={nothingDue} description={PERMANENCE_NOTE}>
+				{storeFailed && (
+					<p className="max-w-prose border-2 border-rule px-3 py-2.5 text-body text-foreground">
+						{STORE_UNAVAILABLE}
+					</p>
+				)}
+
+				<TaskGroup heading="Ready now" emptyText={nothingDue} description={permanenceNote(artifact.plan.asOf)} descriptionId={noteId}>
 					{tasks.filter(task => task.status === 'fired').map(taskItem)}
 				</TaskGroup>
 
@@ -332,9 +376,10 @@ export function ThisWeek({
 					narrationById={narrationById}
 					window={artifact.plan.window}
 					completedIds={completedIds}
+					recordedOn={recordedOn}
+					note={permanenceNote(artifact.plan.asOf)}
 					openCitationId={openCitationId}
-					onComplete={handleComplete}
-					onUndoAttempt={handleUndoAttempt}
+					{...signOff}
 				/>
 			</div>
 
@@ -356,13 +401,19 @@ export function ThisWeek({
 			 */}
 			{/*
 			 * The stub, torn off and kept. It says how much of the week is still open
-			 * without naming a single job, which is the one thing a reader wants from
+			 * without naming a single Task, which is the one thing a reader wants from
 			 * across the room and the thing a list of rows cannot give them.
 			 */}
 			<div className="pt-2 print:hidden">
 				<div aria-hidden="true" className="perforation" />
-				<p className="mt-3 flex flex-wrap justify-between gap-x-4 font-display text-label font-bold tracking-widest uppercase">
-					<span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>
+				<p className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-display text-label font-bold tracking-widest uppercase">
+					{closed
+						? (
+								<span className="border-2 border-foreground px-1.5 py-0.5">
+									{`Closed — ${counts.signable} of ${counts.signable} recorded`}
+								</span>
+							)
+						: <span>{`${counts.open} of ${counts.signable} open`}</span>}
 					<span className="text-muted">{seedYard.region.name}</span>
 				</p>
 			</div>

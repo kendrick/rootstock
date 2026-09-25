@@ -29,8 +29,11 @@ function ticketNumber(): string {
  */
 export function Header(): ReactElement {
 	return (
-		<header className="grid border-b-2 border-rule sm:grid-cols-[minmax(0,1fr)_auto]">
-			<div className="flex items-center px-5 py-4 sm:border-r-2 sm:border-rule">
+		// On a phone the wordmark and number share a row and the region runs full
+		// width under them. Stacked three deep, the head alone costs a phone a
+		// fifth of its first screen before any work appears.
+		<header className="grid grid-cols-[minmax(0,1fr)_auto] border-b-2 border-rule">
+			<div className="flex items-center border-r-2 border-rule px-3 py-3 sm:row-span-2 sm:px-5 sm:py-4">
 				{/* print:text-black because the print block flattens the palette to ink,
 				    and this keeps the head honest if that override is ever scoped
 				    tighter. */}
@@ -43,14 +46,12 @@ export function Header(): ReactElement {
 			    (a number prefixed "No.", a region with its zone), so the sr-only terms a
 			    dl would need were reading a label to a screen reader that no one else
 			    gets and that the value already carries. */}
-			<div className="grid content-center divide-y-2 divide-rule border-t-2 border-rule sm:border-t-0">
-				<span className="px-5 py-2 font-mono text-body tracking-widest text-foreground">
-					{ticketNumber()}
-				</span>
-				<span className="px-5 py-2 font-display text-label font-bold tracking-widest text-muted uppercase">
-					{`${seedYard.region.name} — Zone ${seedYard.region.hardinessZone}`}
-				</span>
-			</div>
+			<span className="flex items-center px-3 py-2 font-mono text-body tracking-widest text-foreground sm:border-b-2 sm:border-rule sm:px-5">
+				{ticketNumber()}
+			</span>
+			<span className="col-span-2 border-t-2 border-rule px-3 py-2 font-display text-label font-bold tracking-widest text-muted uppercase sm:col-span-1 sm:col-start-2 sm:border-t-0 sm:px-5">
+				{`${seedYard.region.name} — Zone ${seedYard.region.hardinessZone}`}
+			</span>
 		</header>
 	);
 }

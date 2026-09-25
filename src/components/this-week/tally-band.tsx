@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 /**
  * How many cells the band draws, whatever the week holds.
  *
- * A band sized to the week would make every week look identical: three jobs
- * filling a strip and nine jobs filling the same strip say nothing to each
+ * A band sized to the week would make every week look identical: three Tasks
+ * filling a strip and nine Tasks filling the same strip say nothing to each
  * other. At a fixed width the fill itself is the comparison, so a heavy week
  * reads as heavy against the memory of a light one.
  *
@@ -31,7 +31,7 @@ export interface TallyBandProps {
  *
  * `aria-hidden` on purpose. The band is a second rendering of a number the
  * sentence beneath it already states exactly, and a screen reader counting
- * thirteen divs would be doing work to arrive at "3 jobs, 1 recorded, 2 open".
+ * thirteen divs would be doing work to arrive at "3 tasks, 1 recorded, 2 open".
  * The text is the accessible answer; this is the fast one.
  */
 export function TallyBand({ total, recorded }: TallyBandProps): ReactElement {
@@ -54,7 +54,7 @@ export function TallyBand({ total, recorded }: TallyBandProps): ReactElement {
 						index >= recorded && index < total && 'bg-transparent',
 						// Beyond the week's own work the cell stops being a task and
 						// becomes the band's own ground, so it loses its dividing rule's
-						// weight rather than claiming to be an empty job.
+						// weight rather than claiming to be an empty Task.
 						index >= total && 'border-r-rule-faint bg-rule-faint/40 print:bg-transparent',
 					)}
 				/>

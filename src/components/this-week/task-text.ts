@@ -21,7 +21,7 @@ export function taskText(title: string, narrated: string | null | undefined): st
 }
 
 /**
- * What a mechanical Task title still has to say once the job name and the
+ * What a mechanical Task title still has to say once the Rule's name and the
  * target are already on screen.
  *
  * `titleFor` in the Planner builds a title as the Rule's name, the Plant's name

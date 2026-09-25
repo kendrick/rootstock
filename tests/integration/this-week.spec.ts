@@ -74,9 +74,9 @@ test.describe('the brief sentence, at 1440x900', () => {
 	test('states its purpose above the fold, ahead of the first task', async ({ page }) => {
 		await page.goto('');
 
-		const purpose = page.getByText(/One yard in /);
+		const purpose = page.getByText(/ for one yard\. /);
 		await expect(purpose).toContainText(/rule/i);
-		await expect(purpose).toContainText(/reading/i);
+		await expect(purpose).toContainText(/evidence/i);
 
 		// Above the fold is a measurement, not a hope. The critique found the
 		// whole route fitted inside 900px, so a purpose statement that scrolled
@@ -118,12 +118,12 @@ test.describe('the brief sentence, at 1440x900', () => {
 		expect(count).toBeGreaterThan(0);
 
 		for (let index = 0; index < count; index += 1) {
-			await expect(tasks.nth(index).getByText('Rule and reading')).toHaveCount(1);
+			await expect(tasks.nth(index).getByText('Rule and evidence')).toHaveCount(1);
 
 			// And the dated evidence itself, rendered, not promised. Every Citation
 			// kind leads with the word that says which kind it is.
 			await expect(
-				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No occurrence|\d+ days since) /),
+				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No earlier|\d+ days since) /),
 			).toHaveCount(1);
 		}
 	});
@@ -170,20 +170,54 @@ test.describe('one-handed, at 390x844', () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
 	// The tap target the critique measured at 16x16, for a control used
-	// one-handed and outdoors. 24px is WCAG 2.2's minimum on the short axis and
-	// the number #62 asks for; the row spends 44 and brings the text with it.
-	test('gives the check-off box a row-sized hit target', async ({ page }) => {
+	// one-handed and outdoors. The sign-off cell is the target and the row is
+	// not, so a thumb resting on the instruction writes nothing. The cell alone
+	// has to clear 44 on both axes, the page's own standard.
+	test('gives the sign-off box a cell-sized hit target, and the text none', async ({ page }) => {
 		await page.goto('');
 
-		const label = page.locator('main li label').first();
-		const box = await label.boundingBox();
+		const input = page.locator('main li input[type="checkbox"]').first();
+		const box = await input.boundingBox();
 
-		expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
-		await expect(label.locator('input[type="checkbox"]')).toHaveCount(1);
+		expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+		expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+		await expect(page.locator('main li label')).toHaveCount(0);
+	});
+});
 
-		// The text beside the box is inside the target rather than dead space
-		// next to it, which is what a `<label>` buys and `aria-labelledby` alone
-		// did not.
-		expect(box?.width ?? 0).toBeGreaterThan(200);
+/*
+ * Asserted on what the browser rendered, not on class names. A colour token
+ * named `--color-evidence` once took the `text-evidence` class over. The
+ * markup said `text-evidence text-accent` and every class assertion passed,
+ * while the page drew body-sized evidence and an ink record line.
+ */
+test.describe('evidence and record lines, as rendered', () => {
+	test('sets the evidence line at its own size, below body text', async ({ page }) => {
+		await page.goto('');
+
+		const row = page.locator('main li').filter({ has: page.locator('input[type="checkbox"]') }).first();
+		const evidence = row.getByText(/^(Window|Observed run|Forecast|No earlier|\d+ days since) /);
+		const size = await evidence.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
+
+		// `--text-evidence` clamps between 0.75rem and 0.875rem.
+		expect(size).toBeGreaterThanOrEqual(12);
+		expect(size).toBeLessThanOrEqual(14);
+	});
+
+	test('draws the record line in the same red as the stamp beside it', async ({ page }) => {
+		await page.goto('');
+
+		const row = page.locator('main li').filter({ has: page.locator('input[type="checkbox"]') }).first();
+		await row.locator('input[type="checkbox"]').click();
+
+		const record = row.getByText(/^Recorded /);
+		await expect(record).toBeVisible({ timeout: 8000 });
+
+		const stamp = row.locator('.stamp-mark');
+		const [recordColour, stampColour] = await Promise.all([
+			record.evaluate(node => getComputedStyle(node).color),
+			stamp.evaluate(node => getComputedStyle(node).color),
+		]);
+		expect(recordColour).toBe(stampColour);
 	});
 });

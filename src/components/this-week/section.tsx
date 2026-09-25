@@ -5,7 +5,7 @@ export interface SectionProps {
 	id: string;
 	label: string;
 	children: ReactNode;
-	/** Sets the label and the top rule in the accent, for a section a reader should find before the ones around it. */
+	/** Sets the label in ink and the top rule heavier, for a section a reader should find before the ones around it. */
 	emphasis?: boolean;
 }
 
@@ -33,7 +33,7 @@ export function Section({ id, label, children, emphasis = false }: SectionProps)
 			aria-labelledby={id}
 			className={cn(
 				'grid gap-x-8 gap-y-2 border-t-2 pt-4 md:grid-cols-[10rem_minmax(0,1fr)]',
-				emphasis ? 'border-accent' : 'border-rule',
+				emphasis ? 'border-t-4 border-foreground' : 'border-rule',
 			)}
 		>
 			<h2
@@ -42,7 +42,7 @@ export function Section({ id, label, children, emphasis = false }: SectionProps)
 					// Hanging in the margin on a wide screen and never wrapping mid-label:
 					// the column is sized for the longest of them.
 					'font-display text-label leading-snug font-bold tracking-widest uppercase',
-					emphasis ? 'text-accent' : 'text-muted',
+					emphasis ? 'text-foreground' : 'text-muted',
 				)}
 			>
 				{label}

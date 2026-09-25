@@ -67,7 +67,14 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 			lang="en"
 			className={`${display.variable} ${assistant.variable} ${atkinsonMono.variable}`}
 		>
+			{/*
+			 * `suppressHydrationWarning` because an inline script sets
+			 * `data-oriented` on the body before React hydrates, so the New Here
+			 * band never flashes for a reader who dismissed it. The mismatch is
+			 * that attribute and nothing else, and it is deliberate.
+			 */}
 			<body
+				suppressHydrationWarning
 				className="flex min-h-dvh flex-col bg-background text-foreground"
 			>
 				{/*

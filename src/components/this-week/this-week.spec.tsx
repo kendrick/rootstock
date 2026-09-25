@@ -5,13 +5,13 @@ import type { Occurrence } from '@/planner/occurrence';
 import type { Task } from '@/planner/task';
 import type { Store } from '@/store/store';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { localDate } from '@/planner/dates';
 import { occurrenceSchema } from '@/planner/occurrence';
 import { seedPlants, seedRules, seedTagPolicy, seedYard } from '@/seed';
 import { createFakeStore } from '@/store/fake-store';
 import { combinedNarratedArtifact, combinedUnnarratedArtifact, okStatus, plants, rules } from './fixtures';
-import { PERMANENCE_NOTE, UNDO_REFUSAL } from './permanence';
+import { CANCELLED, NOT_SAVED, permanenceNote, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { ThisWeek } from './this-week';
 
 /**
@@ -131,7 +131,7 @@ function liveRegion(container: HTMLElement): string {
 	return container.querySelector('[aria-live="polite"]')?.textContent ?? '';
 }
 
-function fullPage(store: Store): ReactElement {
+function fullPage(store: Store | (() => Promise<Store>), recordDelayMs = 0): ReactElement {
 	return (
 		<ThisWeek
 			artifact={combinedNarratedArtifact}
@@ -139,8 +139,23 @@ function fullPage(store: Store): ReactElement {
 			rules={rules}
 			plants={plants}
 			store={store}
+			recordDelayMs={recordDelayMs}
 		/>
 	);
+}
+
+/**
+ * One tap on a sign-off box, then long enough for the wait to run out and the
+ * write to land. The page's wait is four seconds; `fullPage` shortens it to
+ * nothing so these specs test what is written, and the cancel spec below is
+ * the one that tests the wait itself.
+ */
+async function signOff(box: HTMLInputElement): Promise<void> {
+	await act(async () => {
+		fireEvent.click(box);
+		await new Promise(resolve => setTimeout(resolve, 0));
+	});
+	await act(async () => {});
 }
 
 describe('thisWeek', () => {
@@ -237,9 +252,7 @@ describe('thisWeek', () => {
 		const store = fakeStore();
 		await mount(fullPage(store));
 
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
+		await signOff(readyBox());
 
 		const stored = await store.list('occurrences');
 		const occurrence = stored[0]?.record;
@@ -263,9 +276,7 @@ describe('thisWeek', () => {
 		const store = fakeStore();
 		await mount(fullPage(store));
 
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
+		await signOff(readyBox());
 
 		const completedAt = (await store.list('occurrences'))[0]?.record.completedAt ?? '';
 
@@ -283,9 +294,7 @@ describe('thisWeek', () => {
 		const store = fakeStore();
 		const first = await mount(fullPage(store));
 
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
+		await signOff(readyBox());
 		expect(readyBox().checked).toBe(true);
 
 		first.unmount();
@@ -456,9 +465,9 @@ describe('thisWeek', () => {
 		expect(items.length).toBeGreaterThan(0);
 
 		// Every Task carries a rendered Citation line, not a promise of one. The
-		// window date is the evidence the seeded fired Tasks were cited on.
+		// seeded fired Tasks were cited on a window, so their line names it.
 		for (const item of items) {
-			expect(item.textContent).toMatch(/Window \/|Observed run \/|Forecast \/|occurrence|days since/i);
+			expect(item.textContent).toMatch(/Window closes|Window \/|Observed run \/|Forecast \/|earlier record|days since/i);
 		}
 	});
 
@@ -488,7 +497,7 @@ describe('thisWeek', () => {
 		await mount(fullPage(fakeStore()));
 
 		const ready = screen.getByRole('region', { name: 'Ready now' });
-		expect(within(ready).getByText(PERMANENCE_NOTE)).toBeDefined();
+		expect(within(ready).getByText(permanenceNote(combinedNarratedArtifact.plan.asOf))).toBeDefined();
 	});
 
 	it('drops the warning when the group has no work to tick', async () => {
@@ -502,7 +511,7 @@ describe('thisWeek', () => {
 			/>,
 		);
 
-		expect(screen.queryByText(PERMANENCE_NOTE)).toBeNull();
+		expect(screen.queryByText(permanenceNote(combinedNarratedArtifact.plan.asOf))).toBeNull();
 	});
 
 	/*
@@ -520,31 +529,45 @@ describe('thisWeek', () => {
 
 		expect(liveRegion(container)).toBe('');
 
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
+		await signOff(readyBox());
 
 		expect(liveRegion(container)).toContain('Recorded:');
 		// The same policy sentence the refusal carries, so a reader hears one
 		// account of the append-only log whichever way they arrived at it.
-		expect(liveRegion(container)).toMatch(/nothing here to undo/i);
+		expect(liveRegion(container)).toMatch(/cannot be removed/i);
 	});
 
-	it('announces the refusal when a reader tries to untick', async () => {
+	// A tap just after the wait ran out is a cancel that missed, not an attempt
+	// to erase old work, and it is told so.
+	it('tells a reader their cancel came too late when they untick right after the wait', async () => {
 		const store = fakeStore();
 		const { container } = await mount(fullPage(store));
 
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
-		await act(async () => {
-			fireEvent.click(readyBox());
-		});
+		await signOff(readyBox());
+		await signOff(readyBox());
 
-		expect(liveRegion(container)).toBe(UNDO_REFUSAL);
+		expect(liveRegion(container)).toBe(TOO_LATE);
 		// The non-goal, held: unticking says something and writes nothing.
 		expect(await store.list('occurrences')).toHaveLength(1);
 		expect(readyBox().checked).toBe(true);
+	});
+
+	it('announces the refusal when a reader tries to untick work recorded before this visit', async () => {
+		const fired = combinedNarratedArtifact.plan.tasks.find(task => task.status === 'fired');
+		const store = fakeStore([{
+			id: 'recorded-earlier',
+			ruleId: fired?.ruleId ?? '',
+			plantId: fired?.plantId ?? null,
+			completedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+			recordedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+			source: 'browser',
+		}]);
+		const { container } = await mount(fullPage(store));
+
+		await signOff(readyBox());
+
+		expect(liveRegion(container)).toBe(UNDO_REFUSAL);
+		expect(await store.list('occurrences')).toHaveLength(1);
 	});
 
 	// The other half of the surface inversion #62 records. The Tasks are the
@@ -575,5 +598,135 @@ describe('thisWeek', () => {
 
 		expect(screen.queryByRole('region', { name: 'Approaching' })).toBeNull();
 		expect(screen.getByRole('region', { name: 'Ready now' })).toBeDefined();
+	});
+	describe('the sign-off wait', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// The wait is the one stretch where a sign-off can be taken back, and
+		// only because nothing has been written yet. A cancel that reached the
+		// Store would be an undo of an append-only record by another name.
+		it('writes nothing when a second tap lands inside the wait', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			const store = fakeStore();
+			const { container } = await mount(fullPage(store, 4000));
+
+			await act(async () => {
+				fireEvent.click(readyBox());
+			});
+			expect(liveRegion(container)).toMatch(/again to cancel/i);
+
+			await act(async () => {
+				fireEvent.click(readyBox());
+			});
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(5000);
+			});
+
+			expect(liveRegion(container)).toBe(CANCELLED);
+			expect(await store.list('occurrences')).toHaveLength(0);
+			expect(readyBox().checked).toBe(false);
+		});
+
+		it('writes once the wait runs out untouched', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			const store = fakeStore();
+			await mount(fullPage(store, 4000));
+
+			await act(async () => {
+				fireEvent.click(readyBox());
+			});
+			expect(await store.list('occurrences')).toHaveLength(0);
+
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(4000);
+			});
+
+			expect(await store.list('occurrences')).toHaveLength(1);
+		});
+	});
+
+	// Evidence and record are separate lines. The Citation says why the Rule
+	// fired and stays true after the work is done; the record says when.
+	it('prints the day a signed-off Task was recorded under its evidence', async () => {
+		await mount(fullPage(fakeStore()));
+		await signOff(readyBox());
+
+		const ready = screen.getByRole('region', { name: 'Ready now' });
+		expect(within(ready).getByText(/^Recorded [A-Z][a-z]{2} \d{1,2} \d{4}$/)).toBeDefined();
+	});
+
+	// Said on the page rather than left to an unhandled rejection. Unreported, a
+	// broken Store leaves every box empty and every tap silent, which reads as a
+	// yard where nothing has been done.
+	it('says so, and switches sign-off off, when the Store will not open', async () => {
+		await mount(fullPage(async () => {
+			throw new Error('IndexedDB refused');
+		}));
+
+		expect(screen.getByText(STORE_UNAVAILABLE)).toBeDefined();
+		expect(readyBox().disabled).toBe(true);
+	});
+
+	it('says the sign-off was not saved when the write fails', async () => {
+		const store = fakeStore();
+		store.set = async () => {
+			throw new Error('quota exceeded');
+		};
+		const { container } = await mount(fullPage(store));
+
+		await signOff(readyBox());
+
+		expect(liveRegion(container)).toBe(NOT_SAVED);
+		expect(within(screen.getByRole('region', { name: 'Ready now' })).getByText(NOT_SAVED)).toBeDefined();
+		expect(readyBox().checked).toBe(false);
+	});
+	describe('the states a week can be in', () => {
+		// Held work sits in the same ruled table as ready work, numbered, with the
+		// box still working (ADR 0002) under an ink HELD mark.
+		it('puts held work in the numbered table with a working box marked HELD', async () => {
+			await mount(fullPage(fakeStore()));
+
+			const held = screen.getByRole('region', { name: 'Held back' });
+			expect(within(held).getByText('Held')).toBeDefined();
+			expect(within(held).getByText('01')).toBeDefined();
+			const box = within(held).getByRole('checkbox', { name: /^Held back\. Sign off anyway/u });
+			expect((box as HTMLInputElement).disabled).toBe(false);
+		});
+
+		// A blank cell reads as a box that failed to render.
+		it('says NOT YET, with the forecast day, where an approaching Task has no box', async () => {
+			await mount(fullPage(fakeStore()));
+
+			const approaching = screen.getByRole('region', { name: 'Approaching' });
+			expect(within(approaching).queryByRole('checkbox')).toBeNull();
+			expect(within(approaching).getByText('Not yet')).toBeDefined();
+			expect(within(approaching).getByText(/^About [A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
+		});
+
+		it('closes the stub once every Task that can be signed off is recorded', async () => {
+			const signable = combinedNarratedArtifact.plan.tasks.filter(task => task.status !== 'approaching');
+			const history: Occurrence[] = signable.map((task, index) => ({
+				id: `recorded-${index}`,
+				ruleId: task.ruleId,
+				plantId: task.plantId,
+				completedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+				recordedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+				source: 'browser',
+			}));
+			await mount(fullPage(fakeStore(history)));
+
+			expect(screen.getByText(`Closed — ${signable.length} of ${signable.length} recorded`)).toBeDefined();
+		});
+
+		it('keeps the stub open while any signable Task is unrecorded', async () => {
+			await mount(fullPage(fakeStore()));
+
+			expect(screen.queryByText(/^Closed —/u)).toBeNull();
+			// Three signable Tasks and one approaching: the approaching one is
+			// never open, so the stub and the Closed mark count the same three.
+			expect(screen.getByText('3 of 3 open')).toBeDefined();
+		});
 	});
 });
