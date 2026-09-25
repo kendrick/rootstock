@@ -21,17 +21,17 @@ The genre was chosen because its central gesture is already the product's. A tic
 
 The use scene picked the ground and the category had no say in it. This page is read outdoors in full Texas sun on a phone held one-handed, where a dark shell loses to reflected skylight. Dark mode follows the reader's system and offers no toggle, because the ambient light the phone already measures is what decides.
 
-Three things earn the accent and nothing else does: the active nav rule, the evidence line, and a stamp. Colour never decorates here.
+Stamp red marks work that was recorded, and nothing else takes it: the stamp, the fill that leads into it, the line under a signed-off Task giving the day it was recorded, and the filled tally cells. The evidence line, the active nav, focus rings, selection and every band are ink. On a sheet where nothing is signed off yet, nothing is red, so the first red a reader sees is their own sign-off. Colour never decorates here.
 
 ## Type
 
 Two faces do the work, and how the first was chosen is worth recording because the process got it wrong.
 
-**Saira Condensed 600/800** carries the lettering: wordmark, headings, job names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
+**Saira Condensed 600/800** carries the lettering: wordmark, headings, Rule names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
 
-**Atkinson Hyperlegible Mono** carries everything written on the form: instructions, evidence lines, the ticket number. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
+**Atkinson Hyperlegible Mono** carries the evidence lines and the ticket number. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
 
-**Assistant** remains for running prose that is neither lettering nor a filled-in field: the page standfirst and section copy.
+**Assistant** carries running prose: the Task's instruction, the page standfirst and section copy. The comp set the instruction in typewriter; the owner ruled for Assistant on 2026-09-25, because a whole sentence reads faster in a proportional face than in a mono one, and the evidence line under it is where the typewriter earns its place.
 
 Sizes come from cap heights measured off the comp and expressed as `clamp()`, each reaching its ceiling around 900px and holding there. Below that the middle term tracks the viewport, because a phone needs the display sizes to come down. Above it, extra width goes to the layout rather than the type: a single column enlarged is what a phone layout looks like on a desktop.
 
@@ -59,11 +59,13 @@ The margin is what a wide screen is for. Extra width goes there so the work keep
 
 Wordmark in one cell, ticket number and yard stacked beside it. The number is `No. <year>-<day of year>`, derived at read time. It is deliberately not the Artifact's generation date, which `StalenessBanner` already reports and which would put two dates on one sheet meaning different things.
 
-### The Job Table
+### The Task Table
 
-`JOB | TARGET | SIGN OFF`, with a bordered header row and vertical rules running its full height. Each Task is one ruled row: its number set large in the first cell, the job name, target, instruction and evidence in the second, the sign-off box in the third. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
+`NO. | TASK | SIGN OFF`, with a bordered header row and vertical rules running its full height, and each head over the column it names. The shop form says JOB; this one says TASK, because CONTEXT.md lists job under Task's _Avoid_. Ready, approaching and held work all sit in this table: an approaching row says NOT YET and the forecast day where the box would be, and a held row keeps its box under an ink HELD mark, because ADR 0002 makes a Deferral advice rather than a lock. Each Task is one ruled row: its number set large in the first cell, the Rule's name, target, instruction and evidence in the second, the sign-off box in the third. Only the sign-off cell records; the text beside it is for reading. A Task that is not delegable carries an ink NOT DELEGABLE mark in its target line, because the household can reach this page and the disclosure is not where a warning belongs. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
 
 Row order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, the absence of evidence, while the work itself sat third.
+
+The stub at the foot says how much of the week is open. Once every Task that can be signed off is recorded it closes, CLOSED — 3 OF 3 RECORDED, in ink. Approaching work is left out of that count, because it cannot be signed off and would keep a finished week open forever.
 
 ### The Plate and the Parts List
 
@@ -77,7 +79,7 @@ Callouts are `aria-hidden` and outside the tab order, because the parts list is 
 
 ### The Sign-Off Box
 
-The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own, and the label wrapping the row extends that target across the job text.
+The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned, it draws an empty ink box over the words SIGN OFF, so it reads as a control and not as a repeat of the column head. During the wait it counts down, CANCEL · 3, 2, 1, so the time left survives reduced motion. Signed, it takes a stamp. A tap that lands just after the wait ran out gets its own sentence saying it came too late, apart from the refusal an older record gets. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own. The cell is the only target, because a label around the row would let a thumb resting on the instruction write a permanent record.
 
 ### Also Observed
 
@@ -95,7 +97,7 @@ Nothing here was written for the page. `NARRATOR_BRIEF` lives in `src/generation
 
 ### The New Here Band
 
-One band above the plan, bordered in the stamp red. It says what the page guarantees rather than what the product is, since the guarantee is the part a stranger cannot infer by looking, and it points at `/about`. The daily reader owes a banner nothing, so a dismissal is permanent. The browser that saw it keeps that answer, which is the right behaviour for a household where the card gets opened on somebody else's phone.
+One band above the plan, bordered in ink. It explains the evidence line and what the model may not do rather than what the product is, since the guarantee is the part a stranger cannot infer by looking, and it points at `/about`. The daily reader owes a banner nothing, so a dismissal is permanent. The browser that saw it keeps that answer, which is the right behaviour for a household where the card gets opened on somebody else's phone.
 
 ### NOT THIS WEEK
 
@@ -106,6 +108,8 @@ The Rules the yard holds that no evidence lit, kept in the margin. This is the o
 Two moments, and the distinction between them is the rule.
 
 **The stamp** belongs to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control stamps instead of toggling: the mark lands slightly rotated and fully formed in 140ms rather than fading up, because a stamp is a single impact and anything smoother reads as a switch. It has no reverse, because the Occurrence has none either.
+
+The stamp has a lead-in. A tap on the sign-off cell starts a four-second wait before anything is written, and during it a grey RECORDING stamp fills with stamp red from left to right while the cell says a second tap cancels. The fill is linear because it's a clock. Red is complete only at the impact, so red still means recorded work. The wait and the stamp count as one moment, since the wait exists because the act is irreversible and the stamp lands when the wait runs out.
 
 **The plant sheet** slides in from the edge and back out, 200ms in and 150ms out. It is the one thing on any surface that arrives over the page, and a panel that pops gives a reader no sense of where it came from or where it returns to. Out is quicker than in, because leaving needs no explaining. shadcn's defaults ran 500ms and 300ms, which beside a 140ms stamp read as a different product.
 

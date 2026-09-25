@@ -105,7 +105,7 @@ function evidenceRow(container: HTMLElement, term: string): string {
 }
 
 /** The words the disclosure label carries, written out here rather than imported: the point of the assertion is the string a reader sees. */
-const CITATION_LABEL = 'Rule and reading';
+const CITATION_LABEL = 'Rule and evidence';
 
 describe('citationDisclosure', () => {
 	/*
@@ -329,7 +329,7 @@ describe('citationDisclosure', () => {
 			/>,
 		);
 
-		expect(screen.getByText('No earlier Occurrence, which is what fired the Rule')).toBeDefined();
+		expect(screen.getByText('Nothing recorded yet. With no earlier Occurrence to count from, the Rule fires now.')).toBeDefined();
 		// Both fields are nullable together, and an 'Elapsed' row with nothing
 		// beside it would read as a number that failed to load.
 		expect(screen.queryByText('Elapsed')).toBeNull();

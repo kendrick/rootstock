@@ -16,27 +16,33 @@ describe('purpose', () => {
 	 * clauses, three assertions, all of them on the words rather than on the
 	 * layout, because the layout half is what the Playwright spec measures.
 	 */
-	it('says it is one yard, and that every task names its rule and its reading', () => {
+	it('says it is one yard, and that every task names its rule and its evidence', () => {
 		const { container } = render(<Purpose />);
 
 		expect(copy(container)).toMatch(/one yard/i);
 		expect(copy(container)).toMatch(/rule/i);
-		expect(copy(container)).toMatch(/reading/i);
+		expect(copy(container)).toMatch(/evidence/i);
 	});
 
-	// The region is the one fact here that could go stale, and the yard record
-	// already holds it. A hardcoded city would keep rendering after the yard
-	// moved.
-	it('names the region off the yard rather than out of the copy', () => {
+	// A Window Task fires on a date and a first-time Cadence Task on no reading
+	// at all, so "the reading that fired it" is false for most rows.
+	it('does not claim every task fired on a reading', () => {
 		const { container } = render(<Purpose />);
 
-		expect(copy(container)).toContain(seedYard.region.name);
+		expect(copy(container)).not.toMatch(/\breading\b/i);
 	});
 
-	it('takes a region from its caller', () => {
-		const { container } = render(<Purpose region="Denton County, Texas" />);
+	// A fresh plan shows its date nowhere else: the staleness banner is silent.
+	it('names the day the plan was made for', () => {
+		const { container } = render(<Purpose planned="2026-09-25" />);
 
-		expect(copy(container)).toContain('Denton County, Texas');
+		expect(copy(container)).toContain('Planned Sep 25');
+	});
+
+	// The ticket head names the region; repeating it here cost the phone a line.
+	it('leaves the region to the ticket head', () => {
+		const { container } = render(<Purpose planned="2026-09-25" />);
+
 		expect(copy(container)).not.toContain(seedYard.region.name);
 	});
 

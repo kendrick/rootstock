@@ -51,10 +51,9 @@ ground. */
 goes with it, because the armature is the design and a page that loses it at
 night loses its identity rather than its decoration.
 
-The accent cannot come along unchanged: #1156f8 measures 3.1:1 on a near-black
-ground and fails 1.4.3 for the evidence line, which is body-sized text. It
-brightens to hold 7.4:1 while staying the same hue, so "cited" reads as one
-colour across both schemes.
+The stamp red cannot come along unchanged. #b02a1f fails on a near-black
+ground, so it lifts while keeping its hue, and a recorded row reads the same in
+both schemes.
 
 Auto only, keyed to the reader's system. There is no toggle, because the scene
 that picks the scheme is the ambient light the phone is already measuring. */
@@ -98,20 +97,17 @@ switch off. */
 }
 
 @theme inline {
-	/* Three faces, each chosen for a different reason.
+	/* Three faces, each chosen for a different reason; DESIGN.md's Type section
+	has the full account, including why the font-match winner lost.
 
-	Economica carries display and every label: it won the font-match ranking
-	against the approved comp's lead text region on measured cap height,
-	advance width and stroke density, rather than on anyone's taste.
+	Saira Condensed carries the lettering: wordmark, headings, Rule names,
+	labels, column heads. It is heavy enough to survive a badly printed form.
 
-	Assistant carries body copy, and won the same ranking for the instruction
-	region.
+	Atkinson Hyperlegible Mono carries what is written on the form. PRODUCT.md
+	records a binding need for characters that stay distinct where rule ids,
+	dates and product-label figures are read down a column.
 
-	Atkinson Hyperlegible Mono carries evidence only. PRODUCT.md records a
-	binding need for characters that stay distinct where rule ids, dates and
-	product-label figures are read down a column and compared against their
-	neighbours, and that is exactly the evidence line. It is the one place a
-	stated product constraint outranks the metric winner. */
+	Assistant carries running prose that is neither. */
 	--font-display: var(--font-display-face);
 	--font-sans: var(--font-assistant);
 	--font-mono: var(--font-atkinson-mono);
@@ -150,11 +146,9 @@ switch off. */
 	--color-accent-hover: var(--accent);
 	--color-border: var(--rule-faint);
 	--color-input: var(--rule-faint);
-	--color-ring: var(--accent);
+	--color-ring: var(--ink);
 	--color-destructive: #a3231b;
 	--color-destructive-foreground: #fff;
-	--color-evidence: var(--accent);
-	--color-evidence-foreground: var(--accent-foreground);
 
 	/* The scale stops growing well before the viewport does.
 
@@ -172,6 +166,11 @@ switch off. */
 	--text-title: clamp(1.125rem, 2.4vw, 1.5rem);
 	--text-body: clamp(0.9375rem, 1.5vw, 1.0625rem);
 	--text-label: clamp(0.6875rem, 1.1vw, 0.8125rem);
+
+	/* No `--color-evidence` may sit beside this. Tailwind reads `text-evidence`
+		from one namespace only, so a colour token of the same name takes the class
+		over. Evidence lines then lose this size, and the token's colour overrides
+		`text-accent` on the red record line. */
 	--text-evidence: clamp(0.75rem, 1.2vw, 0.875rem);
 	--text-detail: clamp(0.75rem, 1.2vw, 0.875rem);
 }
@@ -214,14 +213,16 @@ switch off. */
 	/* The browser surfaces nobody draws still carry the design. Left at their
 	defaults they belong to no design system and quietly say the page was
 	assembled rather than built. */
+	/* Ink rather than stamp red. Red marks work that was recorded, and nothing
+		a reader selects, types or focuses has been recorded. */
 	::selection {
-		background-color: var(--accent);
-		color: var(--accent-foreground);
+		background-color: var(--ink);
+		color: var(--ground);
 	}
 
 	:root {
-		accent-color: var(--accent);
-		caret-color: var(--accent);
+		accent-color: var(--ink);
+		caret-color: var(--ink);
 
 		/* Both, so the browser paints its own surfaces from whichever scheme the
 		reader is actually in: form controls, scrollbars, and the space behind a
@@ -276,8 +277,8 @@ switch off. */
 		mark lands slightly rotated and fully formed rather than fading up, because
 		a stamp is a single impact and anything smoother would read as a switch.
 
-		Nothing else on the page moves. A second animated thing would make this one
-		ordinary. */
+		Nothing else on the page moves, beyond the fill that leads into it below. A
+		second animated thing would make this one ordinary. */
 	@keyframes stamp-down {
 		from {
 			opacity: 0;
@@ -295,10 +296,35 @@ switch off. */
 		transform: rotate(-4deg);
 	}
 
-	/* The information was never in the movement. */
+	/* The stamp's lead-in, and part of the stamp's moment. The wait before a
+		sign-off is written is the only stretch where it can be cancelled, and the
+		fill shows how long is left. Linear, because it is a clock. An eased fill
+		would misstate the time remaining. The duration comes from the element,
+		since the component owns the wait. */
+	@keyframes record-fill {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+
+	.record-fill {
+		animation: record-fill linear forwards;
+	}
+
+	/* The information was never in the movement. The wait still runs and the
+		cancel still works; only the fill is gone, and the words carry it. */
 	@media (prefers-reduced-motion: reduce) {
 		.stamp-mark {
 			animation: none;
+		}
+
+		.record-fill {
+			animation: none;
+			clip-path: inset(0 100% 0 0);
 		}
 	}
 
