@@ -53,8 +53,18 @@ export const UNDO_REFUSAL = `This one stays recorded. ${NO_UNDO}`;
 
 /** Said once, when a sign-off starts its wait. */
 export function pendingAnnouncement(taskText: string): string {
-	return `Recording in ${RECORD_DELAY_MS / 1000} seconds: ${asSentence(taskText)} Press Sign off again to cancel.`;
+	return `Recording in ${RECORD_DELAY_MS / 1000} seconds: ${asSentence(taskText)} Press the box again to cancel.`;
 }
+
+/**
+ * How long after the wait runs out a tap still reads as a cancel that missed,
+ * rather than an attempt to undo old work. Long enough to cover a thumb that
+ * left for the second tap as the fill finished.
+ */
+export const LATE_GRACE_MS = 3000;
+
+/** Said, and left on the row, when a cancel lands just after the wait ran out. */
+export const TOO_LATE = `Too late to cancel. The ${RECORD_DELAY_MS / 1000} seconds had run out, so this is recorded. ${NO_UNDO}`;
 
 /** Said when a reader cancels inside the wait. */
 export const CANCELLED = 'Cancelled. Nothing was recorded.';

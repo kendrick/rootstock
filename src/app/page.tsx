@@ -46,7 +46,7 @@ export default function ThisWeekPage(): ReactElement {
 						 * renders in a slot below. The model can say what the week
 						 * holds and never what the page is.
 						 */}
-						<Purpose />
+						<Purpose planned={validated.artifact.plan.asOf} />
 					</div>
 
 					<StalenessBanner

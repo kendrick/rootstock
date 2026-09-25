@@ -3,13 +3,13 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
-import { CalendarClock, Check, CirclePause, Info, Lock } from 'lucide-react';
+import { Check, CirclePause, Info, Lock } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { CitationDisclosure } from '@/components/citation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
-import { citationLine, shortDate } from './citation-line';
-import { NOT_SAVED, RECORD_DELAY_MS, UNDO_REFUSAL } from './permanence';
+import { citationLine, dayOfMonth, shortDate } from './citation-line';
+import { LATE_GRACE_MS, NOT_SAVED, RECORD_DELAY_MS, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { mechanicalRemainder, taskText } from './task-text';
 
 /**
@@ -26,9 +26,11 @@ export interface SignOffProps {
 	/**
 	 * Fired when a reader clicks a box that is already ticked. There is nothing
 	 * to send, and that is the point: the caller owns the live region, so it is
-	 * the only thing that can say so out loud.
+	 * the only thing that can say so out loud. `late` is true when the tap came
+	 * just after the wait ran out, which is a missed cancel rather than an
+	 * attempt to undo old work, and deserves a different sentence.
 	 */
-	onUndoAttempt?: (task: Task) => void;
+	onUndoAttempt?: (task: Task, late: boolean) => void;
 	/** The wait has started. The caller announces it. */
 	onRecordStart?: (task: Task) => void;
 	/** The reader cancelled inside the wait. Nothing was written. */
@@ -96,15 +98,14 @@ function GuardNote({
 }
 
 /**
- * One Task as a `<li>` on the raised surface, with the check-off box beside
+ * One Task as a ruled `<li>` in the Task table, with the sign-off box beside
  * the task text and the evidence in a drawer under both. The caller owns the
  * `<ul>`.
  *
- * The Task carries `bg-card` and the 4.12:1 `--card-border`; the Deferred and
- * Advisory sections carry neither. Raise those two sections instead and the
- * page argues against itself, which is measurable: with the Tasks flat, #50
- * found the LCP element on This Week to be an Advisory span, the one block on
- * the page carrying no Citation.
+ * The row's top rule is what identifies it as a Task, at the 3:1 WCAG 1.4.11
+ * asks of a boundary that identifies a component. Nothing on the sheet sits on
+ * a raised surface, and the Advisory block says in words that no Rule
+ * produced it, so it can't be mistaken for cited work.
  *
  * The box fills the sign-off cell, so the hit target is the cell rather than a
  * 16px box. #50 measured that box at 27% of the 44pt minimum, for a control
@@ -149,18 +150,28 @@ export function TaskItem({
 	// Ephemeral, and deliberately not lifted. Whether this reader has tried to
 	// untick this Task is a fact about one click on one screen, and the Store
 	// has nothing to say about it.
-	const [refused, setRefused] = useState(false);
+	const [refused, setRefused] = useState<'no' | 'late' | 'old'>('no');
 	const [failed, setFailed] = useState(false);
 	const [phase, setPhase] = useState<Phase>('idle');
+	const [secondsLeft, setSecondsLeft] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const committedAtRef = useRef<number | null>(null);
+
+	function stopClock(): void {
+		if (timerRef.current !== null) {
+			clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		if (tickRef.current !== null) {
+			clearInterval(tickRef.current);
+			tickRef.current = null;
+		}
+	}
 
 	// A row that leaves mid-wait takes its timer with it. Nothing was written,
 	// so leaving the page cancels the sign-off.
-	useEffect(() => () => {
-		if (timerRef.current !== null) {
-			clearTimeout(timerRef.current);
-		}
-	}, []);
+	useEffect(() => stopClock, []);
 
 	const rule = rulesById.get(task.ruleId) ?? null;
 	const plantName = task.plantId === null
@@ -185,7 +196,8 @@ export function TaskItem({
 	const approaching = task.status === 'approaching';
 
 	function commit(): void {
-		timerRef.current = null;
+		stopClock();
+		committedAtRef.current = Date.now();
 		setPhase('saving');
 
 		// No rethrow. The line left on the row reports the failed write in a form
@@ -199,29 +211,35 @@ export function TaskItem({
 		);
 	}
 
-	function handleChange(event: ChangeEvent<HTMLInputElement>): void {
-		if (phase === 'saving') {
-			return;
-		}
+	// A tap that lands while the write is in flight, or just after it, is a
+	// cancel that missed the wait by a moment. Telling that reader "this stays
+	// recorded" as if they were trying to erase last week's work answers a
+	// question they did not ask.
+	function isLateCancel(): boolean {
+		return phase === 'saving'
+			|| (committedAtRef.current !== null && Date.now() - committedAtRef.current < LATE_GRACE_MS);
+	}
 
+	function handleChange(event: ChangeEvent<HTMLInputElement>): void {
 		// A second tap inside the wait is the cancel. Nothing has been sent, so
 		// there is nothing to take back, only a timer to stop.
 		if (phase === 'pending') {
-			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
-				timerRef.current = null;
-			}
+			stopClock();
 			setPhase('idle');
 			onRecordCancel?.(task);
 			return;
 		}
 
-		if (event.target.checked) {
-			setRefused(false);
+		if (phase === 'idle' && event.target.checked && !checked) {
+			setRefused('no');
 			setFailed(false);
 			setPhase('pending');
+			setSecondsLeft(Math.ceil(recordDelayMs / 1000));
 			onRecordStart?.(task);
 			timerRef.current = setTimeout(commit, recordDelayMs);
+			tickRef.current = setInterval(() => {
+				setSecondsLeft(left => Math.max(left - 1, 1));
+			}, 1000);
 			return;
 		}
 
@@ -229,8 +247,9 @@ export function TaskItem({
 		// one would mean deleting the record that says the work happened. The box
 		// is controlled by `checked`, so React puts it straight back, and
 		// `refused` is what keeps that snap-back from reading as a broken control.
-		setRefused(true);
-		onUndoAttempt?.(task);
+		const late = isLateCancel();
+		setRefused(late ? 'late' : 'old');
+		onUndoAttempt?.(task, late);
 	}
 
 	const body = (
@@ -276,8 +295,13 @@ export function TaskItem({
 			 * folded away, because a product whose whole claim is that nothing was
 			 * invented cannot put its proof behind a link the way the category does.
 			 */}
-			<span className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
-				{citationLine(task.citation)}
+			{/*
+			 * Ink, where the record line below is red. The evidence says why the
+			 * Rule fired, which is true before anything is done; red is kept for
+			 * work that was recorded, so on an unsigned sheet nothing is red.
+			 */}
+			<span className="font-mono text-evidence tracking-tight text-foreground uppercase print:text-black">
+				{citationLine(task.citation, rule)}
 			</span>
 
 			{/*
@@ -287,7 +311,7 @@ export function TaskItem({
 			 * and never says when.
 			 */}
 			{checked && recordedOn !== null && (
-				<span className="font-mono text-evidence tracking-tight text-foreground uppercase">
+				<span className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
 					{`Recorded ${shortDate(recordedOn)}`}
 				</span>
 			)}
@@ -295,24 +319,30 @@ export function TaskItem({
 	);
 
 	const pending = phase !== 'idle';
+	const held = task.status === 'deferred' && !checked;
 
 	return (
 		<li className="border-t border-rule first:border-t-0">
 			{approaching
 				? (
 						<div className="grid min-h-11 grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] items-stretch text-body text-foreground">
-							{/*
-							 * Holds the column the check-off box would have taken, so an
-							 * approaching Task lines up with the work above it. The missing box,
-							 * this glyph, and the word beside the task text are three cues for
-							 * one distinction, because colour alone fails a reader who cannot
-							 * see it. source-badge.tsx already made that case.
-							 */}
-							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3">
-								<CalendarClock aria-hidden="true" className="size-5 shrink-0 text-muted" />
+							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold text-muted">
+								{ordinal === undefined ? '' : String(ordinal).padStart(2, '0')}
 							</span>
 							<span className="px-3 py-3">{body}</span>
-							<span aria-hidden="true" className="border-l-2 border-rule" />
+							{/*
+							 * The sign-off column says why there is no box, in words rather
+							 * than a blank or a glyph: colour and shape alone fail a reader who
+							 * cannot see them, and a blank cell reads as a box that failed to
+							 * render. The forecast day is when the threshold is expected to
+							 * be crossed, which is when this row turns into work.
+							 */}
+							<span className="flex flex-col items-center justify-center gap-1 border-l-2 border-rule p-2 text-center font-display text-label font-bold tracking-widest text-muted uppercase">
+								<span>Not yet</span>
+								{task.citation.kind === 'threshold-projection' && (
+									<span className="font-mono text-evidence tracking-tight">{`~${dayOfMonth(task.citation.projectedDate)}`}</span>
+								)}
+							</span>
 						</div>
 					)
 				: (
@@ -337,17 +367,27 @@ export function TaskItem({
 							 * The input fills the box rather than sitting inside it, so the whole
 							 * cell is the target and the visible border is the control's own.
 							 */}
-							<span className="relative flex items-center justify-center border-l-2 border-rule p-2">
-								<span id={verbId} className="sr-only">Sign off</span>
+							<span className="relative flex flex-col items-center justify-center gap-1.5 border-l-2 border-rule p-2">
+								<span id={verbId} className="sr-only">{held ? 'Held back. Sign off anyway' : 'Sign off'}</span>
 								<input
 									type="checkbox"
 									checked={checked || pending}
 									disabled={signOffDisabled && !checked}
 									onChange={handleChange}
 									aria-labelledby={`${verbId} ${textId}`}
-									aria-describedby={describedBy}
+									aria-describedby={checked ? undefined : describedBy}
 									className={cn('peer absolute inset-0 size-full cursor-pointer appearance-none disabled:cursor-not-allowed', FOCUS_RING)}
 								/>
+								{/*
+								 * Ink, because a Guard holding work back is advice and stamp red is
+								 * kept for recorded work. The box under it still works, because
+								 * ADR 0002 makes a Deferral advice rather than a lock.
+								 */}
+								{held && (
+									<span aria-hidden="true" className="pointer-events-none border-2 border-foreground px-1.5 py-0.5 font-display text-label font-bold tracking-widest text-foreground uppercase peer-checked:hidden">
+										Held
+									</span>
+								)}
 								<span aria-hidden="true" className="pointer-events-none font-display text-label tracking-widest text-muted uppercase peer-checked:hidden peer-disabled:line-through">
 									Sign off
 								</span>
@@ -366,9 +406,15 @@ export function TaskItem({
 												Recording
 											</span>
 										</span>
+										{/*
+										 * The seconds as a number, so the time left survives reduced
+										 * motion, where the fill is switched off. "Cancel" rather than
+										 * "tap again": the box is the control whether a thumb or a
+										 * keyboard reaches it.
+										 */}
 										{phase === 'pending' && (
-											<span className="font-display text-label leading-tight tracking-wide text-muted uppercase">
-												Tap again to cancel
+											<span className="font-display text-title leading-none font-bold tracking-wide text-foreground uppercase tabular-nums">
+												{`Cancel · ${secondsLeft}`}
 											</span>
 										)}
 									</span>
@@ -389,10 +435,10 @@ export function TaskItem({
 				</p>
 			)}
 
-			{refused && (
+			{refused !== 'no' && (
 				<p className="flex items-start gap-2 px-3 pb-2.5 text-detail text-muted">
 					<Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-					<span>{UNDO_REFUSAL}</span>
+					<span>{refused === 'late' ? TOO_LATE : UNDO_REFUSAL}</span>
 				</p>
 			)}
 

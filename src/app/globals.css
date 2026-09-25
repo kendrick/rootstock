@@ -51,10 +51,9 @@ ground. */
 goes with it, because the armature is the design and a page that loses it at
 night loses its identity rather than its decoration.
 
-The accent cannot come along unchanged: #1156f8 measures 3.1:1 on a near-black
-ground and fails 1.4.3 for the evidence line, which is body-sized text. It
-brightens to hold 7.4:1 while staying the same hue, so "cited" reads as one
-colour across both schemes.
+The stamp red cannot come along unchanged. #b02a1f fails on a near-black
+ground, so it lifts while keeping its hue, and a recorded row reads the same in
+both schemes.
 
 Auto only, keyed to the reader's system. There is no toggle, because the scene
 that picks the scheme is the ambient light the phone is already measuring. */
@@ -98,20 +97,17 @@ switch off. */
 }
 
 @theme inline {
-	/* Three faces, each chosen for a different reason.
+	/* Three faces, each chosen for a different reason; DESIGN.md's Type section
+	has the full account, including why the font-match winner lost.
 
-	Economica carries display and every label: it won the font-match ranking
-	against the approved comp's lead text region on measured cap height,
-	advance width and stroke density, rather than on anyone's taste.
+	Saira Condensed carries the lettering: wordmark, headings, Rule names,
+	labels, column heads. It is heavy enough to survive a badly printed form.
 
-	Assistant carries body copy, and won the same ranking for the instruction
-	region.
+	Atkinson Hyperlegible Mono carries what is written on the form. PRODUCT.md
+	records a binding need for characters that stay distinct where rule ids,
+	dates and product-label figures are read down a column.
 
-	Atkinson Hyperlegible Mono carries evidence only. PRODUCT.md records a
-	binding need for characters that stay distinct where rule ids, dates and
-	product-label figures are read down a column and compared against their
-	neighbours, and that is exactly the evidence line. It is the one place a
-	stated product constraint outranks the metric winner. */
+	Assistant carries running prose that is neither. */
 	--font-display: var(--font-display-face);
 	--font-sans: var(--font-assistant);
 	--font-mono: var(--font-atkinson-mono);
@@ -150,11 +146,11 @@ switch off. */
 	--color-accent-hover: var(--accent);
 	--color-border: var(--rule-faint);
 	--color-input: var(--rule-faint);
-	--color-ring: var(--accent);
+	--color-ring: var(--ink);
 	--color-destructive: #a3231b;
 	--color-destructive-foreground: #fff;
-	--color-evidence: var(--accent);
-	--color-evidence-foreground: var(--accent-foreground);
+	--color-evidence: var(--ink);
+	--color-evidence-foreground: var(--ground);
 
 	/* The scale stops growing well before the viewport does.
 
@@ -214,14 +210,16 @@ switch off. */
 	/* The browser surfaces nobody draws still carry the design. Left at their
 	defaults they belong to no design system and quietly say the page was
 	assembled rather than built. */
+	/* Ink rather than stamp red. Red marks work that was recorded, and nothing
+		a reader selects, types or focuses has been recorded. */
 	::selection {
-		background-color: var(--accent);
-		color: var(--accent-foreground);
+		background-color: var(--ink);
+		color: var(--ground);
 	}
 
 	:root {
-		accent-color: var(--accent);
-		caret-color: var(--accent);
+		accent-color: var(--ink);
+		caret-color: var(--ink);
 
 		/* Both, so the browser paints its own surfaces from whichever scheme the
 		reader is actually in: form controls, scrollbars, and the space behind a

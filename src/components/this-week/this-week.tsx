@@ -15,7 +15,7 @@ import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
-import { CANCELLED, NOT_SAVED, pendingAnnouncement, permanenceNote, recordedAnnouncement, STORE_UNAVAILABLE, UNDO_REFUSAL } from './permanence';
+import { CANCELLED, NOT_SAVED, pendingAnnouncement, permanenceNote, recordedAnnouncement, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { announceRecorded, recordedDates } from './recorded';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
@@ -256,8 +256,8 @@ export function ThisWeek({
 		announceRecorded();
 	}
 
-	function handleUndoAttempt(): void {
-		setAnnouncement(UNDO_REFUSAL);
+	function handleUndoAttempt(_task: Task, late: boolean): void {
+		setAnnouncement(late ? TOO_LATE : UNDO_REFUSAL);
 	}
 
 	const signOff = {
@@ -290,6 +290,15 @@ export function ThisWeek({
 			/>
 		);
 	}
+
+	/*
+	 * The week closes when every Task a reader can sign off is recorded.
+	 * Approaching work is left out of that count, because it cannot be signed
+	 * off at all and would otherwise keep a finished week open forever. The
+	 * closed mark is ink, because the rows above already carry the stamps.
+	 */
+	const signable = tasks.filter(task => task.status !== 'approaching').length;
+	const closed = signable > 0 && tasks.every(task => task.status === 'approaching' || completedIds.has(task.id));
 
 	// This sentence reports the Plan and nothing else. Whether the runner that
 	// built it is still working is a second question, and `StalenessBanner` above
@@ -397,8 +406,14 @@ export function ThisWeek({
 			 */}
 			<div className="pt-2 print:hidden">
 				<div aria-hidden="true" className="perforation" />
-				<p className="mt-3 flex flex-wrap justify-between gap-x-4 font-display text-label font-bold tracking-widest uppercase">
-					<span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>
+				<p className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-display text-label font-bold tracking-widest uppercase">
+					{closed
+						? (
+								<span className="border-2 border-foreground px-1.5 py-0.5">
+									{`Closed — ${signable} of ${signable} recorded`}
+								</span>
+							)
+						: <span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>}
 					<span className="text-muted">{seedYard.region.name}</span>
 				</p>
 			</div>

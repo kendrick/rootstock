@@ -112,7 +112,9 @@ export function RailApparatus(): ReactElement | null {
 		>
 			<Nav />
 
-			<div className="w-full lg:w-auto">
+			{/* Off below sm. The band repeats the counts beside it, and on a phone
+			    its row is space the first Task needs more. */}
+			<div className="hidden w-full sm:block lg:w-auto">
 				<TallyBand total={counts.total} recorded={counts.recorded} />
 			</div>
 

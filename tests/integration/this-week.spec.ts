@@ -74,9 +74,9 @@ test.describe('the brief sentence, at 1440x900', () => {
 	test('states its purpose above the fold, ahead of the first task', async ({ page }) => {
 		await page.goto('');
 
-		const purpose = page.getByText(/One yard in /);
+		const purpose = page.getByText(/ for one yard in /);
 		await expect(purpose).toContainText(/rule/i);
-		await expect(purpose).toContainText(/reading/i);
+		await expect(purpose).toContainText(/evidence/i);
 
 		// Above the fold is a measurement, not a hope. The critique found the
 		// whole route fitted inside 900px, so a purpose statement that scrolled

@@ -25,21 +25,18 @@ describe('purpose', () => {
 	});
 
 	// A Window Task fires on a date and a first-time Cadence Task on no reading
-	// at all, so "the reading that fired it" is false for most rows. The copy
-	// names all three kinds of evidence.
+	// at all, so "the reading that fired it" is false for most rows.
 	it('does not claim every task fired on a reading', () => {
 		const { container } = render(<Purpose />);
 
-		expect(copy(container)).toMatch(/window/i);
-		expect(copy(container)).toMatch(/last time the work was recorded/i);
+		expect(copy(container)).not.toMatch(/\breading\b/i);
 	});
 
-	// The sentence points at a control by name, so the name has to be the one
-	// the control carries.
-	it('names the disclosure by its own label', () => {
-		const { container } = render(<Purpose />);
+	// A fresh plan shows its date nowhere else: the staleness banner is silent.
+	it('names the day the plan was made for', () => {
+		const { container } = render(<Purpose planned="2026-09-25" />);
 
-		expect(copy(container)).toContain('Open Rule and evidence');
+		expect(copy(container)).toContain('Planned Sep 25');
 	});
 
 	// The region is the one fact here that could go stale, and the yard record

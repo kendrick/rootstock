@@ -54,15 +54,16 @@ export function Nav(): ReactElement {
 								// the string "false", which reads as present.
 								aria-current={isCurrent ? 'page' : undefined}
 								className={cn(
-									// The active route is marked by a rule beneath it rather than
-									// by colour alone, so the distinction survives both a
-									// greyscale print and a reader who cannot separate the accent
-									// from the ink (1.4.1).
-									'inline-block pb-1 font-display text-label font-bold tracking-widest uppercase',
+									// The active route is marked by a rule beneath it and full ink
+									// against the others' lighter printing, never by colour alone
+									// (1.4.1). Stamp red marks only recorded work, so the nav stays ink.
+									// 44px tall, the page's own target size; the rule still sits
+									// under the word.
+									'inline-flex min-h-11 items-end pb-1 font-display text-label font-bold tracking-widest uppercase',
 									FOCUS_RING,
 									isCurrent
-										? 'border-b-2 border-accent text-accent'
-										: 'border-b-2 border-transparent text-foreground hover:border-rule-faint',
+										? 'border-b-2 border-foreground text-foreground'
+										: 'border-b-2 border-transparent text-muted hover:border-rule-faint hover:text-foreground',
 								)}
 							>
 								{label}

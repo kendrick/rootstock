@@ -2,6 +2,7 @@
 
 import type { ReactElement } from 'react';
 import type { Task } from '@/planner/task';
+import type { Rule } from '@/rules/rule';
 import Link from 'next/link';
 import { safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
@@ -21,7 +22,7 @@ import { seedPlants, seedRules, seedYard } from '@/seed';
  * made with the real thing or not at all, and the specimen below is whatever the
  * Planner actually authored this morning.
  */
-function specimen(): { task: Task; ruleName: string; source: string; instruction: string | null; narrated: string | null; mechanical: string } | null {
+function specimen(): { task: Task; rule: Rule | null; ruleName: string; source: string; instruction: string | null; narrated: string | null; mechanical: string } | null {
 	const parsed = safeParseArtifact(loadArtifact().artifact);
 
 	if (!parsed.ok) {
@@ -42,7 +43,7 @@ function specimen(): { task: Task; ruleName: string; source: string; instruction
 	// The same rule the row on This Week follows: with the model on this is its
 	// sentence, and with it off the row has already said the Rule's name above, so
 	// only the clause the Planner added survives. Printing the whole mechanical
-	// title here would say the job's name twice on the page whose argument is that
+	// title here would say the Rule's name twice on the page whose argument is that
 	// every word of it was derived.
 	const narrated = taskText(task.title, parsed.value.narration?.tasks.find(entry => entry.taskId === task.id)?.text ?? null);
 	const instruction = narrated === task.title
@@ -51,6 +52,7 @@ function specimen(): { task: Task; ruleName: string; source: string; instruction
 
 	return {
 		task,
+		rule: rule ?? null,
 		ruleName,
 		source: rule === undefined ? 'the yard\'s own rule set' : rule.source.label,
 		instruction,
@@ -124,13 +126,13 @@ export default function AboutPage(): ReactElement {
 							<span className="flex flex-col gap-1 px-3 py-3">
 								<span className="font-display text-title leading-none font-bold tracking-wide uppercase">
 									{found.ruleName}
-									<sup className="ml-1 align-super font-mono text-label text-accent">1</sup>
+									<sup className="ml-1 align-super font-mono text-label text-muted">1</sup>
 								</span>
 								{found.instruction !== null && (
 									<span className="font-mono text-detail leading-relaxed">{found.instruction}</span>
 								)}
-								<span className="font-mono text-evidence tracking-tight text-accent uppercase">
-									{citationLine(found.task.citation)}
+								<span className="font-mono text-evidence tracking-tight text-foreground uppercase">
+									{citationLine(found.task.citation, found.rule)}
 									<sup className="ml-1 align-super">2</sup>
 								</span>
 							</span>
@@ -138,7 +140,7 @@ export default function AboutPage(): ReactElement {
 							<span className="relative flex items-center justify-center border-l-2 border-rule p-2">
 								<span className="font-display text-label tracking-widest text-muted uppercase">
 									Sign off
-									<sup className="ml-1 align-super text-accent">3</sup>
+									<sup className="ml-1 align-super text-muted">3</sup>
 								</span>
 							</span>
 						</div>
@@ -151,10 +153,10 @@ export default function AboutPage(): ReactElement {
 							{' in full.'}
 						</Callout>
 						<Callout number={2}>
-							The dated evidence that fired it. A window the date fell inside, a run of readings that held, or an interval that elapsed. It is on the line, always, never behind a link.
+							The evidence that fired it: the window this date fell inside and the day it closes, a run of readings that held, or an interval that elapsed. It is on the line, always, never behind a link.
 						</Callout>
 						<Callout number={3}>
-							Signed by hand when the work is done. The record is append-only: there is no undo, and the page says so rather than pretending otherwise.
+							Signed off in the box when the work is done. A second tap within four seconds cancels. After that the record is append-only, and the page says so rather than pretending otherwise.
 						</Callout>
 					</ol>
 				</section>
@@ -184,7 +186,7 @@ export default function AboutPage(): ReactElement {
 					</div>
 
 					<div className="p-4">
-						<h3 className="font-display text-label font-bold tracking-widest text-accent uppercase">May not</h3>
+						<h3 className="font-display text-label font-bold tracking-widest text-foreground uppercase">May not</h3>
 						<ul className="mt-2 space-y-1 font-mono text-detail leading-relaxed text-foreground">
 							<li>Add a task</li>
 							<li>Remove one</li>

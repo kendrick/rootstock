@@ -224,7 +224,7 @@ describe('deferredSection', () => {
 
 		fireEvent.click(screen.getByRole('checkbox'));
 
-		expect(onUndoAttempt).toHaveBeenCalledWith(deferredTask);
+		expect(onUndoAttempt).toHaveBeenCalledWith(deferredTask, false);
 	});
 
 	it('checks the box when completedIds names the Task', () => {

@@ -21,7 +21,7 @@ The genre was chosen because its central gesture is already the product's. A tic
 
 The use scene picked the ground and the category had no say in it. This page is read outdoors in full Texas sun on a phone held one-handed, where a dark shell loses to reflected skylight. Dark mode follows the reader's system and offers no toggle, because the ambient light the phone already measures is what decides.
 
-Three things earn the accent and nothing else does: the active nav rule, the evidence line, and a stamp. Colour never decorates here.
+Stamp red marks work that was recorded, and nothing else takes it: the stamp, the fill that leads into it, the line under a signed-off Task giving the day it was recorded, and the filled tally cells. The evidence line, the active nav, focus rings, selection and every band are ink. On a sheet where nothing is signed off yet, nothing is red, so the first red a reader sees is their own sign-off. Colour never decorates here.
 
 ## Type
 
@@ -61,9 +61,11 @@ Wordmark in one cell, ticket number and yard stacked beside it. The number is `N
 
 ### The Task Table
 
-`TASK | TARGET | SIGN OFF`, with a bordered header row and vertical rules running its full height. The shop form says JOB; this one says TASK, because CONTEXT.md lists job under Task's _Avoid_ and the column head is the one word every row sits under. Each Task is one ruled row: its number set large in the first cell, the Rule's name, target, instruction and evidence in the second, the sign-off box in the third. Only the sign-off cell records; the text beside it is for reading. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
+`NO. | TASK | SIGN OFF`, with a bordered header row and vertical rules running its full height, and each head over the column it names. The shop form says JOB; this one says TASK, because CONTEXT.md lists job under Task's _Avoid_. Ready, approaching and held work all sit in this table: an approaching row says NOT YET and the forecast day where the box would be, and a held row keeps its box under an ink HELD mark, because ADR 0002 makes a Deferral advice rather than a lock. Each Task is one ruled row: its number set large in the first cell, the Rule's name, target, instruction and evidence in the second, the sign-off box in the third. Only the sign-off cell records; the text beside it is for reading. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
 
 Row order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, the absence of evidence, while the work itself sat third.
+
+The stub at the foot says how much of the week is open. Once every Task that can be signed off is recorded it closes, CLOSED — 3 OF 3 RECORDED, in ink. Approaching work is left out of that count, because it cannot be signed off and would keep a finished week open forever.
 
 ### The Plate and the Parts List
 
@@ -77,7 +79,7 @@ Callouts are `aria-hidden` and outside the tab order, because the parts list is 
 
 ### The Sign-Off Box
 
-The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own. The cell is the only target, because a label around the row would let a thumb resting on the instruction write a permanent record.
+The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned, it prompts. During the wait it counts down, CANCEL · 3, 2, 1, so the time left survives reduced motion. Signed, it takes a stamp. A tap that lands just after the wait ran out gets its own sentence saying it came too late, apart from the refusal an older record gets. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own. The cell is the only target, because a label around the row would let a thumb resting on the instruction write a permanent record.
 
 ### Also Observed
 
@@ -95,7 +97,7 @@ Nothing here was written for the page. `NARRATOR_BRIEF` lives in `src/generation
 
 ### The New Here Band
 
-One band above the plan, bordered in the stamp red. It says what the page guarantees rather than what the product is, since the guarantee is the part a stranger cannot infer by looking, and it points at `/about`. The daily reader owes a banner nothing, so a dismissal is permanent. The browser that saw it keeps that answer, which is the right behaviour for a household where the card gets opened on somebody else's phone.
+One band above the plan, bordered in ink. It explains the evidence line and what the model may not do rather than what the product is, since the guarantee is the part a stranger cannot infer by looking, and it points at `/about`. The daily reader owes a banner nothing, so a dismissal is permanent. The browser that saw it keeps that answer, which is the right behaviour for a household where the card gets opened on somebody else's phone.
 
 ### NOT THIS WEEK
 

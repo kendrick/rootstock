@@ -229,9 +229,8 @@ export interface CitationDisclosureProps {
  * control, and leaves the evidence itself advertised by a 16px chevron: #50
  * counted three visible tasks against zero visible citations on that shape.
  *
- * Amber is the one hue in the product and its job is to mark a cited line, so
- * the disclosure label is the affordance it exists for, and it takes no second
- * meaning here.
+ * The label is ink, like the evidence line it expands. Stamp red is kept for
+ * recorded work, and a disclosure a reader has not opened has recorded nothing.
  *
  * `defaultOpen` writes the attribute once and then leaves the element alone,
  * which is what keeps a reader's own toggle from being reverted on the next
@@ -256,7 +255,8 @@ export function CitationDisclosure({
 		<details open={defaultOpen} className="group border-t border-border">
 			<summary
 				className={cn(
-					'flex list-none items-center gap-2 px-3 py-2 text-detail',
+					// 44px tall, the target the rest of the row holds itself to.
+					'flex min-h-11 list-none items-center gap-2 px-3 py-2 text-detail',
 					'cursor-pointer [&::-webkit-details-marker]:hidden',
 					FOCUS_RING,
 				)}

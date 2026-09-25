@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { taskId } from '@/planner/task';
 import { combinedNarratedArtifact, plantsById, rulesById, rulesByIdMissingDeepWaterFig } from './fixtures';
-import { NOT_SAVED, RECORD_DELAY_MS, UNDO_REFUSAL } from './permanence';
+import { NOT_SAVED, RECORD_DELAY_MS, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { TaskItem } from './task-item';
 
 /**
@@ -176,7 +176,7 @@ describe('taskItem', () => {
 			);
 
 			fireEvent.click(screen.getByRole('checkbox'));
-			expect(screen.getByText('Tap again to cancel')).toBeDefined();
+			expect(screen.getByText(`Cancel · ${RECORD_DELAY_MS / 1000}`)).toBeDefined();
 			fireEvent.click(screen.getByRole('checkbox'));
 			act(() => {
 				vi.advanceTimersByTime(RECORD_DELAY_MS * 2);
@@ -185,6 +185,46 @@ describe('taskItem', () => {
 			expect(onComplete).not.toHaveBeenCalled();
 			expect(onRecordCancel).toHaveBeenCalledWith(firedTask);
 			expect(screen.getByRole('checkbox')).toHaveProperty('checked', false);
+		});
+
+		// The number carries the time left where the fill cannot: under reduced
+		// motion the fill is off, and the count still runs.
+		it('counts the wait down in whole seconds', () => {
+			vi.useFakeTimers();
+			renderItem(<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+			expect(screen.getByText(`Cancel · ${RECORD_DELAY_MS / 1000}`)).toBeDefined();
+
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+
+			expect(screen.getByText(`Cancel · ${RECORD_DELAY_MS / 1000 - 1}`)).toBeDefined();
+		});
+
+		it('calls a tap during the write a late cancel, not an undo attempt', () => {
+			vi.useFakeTimers();
+			const onUndoAttempt = vi.fn();
+			renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					onComplete={() => new Promise<void>(() => {})}
+					onUndoAttempt={onUndoAttempt}
+				/>,
+			);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+			act(() => {
+				vi.advanceTimersByTime(RECORD_DELAY_MS);
+			});
+			fireEvent.click(screen.getByRole('checkbox'));
+
+			expect(onUndoAttempt).toHaveBeenCalledWith(firedTask, true);
+			expect(screen.getByText(TOO_LATE)).toBeDefined();
+			expect(screen.queryByText(UNDO_REFUSAL)).toBeNull();
 		});
 
 		// Leaving the page mid-wait is a cancel. A record written after the row
@@ -401,7 +441,7 @@ describe('taskItem', () => {
 			fireEvent.click(screen.getByRole('checkbox'));
 
 			expect(onUndoAttempt).toHaveBeenCalledTimes(1);
-			expect(onUndoAttempt).toHaveBeenCalledWith(firedTask);
+			expect(onUndoAttempt).toHaveBeenCalledWith(firedTask, false);
 		});
 
 		it('leaves the refusal alone on a tick that has something to record', () => {

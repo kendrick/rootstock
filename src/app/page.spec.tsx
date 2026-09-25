@@ -117,7 +117,7 @@ describe('this week page', () => {
 
 		const purpose = screen.getByText(/one yard/i);
 		expect(purpose.textContent).toMatch(/rule/i);
-		expect(purpose.textContent).toMatch(/reading/i);
+		expect(purpose.textContent).toMatch(/evidence/i);
 
 		const firstTask = document.querySelector('li');
 		expect(firstTask).not.toBeNull();
@@ -133,7 +133,7 @@ describe('this week page', () => {
 
 		const markup = renderToStaticMarkup(<ThisWeekPage />);
 
-		expect(markup).toMatch(/One yard in /);
+		expect(markup).toMatch(/ for one yard in /);
 		expect(markup).toContain('Southwest Fort Worth, Texas');
 	});
 

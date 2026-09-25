@@ -40,7 +40,7 @@ export function Advisories({ advisories }: AdvisoriesProps): ReactElement | null
 			<ul className="space-y-2">
 				{advisories.map(advisory => (
 					<li key={advisory.text} className="flex items-start gap-2 text-body text-foreground">
-						<Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-accent" />
+						<Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-muted" />
 						<span className="max-w-prose">{advisory.text}</span>
 					</li>
 				))}

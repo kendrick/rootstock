@@ -63,7 +63,7 @@ Everything from `sections` onward is therefore built as ordinary engineering and
   was a candidate for already have homes and must not be duplicated here: the whole rule set belongs to the /rules route,
   and full citation detail belongs to the existing Citation disclosure. NOT THIS WEEK stays a quiet grey list and does not expand.
 - Body and mono faces are not yet chosen. Atkinson Hyperlegible Next and its mono companion are the leading candidates on the binding a11y requirement, not inherited from the incumbent by default.
-- Deferred, Approaching and Completed Task states have no composition yet; today's Artifact contains none. They must be designed before this surface is called done.
+- RESOLVED (2026-09-25): Deferred, Approaching and Completed states share the ruled `NO. | TASK | SIGN OFF` table. A held row keeps its box under an ink HELD mark (ADR 0002), an approaching row says NOT YET and the forecast day, and the stub closes as CLOSED — N OF N RECORDED once every signable Task is recorded. DESIGN.md's Task Table section carries the detail.
 
 
 ## Revision, after the Visible Grid was built and rejected

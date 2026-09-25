@@ -6,6 +6,8 @@ import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
 import { useId } from 'react';
 import { permanenceNote } from './permanence';
+import { Section } from './section';
+import { TaskTable } from './task-group';
 import { TaskItem } from './task-item';
 
 export interface DeferredSectionProps extends SignOffProps {
@@ -83,37 +85,34 @@ export function DeferredSection({
 	// This list carries its own permanence note, so its rows point at it rather
 	// than at the one over the ready work, which may not be on the page.
 	const noteId = useId();
+	const headingId = useId();
 
 	return (
-		<section aria-labelledby="deferred-heading" className="space-y-3">
-			<div className="space-y-1">
-				<h2 id="deferred-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
-					Held back
-				</h2>
-				<p className="max-w-prose text-body text-muted">
-					{tasks.length > 0 ? SOMETHING_HELD : nothingHeld(rulesById)}
-				</p>
+		<Section id={headingId} label="Held back">
+			<p className="max-w-prose text-body text-muted">
+				{tasks.length > 0 ? SOMETHING_HELD : nothingHeld(rulesById)}
+			</p>
 
-				{/*
-				 * ADR 0002 makes a Deferral advice rather than a lock, so a held
-				 * Task keeps its box: somebody who watered the fig anyway has a
-				 * right to record it. That box writes the same permanent Occurrence
-				 * every other box writes, so the warning `TaskGroup` carries over
-				 * the ready work has to reach this list as well. Without it a
-				 * reader could only be told by the live region, which says nothing
-				 * to anyone looking at the screen.
-				 */}
-				{tasks.length > 0 && (
-					<p id={noteId} className="max-w-prose text-body text-muted">{note}</p>
-				)}
-			</div>
+			{/*
+			 * ADR 0002 makes a Deferral advice rather than a lock, so a held
+			 * Task keeps its box: somebody who watered the fig anyway has a
+			 * right to record it. That box writes the same permanent Occurrence
+			 * every other box writes, so the warning `TaskGroup` carries over
+			 * the ready work has to reach this list as well. Without it a
+			 * reader could only be told by the live region, which says nothing
+			 * to anyone looking at the screen.
+			 */}
+			{tasks.length > 0 && (
+				<p id={noteId} className="max-w-prose text-detail text-muted">{note}</p>
+			)}
 
 			{tasks.length > 0 && (
-				<ul className="space-y-3">
-					{tasks.map(task => (
+				<TaskTable>
+					{tasks.map((task, index) => (
 						<TaskItem
 							key={task.id}
 							task={task}
+							ordinal={index + 1}
 							rulesById={rulesById}
 							plantsById={plantsById}
 							narrationText={narrationById?.get(task.id) ?? null}
@@ -125,8 +124,8 @@ export function DeferredSection({
 							describedBy={noteId}
 						/>
 					))}
-				</ul>
+				</TaskTable>
 			)}
-		</section>
+		</Section>
 	);
 }

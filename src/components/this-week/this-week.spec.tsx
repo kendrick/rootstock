@@ -11,7 +11,7 @@ import { occurrenceSchema } from '@/planner/occurrence';
 import { seedPlants, seedRules, seedTagPolicy, seedYard } from '@/seed';
 import { createFakeStore } from '@/store/fake-store';
 import { combinedNarratedArtifact, combinedUnnarratedArtifact, okStatus, plants, rules } from './fixtures';
-import { CANCELLED, NOT_SAVED, permanenceNote, STORE_UNAVAILABLE, UNDO_REFUSAL } from './permanence';
+import { CANCELLED, NOT_SAVED, permanenceNote, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { ThisWeek } from './this-week';
 
 /**
@@ -465,9 +465,9 @@ describe('thisWeek', () => {
 		expect(items.length).toBeGreaterThan(0);
 
 		// Every Task carries a rendered Citation line, not a promise of one. The
-		// window date is the evidence the seeded fired Tasks were cited on.
+		// seeded fired Tasks were cited on a window, so their line names it.
 		for (const item of items) {
-			expect(item.textContent).toMatch(/Window \/|Observed run \/|Forecast \/|occurrence|days since/i);
+			expect(item.textContent).toMatch(/Window closes|Window \/|Observed run \/|Forecast \/|earlier record|days since/i);
 		}
 	});
 
@@ -537,17 +537,37 @@ describe('thisWeek', () => {
 		expect(liveRegion(container)).toMatch(/cannot be removed/i);
 	});
 
-	it('announces the refusal when a reader tries to untick', async () => {
+	// A tap just after the wait ran out is a cancel that missed, not an attempt
+	// to erase old work, and it is told so.
+	it('tells a reader their cancel came too late when they untick right after the wait', async () => {
 		const store = fakeStore();
 		const { container } = await mount(fullPage(store));
 
 		await signOff(readyBox());
 		await signOff(readyBox());
 
-		expect(liveRegion(container)).toBe(UNDO_REFUSAL);
+		expect(liveRegion(container)).toBe(TOO_LATE);
 		// The non-goal, held: unticking says something and writes nothing.
 		expect(await store.list('occurrences')).toHaveLength(1);
 		expect(readyBox().checked).toBe(true);
+	});
+
+	it('announces the refusal when a reader tries to untick work recorded before this visit', async () => {
+		const fired = combinedNarratedArtifact.plan.tasks.find(task => task.status === 'fired');
+		const store = fakeStore([{
+			id: 'recorded-earlier',
+			ruleId: fired?.ruleId ?? '',
+			plantId: fired?.plantId ?? null,
+			completedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+			recordedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+			source: 'browser',
+		}]);
+		const { container } = await mount(fullPage(store));
+
+		await signOff(readyBox());
+
+		expect(liveRegion(container)).toBe(UNDO_REFUSAL);
+		expect(await store.list('occurrences')).toHaveLength(1);
 	});
 
 	// The other half of the surface inversion #62 records. The Tasks are the
@@ -661,5 +681,50 @@ describe('thisWeek', () => {
 		expect(liveRegion(container)).toBe(NOT_SAVED);
 		expect(within(screen.getByRole('region', { name: 'Ready now' })).getByText(NOT_SAVED)).toBeDefined();
 		expect(readyBox().checked).toBe(false);
+	});
+	describe('the states a week can be in', () => {
+		// Held work sits in the same ruled table as ready work, numbered, with the
+		// box still working (ADR 0002) under an ink HELD mark.
+		it('puts held work in the numbered table with a working box marked HELD', async () => {
+			await mount(fullPage(fakeStore()));
+
+			const held = screen.getByRole('region', { name: 'Held back' });
+			expect(within(held).getByText('Held')).toBeDefined();
+			expect(within(held).getByText('01')).toBeDefined();
+			const box = within(held).getByRole('checkbox', { name: /^Held back\. Sign off anyway/u });
+			expect((box as HTMLInputElement).disabled).toBe(false);
+		});
+
+		// A blank cell reads as a box that failed to render.
+		it('says NOT YET, with the forecast day, where an approaching Task has no box', async () => {
+			await mount(fullPage(fakeStore()));
+
+			const approaching = screen.getByRole('region', { name: 'Approaching' });
+			expect(within(approaching).queryByRole('checkbox')).toBeNull();
+			expect(within(approaching).getByText('Not yet')).toBeDefined();
+			expect(within(approaching).getByText(/^~[A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
+		});
+
+		it('closes the stub once every Task that can be signed off is recorded', async () => {
+			const signable = combinedNarratedArtifact.plan.tasks.filter(task => task.status !== 'approaching');
+			const history: Occurrence[] = signable.map((task, index) => ({
+				id: `recorded-${index}`,
+				ruleId: task.ruleId,
+				plantId: task.plantId,
+				completedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+				recordedAt: `${combinedNarratedArtifact.plan.asOf}T12:00:00Z`,
+				source: 'browser',
+			}));
+			await mount(fullPage(fakeStore(history)));
+
+			expect(screen.getByText(`Closed — ${signable.length} of ${signable.length} recorded`)).toBeDefined();
+		});
+
+		it('keeps the stub open while any signable Task is unrecorded', async () => {
+			await mount(fullPage(fakeStore()));
+
+			expect(screen.queryByText(/^Closed —/u)).toBeNull();
+			expect(screen.getByText(/^Stub — \d+ of \d+ open$/u)).toBeDefined();
+		});
 	});
 });
