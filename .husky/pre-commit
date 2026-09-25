@@ -1,1 +1,20 @@
+# Start eslint_d before lint-staged needs it. Its client gives a new daemon a
+# hard-coded 2s to report in, and a cold start here takes about that long, so
+# the first commit after the daemon idles out can fail on a daemon that is
+# still booting. lint-staged also runs two eslint_d tasks at once when a
+# commit spans code and markdown, and each would launch its own daemon.
+# One start, then up to 10s of polling, settles both. A warm daemon costs one
+# status call.
+eslint_d=./node_modules/.bin/eslint_d
+running() { "$eslint_d" status | grep -q '^eslint_d: Running'; }
+
+if ! running; then
+	"$eslint_d" start >/dev/null 2>&1 || true
+	tries=0
+	until running || [ "$tries" -ge 50 ]; do
+		tries=$((tries + 1))
+		sleep 0.2
+	done
+fi
+
 pnpm exec lint-staged
