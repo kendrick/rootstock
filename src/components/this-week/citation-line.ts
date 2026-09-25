@@ -17,7 +17,7 @@ import { MONTHS } from '@/planner/dates';
  * names the interval or says plainly that there is nothing to measure from.
  */
 
-function shortDate(isoDate: string): string {
+export function shortDate(isoDate: string): string {
 	const [year, month, day] = isoDate.split('-');
 	const name = month === undefined ? undefined : MONTHS[Number(month) - 1];
 
@@ -44,9 +44,11 @@ export function citationLine(citation: Citation): string {
 			// CONTEXT.md: a Cadence Rule fires when an interval has elapsed since the
 			// most recent Occurrence, or when there is no Occurrence to measure from.
 			// Those are different facts and the line says which one applies rather
-			// than printing a zero that would read as "done today".
+			// than printing a zero that would read as "done today". "Earlier"
+			// because the line stays after a sign-off, beside the day it was
+			// recorded, and "no occurrence recorded" there reads as a contradiction.
 			return citation.elapsedDays === null
-				? 'No occurrence recorded'
+				? 'No earlier record'
 				: `${citation.elapsedDays} days since last recorded`;
 	}
 }

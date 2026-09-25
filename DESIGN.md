@@ -27,7 +27,7 @@ Three things earn the accent and nothing else does: the active nav rule, the evi
 
 Two faces do the work, and how the first was chosen is worth recording because the process got it wrong.
 
-**Saira Condensed 600/800** carries the lettering: wordmark, headings, job names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
+**Saira Condensed 600/800** carries the lettering: wordmark, headings, Rule names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
 
 **Atkinson Hyperlegible Mono** carries everything written on the form: instructions, evidence lines, the ticket number. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
 
@@ -59,9 +59,9 @@ The margin is what a wide screen is for. Extra width goes there so the work keep
 
 Wordmark in one cell, ticket number and yard stacked beside it. The number is `No. <year>-<day of year>`, derived at read time. It is deliberately not the Artifact's generation date, which `StalenessBanner` already reports and which would put two dates on one sheet meaning different things.
 
-### The Job Table
+### The Task Table
 
-`JOB | TARGET | SIGN OFF`, with a bordered header row and vertical rules running its full height. Each Task is one ruled row: its number set large in the first cell, the job name, target, instruction and evidence in the second, the sign-off box in the third. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
+`TASK | TARGET | SIGN OFF`, with a bordered header row and vertical rules running its full height. The shop form says JOB; this one says TASK, because CONTEXT.md lists job under Task's _Avoid_ and the column head is the one word every row sits under. Each Task is one ruled row: its number set large in the first cell, the Rule's name, target, instruction and evidence in the second, the sign-off box in the third. Only the sign-off cell records; the text beside it is for reading. The column heads carry `aria-hidden`, because they are a printed convention rather than a table a screen reader should announce, and each row is already a list item carrying its own labelled parts.
 
 Row order was tested. The rejected comp variation led with evidence and made the largest element on the screen read `NO OCCURRENCE`, the absence of evidence, while the work itself sat third.
 
@@ -77,7 +77,7 @@ Callouts are `aria-hidden` and outside the tab order, because the parts list is 
 
 ### The Sign-Off Box
 
-The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own, and the label wrapping the row extends that target across the job text.
+The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned it prompts; signed it takes a stamp. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own. The cell is the only target, because a label around the row would let a thumb resting on the instruction write a permanent record.
 
 ### Also Observed
 
@@ -106,6 +106,8 @@ The Rules the yard holds that no evidence lit, kept in the margin. This is the o
 Two moments, and the distinction between them is the rule.
 
 **The stamp** belongs to the only action that cannot be taken back. Recording work writes an append-only Occurrence, there is no undo, and the page refuses one out loud. So the control stamps instead of toggling: the mark lands slightly rotated and fully formed in 140ms rather than fading up, because a stamp is a single impact and anything smoother reads as a switch. It has no reverse, because the Occurrence has none either.
+
+The stamp has a lead-in. A tap on the sign-off cell starts a four-second wait before anything is written, and during it a grey RECORDING stamp fills with stamp red from left to right while the cell says a second tap cancels. The fill is linear because it's a clock. Red is complete only at the impact, so red still means recorded work. The wait and the stamp count as one moment, since the wait exists because the act is irreversible and the stamp lands when the wait runs out.
 
 **The plant sheet** slides in from the edge and back out, 200ms in and 150ms out. It is the one thing on any surface that arrives over the page, and a panel that pops gives a reader no sense of where it came from or where it returns to. Out is quicker than in, because leaving needs no explaining. shadcn's defaults ran 500ms and 300ms, which beside a 140ms stamp read as a different product.
 

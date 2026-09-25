@@ -12,6 +12,8 @@ export interface TaskGroupProps {
 	 * nothing.
 	 */
 	description?: string;
+	/** Lets the rows point `aria-describedby` at the description, so the warning is read with the control. */
+	descriptionId?: string;
 	children?: ReactNode;
 }
 
@@ -29,7 +31,7 @@ export interface TaskGroupProps {
  * route owns the page's only h1, and `tests/integration/smoke.spec.ts` runs axe
  * over the finished page, where a skipped level is a violation.
  */
-export function TaskGroup({ heading, emptyText, description, children }: TaskGroupProps): ReactElement | null {
+export function TaskGroup({ heading, emptyText, description, descriptionId, children }: TaskGroupProps): ReactElement | null {
 	// Two groups render on the route, so a hand-written id would appear twice in
 	// one document, which axe reports as a violation. `aria-labelledby` rather
 	// than an `aria-label` carrying the same words, so the region's name and the
@@ -50,7 +52,7 @@ export function TaskGroup({ heading, emptyText, description, children }: TaskGro
 	return (
 		<Section id={headingId} label={heading}>
 			{!empty && description !== undefined && (
-				<p className="max-w-prose text-detail text-muted">{description}</p>
+				<p id={descriptionId} className="max-w-prose text-detail text-muted">{description}</p>
 			)}
 			{empty
 				? <p className="max-w-prose text-body text-muted">{emptyText}</p>
@@ -59,13 +61,13 @@ export function TaskGroup({ heading, emptyText, description, children }: TaskGro
 							{/* The column heads. aria-hidden because the columns are a printed
 							    convention rather than a table a screen reader should announce:
 							    each row below is one list item carrying its own labelled parts,
-							    and a reader moving by list gets the job, the target and the
+							    and a reader moving by list gets the Task, the target and the
 							    control in that order without the header repeating itself. */}
 							<div
 								aria-hidden="true"
-								className="grid grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
+								className="grid grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
 							>
-								<span className="border-r-2 border-rule px-2 py-1.5 text-center">Job</span>
+								<span className="border-r-2 border-rule px-2 py-1.5 text-center">Task</span>
 								<span className="px-3 py-1.5">Target</span>
 								<span className="border-l-2 border-rule px-2 py-1.5 text-center">Sign off</span>
 							</div>

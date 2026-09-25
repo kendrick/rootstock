@@ -16,12 +16,30 @@ describe('purpose', () => {
 	 * clauses, three assertions, all of them on the words rather than on the
 	 * layout, because the layout half is what the Playwright spec measures.
 	 */
-	it('says it is one yard, and that every task names its rule and its reading', () => {
+	it('says it is one yard, and that every task names its rule and its evidence', () => {
 		const { container } = render(<Purpose />);
 
 		expect(copy(container)).toMatch(/one yard/i);
 		expect(copy(container)).toMatch(/rule/i);
-		expect(copy(container)).toMatch(/reading/i);
+		expect(copy(container)).toMatch(/evidence/i);
+	});
+
+	// A Window Task fires on a date and a first-time Cadence Task on no reading
+	// at all, so "the reading that fired it" is false for most rows. The copy
+	// names all three kinds of evidence.
+	it('does not claim every task fired on a reading', () => {
+		const { container } = render(<Purpose />);
+
+		expect(copy(container)).toMatch(/window/i);
+		expect(copy(container)).toMatch(/last time the work was recorded/i);
+	});
+
+	// The sentence points at a control by name, so the name has to be the one
+	// the control carries.
+	it('names the disclosure by its own label', () => {
+		const { container } = render(<Purpose />);
+
+		expect(copy(container)).toContain('Open Rule and evidence');
 	});
 
 	// The region is the one fact here that could go stale, and the yard record

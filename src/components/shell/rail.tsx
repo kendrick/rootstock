@@ -1,11 +1,15 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import type { Plan } from '@/planner/plan';
+import { useEffect, useMemo, useState } from 'react';
 import { safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
 import { NotLit } from '@/components/this-week/not-lit';
+import { onRecorded, recordedDates } from '@/components/this-week/recorded';
 import { TallyBand } from '@/components/this-week/tally-band';
 import { seedRules } from '@/seed';
+import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { Nav } from './nav';
 
 /**
@@ -24,27 +28,73 @@ import { Nav } from './nav';
  * the wordmark and the nav, which is the honest answer: the page below it is
  * already rendering the error.
  */
-function weekCounts(): { total: number; recorded: number } | null {
+function committedPlan(): Plan | null {
 	const parsed = safeParseArtifact(loadArtifact().artifact);
+	return parsed.ok ? parsed.value.plan : null;
+}
 
-	if (!parsed.ok) {
-		return null;
-	}
+const rulesById = new Map(seedRules.map(rule => [rule.id, rule]));
 
-	// Recorded is derived from the browser's own Occurrence history on This Week,
-	// and the margin has no access to it here. The band shows the week's shape,
-	// and the page below it is where a tick lands.
-	return { total: parsed.value.plan.tasks.length, recorded: 0 };
+/**
+ * How many of the week's Tasks this browser has recorded, or null while that is
+ * unknown.
+ *
+ * Read from the browser Store. A margin that counted nothing recorded would say
+ * three open beside a stub saying one of three. The hook re-reads when the Task
+ * list says an Occurrence landed, and counts through the same function the list
+ * does.
+ *
+ * Null covers the prerender, the first paint, and a Store that will not open.
+ * The page states the last case in words. The margin leaves the Open figure
+ * out, because nobody could vouch for the count.
+ */
+function useRecordedCount(plan: Plan | null): number | null {
+	const [recorded, setRecorded] = useState<number | null>(null);
+
+	useEffect(() => {
+		if (plan === null) {
+			return;
+		}
+
+		let live = true;
+
+		async function read(): Promise<void> {
+			try {
+				const history = await listOccurrences(await openBrowserStore());
+				if (live) {
+					setRecorded(recordedDates(plan?.tasks ?? [], history, plan?.asOf ?? '', rulesById).size);
+				}
+			}
+			catch {
+				if (live) {
+					setRecorded(null);
+				}
+			}
+		}
+
+		void read();
+		const stop = onRecorded(() => void read());
+
+		return () => {
+			live = false;
+			stop();
+		};
+	}, [plan]);
+
+	return recorded;
 }
 
 export function RailApparatus(): ReactElement | null {
-	const counts = weekCounts();
+	const plan = useMemo(committedPlan, []);
+	const recorded = useRecordedCount(plan);
 
-	if (counts === null) {
+	if (plan === null) {
 		return null;
 	}
 
-	const open = counts.total - counts.recorded;
+	const total = plan.tasks.length;
+	const counts = { total, recorded: recorded ?? 0 };
+	const open = recorded === null ? null : total - recorded;
 
 	/*
 	 * A margin block on a wide screen and one compact row on a phone. Stacked at
@@ -68,13 +118,15 @@ export function RailApparatus(): ReactElement | null {
 
 			<dl className="flex gap-x-6 font-display text-label tracking-widest uppercase lg:block lg:space-y-1">
 				<div className="flex gap-x-2 lg:justify-between">
-					<dt className="text-muted">Jobs</dt>
+					<dt className="text-muted">Tasks</dt>
 					<dd className="shrink-0 tabular-nums text-foreground">{counts.total}</dd>
 				</div>
-				<div className="flex gap-x-2 lg:justify-between">
-					<dt className="text-muted">Open</dt>
-					<dd className="shrink-0 tabular-nums text-accent">{open}</dd>
-				</div>
+				{open !== null && (
+					<div className="flex gap-x-2 lg:justify-between">
+						<dt className="text-muted">Open</dt>
+						<dd className="shrink-0 tabular-nums text-foreground">{open}</dd>
+					</div>
+				)}
 			</dl>
 
 		</aside>

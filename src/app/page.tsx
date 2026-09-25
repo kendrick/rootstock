@@ -34,7 +34,7 @@ export default function ThisWeekPage(): ReactElement {
 					<FirstVisitBand />
 
 					<div className="space-y-3">
-						<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase">This Week</h1>
+						<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase outline-none">This Week</h1>
 
 						{/*
 						 * Above the first task and above the banner. #50 graded this

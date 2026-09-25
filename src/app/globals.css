@@ -276,8 +276,8 @@ switch off. */
 		mark lands slightly rotated and fully formed rather than fading up, because
 		a stamp is a single impact and anything smoother would read as a switch.
 
-		Nothing else on the page moves. A second animated thing would make this one
-		ordinary. */
+		Nothing else on the page moves, beyond the fill that leads into it below. A
+		second animated thing would make this one ordinary. */
 	@keyframes stamp-down {
 		from {
 			opacity: 0;
@@ -295,10 +295,35 @@ switch off. */
 		transform: rotate(-4deg);
 	}
 
-	/* The information was never in the movement. */
+	/* The stamp's lead-in, and part of the stamp's moment. The wait before a
+		sign-off is written is the only stretch where it can be cancelled, and the
+		fill shows how long is left. Linear, because it is a clock. An eased fill
+		would misstate the time remaining. The duration comes from the element,
+		since the component owns the wait. */
+	@keyframes record-fill {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+
+	.record-fill {
+		animation: record-fill linear forwards;
+	}
+
+	/* The information was never in the movement. The wait still runs and the
+		cancel still works; only the fill is gone, and the words carry it. */
 	@media (prefers-reduced-motion: reduce) {
 		.stamp-mark {
 			animation: none;
+		}
+
+		.record-fill {
+			animation: none;
+			clip-path: inset(0 100% 0 0);
 		}
 	}
 

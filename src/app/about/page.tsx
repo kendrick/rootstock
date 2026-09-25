@@ -111,7 +111,7 @@ export default function AboutPage(): ReactElement {
 							aria-hidden="true"
 							className="grid grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
 						>
-							<span className="border-r-2 border-rule px-2 py-1.5 text-center">Job</span>
+							<span className="border-r-2 border-rule px-2 py-1.5 text-center">Task</span>
 							<span className="px-3 py-1.5">Target</span>
 							<span className="border-l-2 border-rule px-2 py-1.5 text-center">Sign off</span>
 						</div>
@@ -176,7 +176,7 @@ export default function AboutPage(): ReactElement {
 					<div className="border-b-2 border-rule p-4 sm:border-r-2 sm:border-b-0">
 						<h3 className="font-display text-label font-bold tracking-widest text-foreground uppercase">May</h3>
 						<ul className="mt-2 space-y-1 font-mono text-detail leading-relaxed text-foreground">
-							<li>Choose which jobs to mention</li>
+							<li>Choose which tasks to mention</li>
 							<li>Put them in an order</li>
 							<li>Write the sentence each one is described in</li>
 							<li>Add an observation of its own, marked as carrying no citation</li>
@@ -186,7 +186,7 @@ export default function AboutPage(): ReactElement {
 					<div className="p-4">
 						<h3 className="font-display text-label font-bold tracking-widest text-accent uppercase">May not</h3>
 						<ul className="mt-2 space-y-1 font-mono text-detail leading-relaxed text-foreground">
-							<li>Add a job</li>
+							<li>Add a task</li>
 							<li>Remove one</li>
 							<li>Change a date</li>
 							<li>Name a rule the plan does not hold</li>

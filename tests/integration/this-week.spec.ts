@@ -118,12 +118,12 @@ test.describe('the brief sentence, at 1440x900', () => {
 		expect(count).toBeGreaterThan(0);
 
 		for (let index = 0; index < count; index += 1) {
-			await expect(tasks.nth(index).getByText('Rule and reading')).toHaveCount(1);
+			await expect(tasks.nth(index).getByText('Rule and evidence')).toHaveCount(1);
 
 			// And the dated evidence itself, rendered, not promised. Every Citation
 			// kind leads with the word that says which kind it is.
 			await expect(
-				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No occurrence|\d+ days since) /),
+				tasks.nth(index).getByText(/^(Window|Observed run|Forecast|No earlier|\d+ days since) /),
 			).toHaveCount(1);
 		}
 	});
@@ -170,20 +170,17 @@ test.describe('one-handed, at 390x844', () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
 	// The tap target the critique measured at 16x16, for a control used
-	// one-handed and outdoors. 24px is WCAG 2.2's minimum on the short axis and
-	// the number #62 asks for; the row spends 44 and brings the text with it.
-	test('gives the check-off box a row-sized hit target', async ({ page }) => {
+	// one-handed and outdoors. The sign-off cell is the target and the row is
+	// not, so a thumb resting on the instruction writes nothing. The cell alone
+	// has to clear 44 on both axes, the page's own standard.
+	test('gives the sign-off box a cell-sized hit target, and the text none', async ({ page }) => {
 		await page.goto('');
 
-		const label = page.locator('main li label').first();
-		const box = await label.boundingBox();
+		const input = page.locator('main li input[type="checkbox"]').first();
+		const box = await input.boundingBox();
 
-		expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
-		await expect(label.locator('input[type="checkbox"]')).toHaveCount(1);
-
-		// The text beside the box is inside the target rather than dead space
-		// next to it, which is what a `<label>` buys and `aria-labelledby` alone
-		// did not.
-		expect(box?.width ?? 0).toBeGreaterThan(200);
+		expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+		expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+		await expect(page.locator('main li label')).toHaveCount(0);
 	});
 });

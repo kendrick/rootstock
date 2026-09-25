@@ -9,15 +9,65 @@
  * agree, which is why the strings are here instead of typed into each of them.
  */
 
-/** The half both messages end on, and the only sentence stating the policy. */
-const NO_UNDO = 'The yard only adds to its history, so there is nothing here to undo.';
+import { MONTHS } from '@/planner/dates';
 
-/** Read before the first box is ticked, over the group that carries them. */
-export const PERMANENCE_NOTE
-	= 'Ticking a box records the work as done today. The yard keeps every record and changes none, so a tick cannot be taken back.';
+/**
+ * How long a sign-off waits before the Store write, and the only thing in the
+ * interface that can be taken back. Nothing is written during the wait, so a
+ * cancel costs the append-only log nothing. It lives beside the words because
+ * the announcement below states the length, and a timer tuned without the
+ * sentence would leave the page promising a window it no longer gives.
+ */
+export const RECORD_DELAY_MS = 4000;
+
+/**
+ * The half both messages end on, and the only sentence stating the policy.
+ * It names what cannot happen. "Nothing here to undo" denies the one thing a
+ * reader who just tried to untick wants, and reads as a dodge.
+ */
+const NO_UNDO = 'The yard only adds to its history, so a record cannot be removed.';
+
+function spokenDay(isoDate: string): string {
+	const [, month, day] = isoDate.split('-');
+	const name = month === undefined ? undefined : MONTHS[Number(month) - 1];
+	return name === undefined || day === undefined ? isoDate : `${name} ${Number(day)}`;
+}
+
+/**
+ * Read before the first sign-off, over the group that carries them.
+ *
+ * Names the Plan's day rather than saying "today". The Occurrence is dated to
+ * the Plan (`completionInstant` in `this-week.tsx`), so on a plan left stale
+ * over a weekend "today" would be false. "In this browser" because a sign-off lives
+ * in this browser's Store and never reaches the published site, and a
+ * household member signing off on their own phone has no other way to learn
+ * that.
+ */
+export function permanenceNote(asOf: string | null): string {
+	const when = asOf === null ? '' : ` on ${spokenDay(asOf)}`;
+	return `Signing off records the work as done${when}, in this browser only. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels. After that it cannot be taken back, because the yard keeps every record and changes none.`;
+}
 
 /** What a refused untick says, on the Task and in the live region. */
 export const UNDO_REFUSAL = `This one stays recorded. ${NO_UNDO}`;
+
+/** Said once, when a sign-off starts its wait. */
+export function pendingAnnouncement(taskText: string): string {
+	return `Recording in ${RECORD_DELAY_MS / 1000} seconds: ${asSentence(taskText)} Press Sign off again to cancel.`;
+}
+
+/** Said when a reader cancels inside the wait. */
+export const CANCELLED = 'Cancelled. Nothing was recorded.';
+
+/** Left on the row, and spoken, when the Store refused the write. */
+export const NOT_SAVED = 'Not recorded: this browser could not save the sign-off. Try again.';
+
+/**
+ * Shown over the work when the browser Store will not open. The page turns
+ * sign-off off rather than letting it fail tap by tap, and the sentence says
+ * the Plan is untouched, because the Plan never came from this Store.
+ */
+export const STORE_UNAVAILABLE = 'This browser cannot open its record of finished work, so sign-off is off and earlier sign-offs from this browser do not show. The tasks below are unaffected.';
 
 /**
  * Ends a sentence that may not have been written as one. A Task's text is

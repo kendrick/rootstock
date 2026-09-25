@@ -1,9 +1,9 @@
 import type { Task } from '@/planner/task';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeferredSection } from './deferred-section';
 import { combinedNarratedArtifact, plantsById, rulesById } from './fixtures';
-import { PERMANENCE_NOTE } from './permanence';
+import { permanenceNote, RECORD_DELAY_MS } from './permanence';
 
 /**
  * The one deferred Task the fixture Artifact carries, read off it rather than
@@ -69,6 +69,25 @@ describe('deferredSection', () => {
 		expect(container.querySelector('section')).not.toBeNull();
 		expect(screen.getByText(/nothing is holding work back/i)).toBeDefined();
 		expect(container.querySelector('li')).toBeNull();
+	});
+
+	// The empty text names the Guards that can hold work back, read off the rule
+	// set it is handed, and only those: an annotating Guard adds a note and holds
+	// nothing. An example Guard nobody wrote is the copy version of an invented
+	// Task.
+	it('names only the rules that can hold work back, read off the rule set', () => {
+		const deferring = [...rulesById.values()].filter(rule => rule.kind === 'guard' && rule.effect === 'defer');
+		const annotating = [...rulesById.values()].filter(rule => rule.kind === 'guard' && rule.effect === 'annotate');
+		render(<DeferredSection tasks={[]} rulesById={rulesById} plantsById={plantsById} />);
+
+		const text = screen.getByText(/nothing is holding work back/i).textContent ?? '';
+		for (const rule of deferring) {
+			expect(text).toContain(rule.name);
+		}
+		for (const rule of annotating) {
+			expect(text).not.toContain(rule.name);
+		}
+		expect(text).not.toMatch(/until evening|until spring/i);
 	});
 
 	// The deferred Task's own title ('Deep water the fig') and its Rule's name
@@ -155,14 +174,14 @@ describe('deferredSection', () => {
 		render(<DeferredSection tasks={[deferredTask]} rulesById={rulesById} plantsById={plantsById} />);
 
 		expect(screen.getByRole('checkbox')).toBeDefined();
-		expect(screen.getByText(PERMANENCE_NOTE)).toBeDefined();
+		expect(screen.getByText(permanenceNote(null))).toBeDefined();
 	});
 
 	it('drops the warning when there is no held work to tick', () => {
 		render(<DeferredSection tasks={[]} rulesById={rulesById} plantsById={plantsById} />);
 
 		expect(screen.queryByRole('checkbox')).toBeNull();
-		expect(screen.queryByText(PERMANENCE_NOTE)).toBeNull();
+		expect(screen.queryByText(permanenceNote(null))).toBeNull();
 	});
 
 	it('opens the evidence on the Task the caller named', () => {
@@ -235,6 +254,7 @@ describe('deferredSection', () => {
 	});
 
 	it('passes onComplete through to the checkbox', () => {
+		vi.useFakeTimers();
 		const onComplete = vi.fn();
 		render(
 			<DeferredSection
@@ -246,6 +266,10 @@ describe('deferredSection', () => {
 		);
 
 		fireEvent.click(screen.getByRole('checkbox'));
+		act(() => {
+			vi.advanceTimersByTime(RECORD_DELAY_MS);
+		});
+		vi.useRealTimers();
 
 		expect(onComplete).toHaveBeenCalledTimes(1);
 		expect(onComplete).toHaveBeenCalledWith(deferredTask);

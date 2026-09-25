@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react';
+import type { SignOffProps } from './task-item';
 import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Plant } from '@/yard/plant';
-import { PERMANENCE_NOTE } from './permanence';
+import { useId } from 'react';
+import { permanenceNote } from './permanence';
 import { TaskItem } from './task-item';
 
-export interface DeferredSectionProps {
+export interface DeferredSectionProps extends SignOffProps {
 	/** Already filtered to status 'deferred'. */
 	tasks: Task[];
 	rulesById: ReadonlyMap<string, Rule>;
@@ -15,10 +17,12 @@ export interface DeferredSectionProps {
 	/** `Plan.window`, passed through so a threshold Citation can show the readings it cites. */
 	window?: DailyAggregate[];
 	completedIds?: ReadonlySet<string>;
+	/** Task id to the ISO day its record carries. */
+	recordedOn?: ReadonlyMap<string, string>;
+	/** The permanence note, dated by the caller, which holds the Plan. */
+	note?: string;
 	/** The one Task on the page whose evidence opens on load, when it is one of these. */
 	openCitationId?: string | null;
-	onComplete?: (task: Task) => void;
-	onUndoAttempt?: (task: Task) => void;
 }
 
 /**
@@ -30,9 +34,19 @@ export interface DeferredSectionProps {
  * site, because holding work back needs rain in the forecast. An empty week is
  * the only chance the section gets to explain itself, so it takes it.
  */
-const NOTHING_HELD = 'Nothing is holding work back this week. Some rules do only that: not before '
-	+ 'rain, not until evening, nothing on the fig until spring. When one applies, the task stays on '
-	+ 'this page with the reason attached, rather than dropping off the list.';
+function nothingHeld(rulesById: ReadonlyMap<string, Rule>): string {
+	const holders = [...rulesById.values()]
+		.filter(rule => rule.kind === 'guard' && rule.effect === 'defer')
+		.map(rule => rule.name);
+
+	if (holders.length === 0) {
+		return 'Nothing is holding work back this week.';
+	}
+
+	const count = holders.length === 1 ? 'One rule can' : `${holders.length} rules can`;
+	const when = holders.length === 1 ? 'When it applies' : 'When one applies';
+	return `Nothing is holding work back this week. ${count}: ${holders.join(', ')}. ${when}, the task stays on this page with the reason attached, rather than dropping off the list.`;
+}
 
 /** And what it says when something is. */
 const SOMETHING_HELD = 'A rule called for this work, and another is holding it. Each line names '
@@ -61,10 +75,15 @@ export function DeferredSection({
 	narrationById,
 	window,
 	completedIds,
+	recordedOn,
+	note = permanenceNote(null),
 	openCitationId = null,
-	onComplete,
-	onUndoAttempt,
+	...signOff
 }: DeferredSectionProps): ReactElement {
+	// This list carries its own permanence note, so its rows point at it rather
+	// than at the one over the ready work, which may not be on the page.
+	const noteId = useId();
+
 	return (
 		<section aria-labelledby="deferred-heading" className="space-y-3">
 			<div className="space-y-1">
@@ -72,7 +91,7 @@ export function DeferredSection({
 					Held back
 				</h2>
 				<p className="max-w-prose text-body text-muted">
-					{tasks.length > 0 ? SOMETHING_HELD : NOTHING_HELD}
+					{tasks.length > 0 ? SOMETHING_HELD : nothingHeld(rulesById)}
 				</p>
 
 				{/*
@@ -85,7 +104,7 @@ export function DeferredSection({
 				 * to anyone looking at the screen.
 				 */}
 				{tasks.length > 0 && (
-					<p className="max-w-prose text-body text-muted">{PERMANENCE_NOTE}</p>
+					<p id={noteId} className="max-w-prose text-body text-muted">{note}</p>
 				)}
 			</div>
 
@@ -100,9 +119,10 @@ export function DeferredSection({
 							narrationText={narrationById?.get(task.id) ?? null}
 							window={window}
 							checked={completedIds?.has(task.id) ?? false}
+							recordedOn={recordedOn?.get(task.id) ?? null}
 							citationOpen={task.id === openCitationId}
-							onComplete={onComplete}
-							onUndoAttempt={onUndoAttempt}
+							{...signOff}
+							describedBy={noteId}
 						/>
 					))}
 				</ul>

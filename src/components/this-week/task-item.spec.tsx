@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { taskId } from '@/planner/task';
 import { combinedNarratedArtifact, plantsById, rulesById, rulesByIdMissingDeepWaterFig } from './fixtures';
-import { UNDO_REFUSAL } from './permanence';
+import { NOT_SAVED, RECORD_DELAY_MS, UNDO_REFUSAL } from './permanence';
 import { TaskItem } from './task-item';
 
 /**
@@ -133,7 +133,13 @@ describe('taskItem', () => {
 	});
 
 	describe('the check-off box', () => {
-		it('calls onComplete with the Task', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// The tap starts the wait; the wait running out is what records.
+		it('calls onComplete with the Task once the wait runs out, and not before', () => {
+			vi.useFakeTimers();
 			const onComplete = vi.fn();
 			renderItem(
 				<TaskItem
@@ -145,9 +151,86 @@ describe('taskItem', () => {
 			);
 
 			fireEvent.click(screen.getByRole('checkbox'));
+			expect(onComplete).not.toHaveBeenCalled();
+
+			act(() => {
+				vi.advanceTimersByTime(RECORD_DELAY_MS);
+			});
 
 			expect(onComplete).toHaveBeenCalledTimes(1);
 			expect(onComplete).toHaveBeenCalledWith(firedTask);
+		});
+
+		it('sends nothing when the second tap lands inside the wait', () => {
+			vi.useFakeTimers();
+			const onComplete = vi.fn();
+			const onRecordCancel = vi.fn();
+			renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					onComplete={onComplete}
+					onRecordCancel={onRecordCancel}
+				/>,
+			);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+			expect(screen.getByText('Tap again to cancel')).toBeDefined();
+			fireEvent.click(screen.getByRole('checkbox'));
+			act(() => {
+				vi.advanceTimersByTime(RECORD_DELAY_MS * 2);
+			});
+
+			expect(onComplete).not.toHaveBeenCalled();
+			expect(onRecordCancel).toHaveBeenCalledWith(firedTask);
+			expect(screen.getByRole('checkbox')).toHaveProperty('checked', false);
+		});
+
+		// Leaving the page mid-wait is a cancel. A record written after the row
+		// is gone would be one the reader never saw land.
+		it('records nothing when the row unmounts inside the wait', () => {
+			vi.useFakeTimers();
+			const onComplete = vi.fn();
+			const view = renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} onComplete={onComplete} />,
+			);
+
+			fireEvent.click(screen.getByRole('checkbox'));
+			view.unmount();
+			vi.advanceTimersByTime(RECORD_DELAY_MS);
+
+			expect(onComplete).not.toHaveBeenCalled();
+		});
+
+		it('says in place that the sign-off was not saved when the write fails', async () => {
+			renderItem(
+				<TaskItem
+					task={firedTask}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					recordDelayMs={0}
+					onComplete={async () => {
+						throw new Error('quota exceeded');
+					}}
+				/>,
+			);
+
+			await act(async () => {
+				fireEvent.click(screen.getByRole('checkbox'));
+				await new Promise(resolve => setTimeout(resolve, 0));
+			});
+
+			expect(screen.getByText(NOT_SAVED)).toBeDefined();
+			expect(screen.getByRole('checkbox')).toHaveProperty('checked', false);
+		});
+
+		it('prints the recorded day under the evidence on a checked Task', () => {
+			renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} checked recordedOn="2026-09-25" />,
+			);
+
+			expect(screen.getByText('Recorded Sep 25 2026')).toBeDefined();
 		});
 
 		it('takes its checked state from the prop', () => {
@@ -224,36 +307,48 @@ describe('taskItem', () => {
 		});
 
 		/*
-		 * #50 measured the box at 16x16 with no `<label>`, so the tap target was
-		 * the square alone and the sentence beside it did nothing: 27% of the
-		 * 44pt minimum, for a control used one-handed and outdoors, while the
-		 * disclosure row next to it was 56px tall. The label is the fix, and it
-		 * is only possible because the task text left the `<summary>`.
+		 * A `<label>` around the row would let a thumb resting on the instruction
+		 * write a permanent record. The sign-off cell is the target, and a tap on
+		 * the text does nothing to the yard.
 		 */
-		it('puts the box and the task text inside one label', () => {
+		it('records nothing from a tap on the task text', () => {
+			vi.useFakeTimers();
+			const onComplete = vi.fn();
 			const { container } = renderItem(
 				<TaskItem
 					task={firedTask}
 					rulesById={rulesById}
 					plantsById={plantsById}
 					narrationText={firedNarration}
+					onComplete={onComplete}
 				/>,
 			);
 
-			const label = container.querySelector('label');
-			expect(label?.querySelector('input[type="checkbox"]')).not.toBeNull();
-			expect(label?.textContent).toContain(firedNarration);
+			expect(container.querySelector('label')).toBeNull();
+			fireEvent.click(screen.getByText(firedNarration));
+			vi.advanceTimersByTime(RECORD_DELAY_MS);
+
+			expect(onComplete).not.toHaveBeenCalled();
 		});
 
 		// 2.75rem, which is 44px. Asserted on the class rather than on a measured
 		// height because jsdom lays nothing out, so a geometric assertion here
-		// would pass against an element of zero height.
-		it('spends at least 44px on the row the label covers', () => {
+		// would pass against an element of zero height. The e2e spec measures it.
+		it('spends at least 44px on the row the sign-off cell spans', () => {
 			const { container } = renderItem(
 				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
 			);
 
-			expect(container.querySelector('label')?.className).toContain('min-h-11');
+			expect(container.querySelector('li > div')?.className).toContain('min-h-11');
+		});
+
+		it('names the control by its verb, and points at the permanence note', () => {
+			renderItem(
+				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} describedBy="note" />,
+			);
+
+			const box = screen.getByRole('checkbox', { name: /^Sign off /u });
+			expect(box.getAttribute('aria-describedby')).toBe('note');
 		});
 
 		// Colour on a 16px square is one cue and the weakest one available. A
@@ -361,7 +456,7 @@ describe('taskItem', () => {
 			);
 
 			const summary = container.querySelector('summary')?.textContent ?? '';
-			expect(summary).toContain('Rule and reading');
+			expect(summary).toContain('Rule and evidence');
 			expect(summary).toContain('Fall pre-emergent');
 		});
 	});

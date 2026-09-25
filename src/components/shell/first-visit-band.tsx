@@ -15,9 +15,10 @@ import { ORIENTED_STORAGE_KEY } from './orientation';
  * this exists to fix.
  *
  * It says what the page guarantees rather than what the product is, because the
- * guarantee is the part a stranger cannot infer from looking: every job names
- * the Rule that asked for it and the dated reading that fired it. `Purpose`
- * below already introduces the yard, so this must not say that again.
+ * guarantee is the part a stranger cannot infer from looking: every Task comes
+ * from a written Rule and shows the evidence that fired it, and the model can
+ * reword a Task but never add one. `Purpose` below already introduces the yard
+ * and the kinds of evidence, so this must not say either again.
  *
  * Dismissed once and gone. The daily reader is the primary audience and owes
  * nothing to a banner; the cold arrival is secondary but real. The dismissal is
@@ -39,6 +40,15 @@ export function FirstVisitBand(): ReactElement | null {
 		setShow(false);
 		document.body.dataset.oriented = '1';
 
+		// The button is about to leave the document, and focus left on a removed
+		// node falls to <body>, which puts a keyboard reader back at the top of
+		// the page. The route's heading is where the band pointed them anyway.
+		const heading = document.querySelector<HTMLElement>('main h1');
+		if (heading !== null) {
+			heading.tabIndex = -1;
+			heading.focus();
+		}
+
 		try {
 			localStorage.setItem(ORIENTED_STORAGE_KEY, '1');
 		}
@@ -52,27 +62,33 @@ export function FirstVisitBand(): ReactElement | null {
 	return (
 		<aside
 			aria-label="New here"
-			className="flex flex-wrap items-baseline gap-x-4 gap-y-2 border-2 border-accent px-4 py-3 print:hidden"
+			className="flex flex-col gap-1 border-2 border-accent px-4 pt-3 print:hidden sm:flex-row sm:items-center sm:gap-x-6 sm:py-1"
 		>
+			{/* Text above the links on a phone. Side by side at 390, the sentence
+			    squeezes into a column 150px wide and nine lines tall. */}
 			<p className="min-w-0 flex-1 font-mono text-detail text-foreground">
 				<span className="font-display text-label font-bold tracking-widest text-accent uppercase">New here — </span>
-				every job below names the rule that asked for it and the dated reading that fired it. Nobody typed them in.
+				every task below comes from a written rule and shows the evidence that fired it. A model may reword a task; it cannot add one.
 			</p>
 
-			<Link
-				href="/about"
-				className={`font-display text-label font-bold tracking-widest text-accent uppercase underline underline-offset-4 ${FOCUS_RING}`}
-			>
-				How this works
-			</Link>
+			{/* `min-h-11` on each: at text height alone these are 17px tall, a third
+			    of the 44px the rest of the page holds itself to. */}
+			<div className="flex gap-x-6">
+				<Link
+					href="/about"
+					className={`inline-flex min-h-11 items-center font-display text-label font-bold tracking-widest text-accent uppercase underline underline-offset-4 ${FOCUS_RING}`}
+				>
+					How this works
+				</Link>
 
-			<button
-				type="button"
-				onClick={dismiss}
-				className={`font-display text-label font-bold tracking-widest text-muted uppercase ${FOCUS_RING}`}
-			>
-				Dismiss
-			</button>
+				<button
+					type="button"
+					onClick={dismiss}
+					className={`inline-flex min-h-11 items-center font-display text-label font-bold tracking-widest text-muted uppercase ${FOCUS_RING}`}
+				>
+					Dismiss
+				</button>
+			</div>
 		</aside>
 	);
 }

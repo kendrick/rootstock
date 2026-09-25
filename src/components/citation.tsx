@@ -168,7 +168,7 @@ function Evidence({ citation, window }: { citation: Citation; window: DailyAggre
 					 */}
 					<Row term="Counted from">
 						{citation.lastOccurrenceId === null
-							? <span>No earlier Occurrence, which is what fired the Rule</span>
+							? <span>Nothing recorded yet. With no earlier Occurrence to count from, the Rule fires now.</span>
 							: <code className="font-mono">{citation.lastOccurrenceId}</code>}
 					</Row>
 
@@ -189,7 +189,7 @@ function Evidence({ citation, window }: { citation: Citation; window: DailyAggre
  * worth a module of its own. The specs assert the literal, which pins the
  * actual words rather than pinning them to themselves.
  */
-const CITATION_LABEL = 'Rule and reading';
+const CITATION_LABEL = 'Rule and evidence';
 
 export interface CitationDisclosureProps {
 	citation: Citation;

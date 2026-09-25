@@ -34,9 +34,9 @@ export function Purpose({ region = seedYard.region.name }: PurposeProps = {}): R
 			 * one paragraph, because emphasis on every line is emphasis on none.
 			 */}
 			<span className="text-foreground">
-				Every task here names the rule that asked for it and the reading that rule fired on.
+				Every task here names the rule that called for it and the evidence it fired on: a date inside the rule's window, a run of soil readings, or the last time the work was recorded.
 			</span>
-			{' Open the evidence under any line to see both.'}
+			{' Open Rule and evidence under any task for the full record.'}
 		</p>
 	);
 }
