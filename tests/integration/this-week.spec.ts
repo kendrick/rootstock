@@ -1,5 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+
+/**
+ * Whether the page shows an Advisory depends on the day's model run, so the
+ * expected count comes from the committed Artifact, the same file
+ * `away-card.spec.ts` reads. The narration carried one Advisory through
+ * 2026-09-22 and none from the 23rd, and a hardcoded count failed CI on a page
+ * with nothing wrong.
+ */
+const artifact = JSON.parse(
+	readFileSync(join(import.meta.dirname, '..', '..', 'data', 'artifact.json'), 'utf8'),
+) as { narration: { advisories: unknown[] } | null };
+const advisoryCount = artifact.narration?.advisories.length ?? 0;
 
 /**
  * This file absorbed `smoke.spec.ts`. Both of its assertions live below, and the
@@ -144,8 +158,11 @@ test.describe('the brief sentence, at 1440x900', () => {
 		expect(Number.parseFloat(taskBorder)).toBeGreaterThan(0);
 
 		// And the Advisory says in words that no Rule produced it, so a reader who
-		// never notices a border still cannot mistake it for cited work.
-		await expect(page.getByText(/No rule produced these/)).toHaveCount(1);
+		// never notices a border still cannot mistake it for cited work. With no
+		// Advisory, `Advisories` returns null and the disclaimer goes with it.
+		// `advisories.spec.tsx` covers the populated case against a fixture, so
+		// that check never waits on the day's run.
+		await expect(page.getByText(/No rule produced these/)).toHaveCount(advisoryCount > 0 ? 1 : 0);
 	});
 });
 
