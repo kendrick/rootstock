@@ -52,7 +52,7 @@ export function TaskGroup({ heading, emptyText, description, descriptionId, chil
 	return (
 		<Section id={headingId} label={heading}>
 			{!empty && description !== undefined && (
-				<p id={descriptionId} className="max-w-prose text-detail text-muted">{description}</p>
+				<p id={descriptionId} className="max-w-prose text-note text-muted">{description}</p>
 			)}
 			{empty
 				? <p className="max-w-prose text-body text-muted">{emptyText}</p>
@@ -79,7 +79,7 @@ export function TaskTable({ children }: { children: ReactNode }): ReactElement {
 			    the column it names: the number, the Task, the box. */}
 			<div
 				aria-hidden="true"
-				className="grid grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem]"
+				className="grid grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-extrabold tracking-widest uppercase sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem]"
 			>
 				<span className="border-r-2 border-rule px-2 py-1.5 text-center">No.</span>
 				<span className="px-3 py-1.5">Task</span>

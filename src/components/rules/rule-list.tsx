@@ -57,7 +57,7 @@ function KindLegend(): ReactElement {
 	return (
 		<dl
 			aria-hidden="true"
-			className="flex flex-wrap border-2 border-rule font-display text-label tracking-widest uppercase"
+			className="flex flex-wrap border-2 border-rule font-display font-semibold text-label tracking-widest uppercase"
 		>
 			{KINDS.map(({ kind, mark, label }) => (
 				<div key={kind} className="flex items-center gap-2 border-r-2 border-rule px-3 py-1.5 last:border-r-0">
@@ -78,7 +78,7 @@ function RuleRow({ standing }: { standing: RuleStanding }): ReactElement {
 				// The kind is a printed mark on the row rather than the heading the page
 				// is built from. Its full name rides in the accessible text beside it,
 				// because a lone "W" tells a screen reader nothing.
-				className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-body leading-none font-extrabold"
+				className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold"
 			>
 				<span aria-hidden="true">{KIND_MARK[rule.kind]}</span>
 				<span className="sr-only">{`${rule.kind} rule`}</span>
@@ -94,7 +94,7 @@ function RuleRow({ standing }: { standing: RuleStanding }): ReactElement {
 
 			<div
 				className={cn(
-					'border-t-2 border-rule px-3 py-3 font-mono text-detail lg:border-t-0 lg:border-l-2',
+					'border-t-2 border-rule px-3 py-3 font-mono text-evidence lg:border-t-0 lg:border-l-2',
 					band === 'fired' ? 'text-accent' : 'text-muted',
 				)}
 			>
@@ -129,7 +129,7 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 			{/* Every Rule in this yard shares one Region, so it is stated once for the
 			    page and `hideRegion` keeps it off each row. */}
 			{firstRule !== undefined && (
-				<p className="font-display text-label tracking-widest text-muted uppercase">
+				<p className="text-note text-muted">
 					{`${firstRule.region.name} · Zone ${firstRule.region.hardinessZone}`}
 				</p>
 			)}
@@ -151,16 +151,16 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 							<h2
 								id={`band-${band}`}
 								className={cn(
-									'font-display text-label font-bold tracking-widest uppercase',
+									'font-display text-heading font-extrabold tracking-wider uppercase',
 									band === 'fired' ? 'text-accent' : 'text-foreground',
 								)}
 							>
 								{label}
 							</h2>
-							<span className="font-mono text-detail text-muted">{inBand.length}</span>
+							<span className="font-mono text-evidence text-muted">{inBand.length}</span>
 						</div>
 
-						<p className="max-w-prose font-mono text-detail text-muted">{note}</p>
+						<p className="max-w-prose text-note text-muted">{note}</p>
 
 						<ul className="border-2 border-rule">
 							{inBand.map(standing => <RuleRow key={standing.rule.id} standing={standing} />)}

@@ -50,6 +50,11 @@ const atkinsonMono = Atkinson_Hyperlegible_Mono({
 	subsets: ['latin'],
 	weight: 'variable',
 	variable: '--font-atkinson-mono',
+	// next/font has no metrics to build a fallback for this face, so without a
+	// stack the swap period draws the browser's default serif, 21% narrower, and
+	// the evidence column reflows when the real face arrives. A system mono keeps
+	// the column's width close.
+	fallback: ['ui-monospace', 'Menlo', 'Consolas', 'monospace'],
 });
 
 export const metadata: Metadata = {

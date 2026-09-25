@@ -114,7 +114,7 @@ export function OpenCount({ className }: { className?: string }): ReactElement |
 	}
 
 	return (
-		<p className={cn('font-display text-label font-bold tracking-widest text-foreground uppercase tabular-nums', className)}>
+		<p className={cn('font-display text-label font-extrabold tracking-widest text-foreground uppercase tabular-nums', className)}>
 			{`${week.counts.open} of ${week.counts.signable} open`}
 		</p>
 	);
@@ -154,7 +154,7 @@ export function RailApparatus(): ReactElement | null {
 
 			{/* Off below sm, where `OpenCount` beside the heading carries the one
 			    figure a phone reader needs and this row would cost a line. */}
-			<dl className="hidden gap-x-6 font-display text-label tracking-widest uppercase sm:flex lg:block lg:space-y-1">
+			<dl className="hidden gap-x-6 font-display font-semibold text-label tracking-widest uppercase sm:flex lg:block lg:space-y-1">
 				<div className="flex gap-x-2 lg:justify-between">
 					<dt className="text-muted">Tasks</dt>
 					<dd className="shrink-0 tabular-nums text-foreground">{counts.signable}</dd>

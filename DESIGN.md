@@ -29,11 +29,30 @@ Two faces do the work, and how the first was chosen is worth recording because t
 
 **Saira Condensed 600/800** carries the lettering: wordmark, headings, Rule names, labels, column heads. `impeccable font-match` measures cap height, advance width and stroke density off an approved comp and ranks a catalogue against those numbers, and it chose Economica. The proportions were right and the weight was not. Economica is a light, elegant condensed, and a ticket head set in it reads as a magazine standfirst, where a form's lettering is heavy enough to survive being printed badly on cheap stock. That weight is most of the genre's character. 800 rather than 900, because 900 closes the counters at the size the wordmark runs.
 
-**Atkinson Hyperlegible Mono** carries the evidence lines and the ticket number. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
+**Atkinson Hyperlegible Mono** carries readings: the evidence lines, the ticket number, and the figures on the Rules page and the Away Card. It is the typewriter a ticket is filled in with, and it is also what `PRODUCT.md` asks for, recording a binding need for characters that stay distinct where rule ids, dates and product-label figures are read down a column and compared with their neighbours. Two separate reasons arrive at the same face.
 
 **Assistant** carries running prose: the Task's instruction, the page standfirst and section copy. The comp set the instruction in typewriter; the owner ruled for Assistant on 2026-09-25, because a whole sentence reads faster in a proportional face than in a mono one, and the evidence line under it is where the typewriter earns its place.
 
-Sizes come from cap heights measured off the comp and expressed as `clamp()`, each reaching its ceiling around 900px and holding there. Below that the middle term tracks the viewport, because a phone needs the display sizes to come down. Above it, extra width goes to the layout rather than the type: a single column enlarged is what a phone layout looks like on a desktop.
+The scale has eight roles, each a `--text-*` token in `globals.css`. Sizes are given at 390px and at 900px, where each one stops growing.
+
+| Role     | Face             | 390 → 900 | Carries                                  |
+| -------- | ---------------- | --------- | ---------------------------------------- |
+| wordmark | Saira 800        | 24 → 32   | The name                                 |
+| display  | Saira 800        | 30 → 44   | The page heading                         |
+| title    | Saira 800        | 21 → 26   | Rule names, Plant names, row numerals    |
+| heading  | Saira 800        | 15 → 17   | Section heads                            |
+| body     | Assistant        | 17 → 18   | Instructions and running prose           |
+| note     | Assistant        | 15 → 16   | Notes, disclosures, the sign-off warning |
+| evidence | Atkinson Mono    | 14 → 15   | Evidence lines and other readings        |
+| label    | Saira 600 or 800 | 13 → 14   | Nav, column heads, counts, marks         |
+
+The numerals in the Yard's 24px callouts are a fixed 14px, since the callout doesn't scale either.
+
+The use scene sets the floors. An 11px condensed uppercase label has a 7.6px cap, which full sun erases, so no lettering goes below 13px. Assistant has a small x-height, which is why body needs 17px to read the way 16px does in most faces. Between 390 and 900 each size tracks the viewport, so a tablet gets sizes of its own. Above 900 extra width goes to the layout rather than the type: a single column enlarged is what a phone layout looks like on a desktop.
+
+Uppercase is for short lettering: names, heads, labels and marks. A sentence, or an authority's full name, is prose and goes in Assistant whatever it sits beside.
+
+Only the 600 and 800 files of Saira load, so the classes say `font-semibold` or `font-extrabold` and never name a weight that isn't there. On a dark ground the tracking opens by 0.01em and body leading goes from 1.5 to 1.55, because light type spreads into its own counters.
 
 Figures are tabular everywhere, because every number on this page is a measurement compared against the one above it.
 

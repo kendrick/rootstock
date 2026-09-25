@@ -103,7 +103,7 @@ export function DeferredSection({
 			 * to anyone looking at the screen.
 			 */}
 			{tasks.length > 0 && (
-				<p id={noteId} className="max-w-prose text-detail text-muted">{note}</p>
+				<p id={noteId} className="max-w-prose text-note text-muted">{note}</p>
 			)}
 
 			{tasks.length > 0 && (

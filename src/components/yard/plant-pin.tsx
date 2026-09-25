@@ -74,7 +74,7 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 					style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
 					className={cn(
 						'absolute grid size-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center',
-						'border-2 font-display text-label leading-none font-extrabold tabular-nums',
+						'border-2 font-display text-callout leading-none font-extrabold tabular-nums',
 						'transition-transform',
 						// Fill for what is in the ground, an outline for what is not. Shape
 						// rather than colour, because this is read on a phone in daylight
@@ -93,12 +93,12 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 			</TooltipTrigger>
 
 			<TooltipContent side="top">
-				<p className="font-display text-body font-bold tracking-wide uppercase">{plant.name}</p>
-				<p className="font-mono text-detail text-muted">
+				<p className="font-display text-body font-extrabold tracking-wide uppercase">{plant.name}</p>
+				<p className="font-mono text-evidence text-muted">
 					{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
 				</p>
 				{planned && (
-					<p className="mt-1 font-display text-label tracking-widest text-muted uppercase">Planned</p>
+					<p className="mt-1 font-display font-semibold text-label tracking-widest text-muted uppercase">Planned</p>
 				)}
 			</TooltipContent>
 		</Tooltip>

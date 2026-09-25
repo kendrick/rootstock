@@ -5,7 +5,7 @@ import { cn } from './utils';
 // know them, so it filed `text-title` with the colours and dropped it whenever
 // `text-foreground` came after: the sheet title rendered at 16px, below the
 // Rule names inside it.
-const SIZE_TOKENS = ['wordmark', 'display', 'title', 'body', 'label', 'evidence', 'detail'];
+const SIZE_TOKENS = ['wordmark', 'display', 'title', 'heading', 'body', 'note', 'label', 'evidence', 'callout'];
 
 describe('cn', () => {
 	it.each(SIZE_TOKENS)('keeps text-%s beside a colour', (token) => {

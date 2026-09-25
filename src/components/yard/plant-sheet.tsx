@@ -98,7 +98,7 @@ function Detail({ label, children }: { label: string; children: ReactNode }): Re
 	return (
 		<div className="space-y-1">
 			<dt className="font-display text-label font-bold tracking-widest text-muted uppercase">{label}</dt>
-			<dd className="font-mono text-detail text-foreground">{children}</dd>
+			<dd className="font-mono text-evidence text-foreground">{children}</dd>
 		</div>
 	);
 }

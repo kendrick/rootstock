@@ -79,6 +79,6 @@ describe('withheldCount', () => {
 		expect(block?.classList.contains('print:text-black')).toBe(true);
 		// The size used to step up at the `sm` breakpoint. It runs on the world's
 		// clamp-based scale now, which sizes itself continuously and needs none.
-		expect(block?.classList.contains('text-detail')).toBe(true);
+		expect(block?.classList.contains('text-evidence')).toBe(true);
 	});
 });
