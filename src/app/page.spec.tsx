@@ -133,7 +133,7 @@ describe('this week page', () => {
 
 		const markup = renderToStaticMarkup(<ThisWeekPage />);
 
-		expect(markup).toMatch(/ for one yard in /);
+		expect(markup).toMatch(/ for one yard\. /);
 		expect(markup).toContain('Southwest Fort Worth, Texas');
 	});
 

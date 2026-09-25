@@ -39,19 +39,10 @@ describe('purpose', () => {
 		expect(copy(container)).toContain('Planned Sep 25');
 	});
 
-	// The region is the one fact here that could go stale, and the yard record
-	// already holds it. A hardcoded city would keep rendering after the yard
-	// moved.
-	it('names the region off the yard rather than out of the copy', () => {
-		const { container } = render(<Purpose />);
+	// The ticket head names the region; repeating it here cost the phone a line.
+	it('leaves the region to the ticket head', () => {
+		const { container } = render(<Purpose planned="2026-09-25" />);
 
-		expect(copy(container)).toContain(seedYard.region.name);
-	});
-
-	it('takes a region from its caller', () => {
-		const { container } = render(<Purpose region="Denton County, Texas" />);
-
-		expect(copy(container)).toContain('Denton County, Texas');
 		expect(copy(container)).not.toContain(seedYard.region.name);
 	});
 

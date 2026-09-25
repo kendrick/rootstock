@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { FirstVisitBand } from '@/components/shell/first-visit-band';
+import { OpenCount } from '@/components/shell/rail';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { Purpose } from '@/components/this-week/purpose';
 import { ThisWeek } from '@/components/this-week/this-week';
@@ -34,7 +35,10 @@ export default function ThisWeekPage(): ReactElement {
 					<FirstVisitBand />
 
 					<div className="space-y-3">
-						<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase outline-none">This Week</h1>
+						<div className="flex items-baseline justify-between gap-4">
+							<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase outline-none">This Week</h1>
+							<OpenCount className="sm:hidden" />
+						</div>
 
 						{/*
 						 * Above the first task and above the banner. #50 graded this

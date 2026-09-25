@@ -79,3 +79,14 @@ A saturated blue accent reads as a hyperlink and says "click here" where this co
 Section headings set above their own prose read as a stack of small grey captions that nothing distinguishes. Sections are labelled bands with the label in the margin under a rule running the full measure.
 
 And the finding underneath all of them: the Visible Grid was white, hairlines and type, with no material to commit to. Built faithfully it could only resolve into a well-typeset document. A world with nothing to be made of cannot be rescued by execution.
+
+## Revision, after three critique rounds (2026-09-25)
+
+The owner ruled on these, and they supersede the direction contract above where the two differ.
+
+- The column heads read `NO. | TASK | SIGN OFF`. JOB is on Task's _Avoid_ line in CONTEXT.md, and each head sits over the column it names.
+- Stamp red marks only recorded work: the stamp, its fill, the record line and the tally cells. The evidence line is typewriter ink, not stamp red or blue.
+- The nav's first link reads This Week, matching the route's heading.
+- A Task that is not delegable says so on its row, in ink.
+- The approved comp is `.impeccable/mocks/this-week-job-ticket.png`, as DESIGN.md's Provenance says. The tally comp named above was approved first and belongs to the earlier round.
+

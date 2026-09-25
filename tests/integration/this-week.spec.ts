@@ -74,7 +74,7 @@ test.describe('the brief sentence, at 1440x900', () => {
 	test('states its purpose above the fold, ahead of the first task', async ({ page }) => {
 		await page.goto('');
 
-		const purpose = page.getByText(/ for one yard in /);
+		const purpose = page.getByText(/ for one yard\. /);
 		await expect(purpose).toContainText(/rule/i);
 		await expect(purpose).toContainText(/evidence/i);
 
@@ -182,5 +182,42 @@ test.describe('one-handed, at 390x844', () => {
 		expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
 		expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
 		await expect(page.locator('main li label')).toHaveCount(0);
+	});
+});
+
+/*
+ * Asserted on what the browser rendered, not on class names. A colour token
+ * named `--color-evidence` once took the `text-evidence` class over. The
+ * markup said `text-evidence text-accent` and every class assertion passed,
+ * while the page drew body-sized evidence and an ink record line.
+ */
+test.describe('evidence and record lines, as rendered', () => {
+	test('sets the evidence line at its own size, below body text', async ({ page }) => {
+		await page.goto('');
+
+		const row = page.locator('main li').filter({ has: page.locator('input[type="checkbox"]') }).first();
+		const evidence = row.getByText(/^(Window|Observed run|Forecast|No earlier|\d+ days since) /);
+		const size = await evidence.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
+
+		// `--text-evidence` clamps between 0.75rem and 0.875rem.
+		expect(size).toBeGreaterThanOrEqual(12);
+		expect(size).toBeLessThanOrEqual(14);
+	});
+
+	test('draws the record line in the same red as the stamp beside it', async ({ page }) => {
+		await page.goto('');
+
+		const row = page.locator('main li').filter({ has: page.locator('input[type="checkbox"]') }).first();
+		await row.locator('input[type="checkbox"]').click();
+
+		const record = row.getByText(/^Recorded /);
+		await expect(record).toBeVisible({ timeout: 8000 });
+
+		const stamp = row.locator('.stamp-mark');
+		const [recordColour, stampColour] = await Promise.all([
+			record.evaluate(node => getComputedStyle(node).color),
+			stamp.evaluate(node => getComputedStyle(node).color),
+		]);
+		expect(recordColour).toBe(stampColour);
 	});
 });

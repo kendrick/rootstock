@@ -6,7 +6,7 @@ import { loadArtifact } from '@/artifact/load';
 import { announceRecorded } from '@/components/this-week/recorded';
 import { openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
-import { RailApparatus } from './rail';
+import { OpenCount, RailApparatus } from './rail';
 // Installs IDBRequest and the other globals `idb` reaches for; each test then
 // swaps in a fresh factory below.
 import 'fake-indexeddb/auto';
@@ -79,5 +79,14 @@ describe('railApparatus', () => {
 
 		expect(openFigure()).toBeNull();
 		expect(screen.getByText('Tasks', { selector: 'dt' })).toBeDefined();
+	});
+
+	// The phone's figure beside the heading reads the same count as the margin.
+	it('shows the open count beside the heading once the Store answers', async () => {
+		await act(async () => {
+			render(<OpenCount />);
+		});
+
+		await waitFor(() => expect(screen.getByText(`${total} of ${total} open`)).toBeDefined());
 	});
 });

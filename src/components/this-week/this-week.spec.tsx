@@ -702,7 +702,7 @@ describe('thisWeek', () => {
 			const approaching = screen.getByRole('region', { name: 'Approaching' });
 			expect(within(approaching).queryByRole('checkbox')).toBeNull();
 			expect(within(approaching).getByText('Not yet')).toBeDefined();
-			expect(within(approaching).getByText(/^~[A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
+			expect(within(approaching).getByText(/^About [A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
 		});
 
 		it('closes the stub once every Task that can be signed off is recorded', async () => {
@@ -724,7 +724,9 @@ describe('thisWeek', () => {
 			await mount(fullPage(fakeStore()));
 
 			expect(screen.queryByText(/^Closed —/u)).toBeNull();
-			expect(screen.getByText(/^Stub — \d+ of \d+ open$/u)).toBeDefined();
+			// Three signable Tasks and one approaching: the approaching one is
+			// never open, so the stub and the Closed mark count the same three.
+			expect(screen.getByText('3 of 3 open')).toBeDefined();
 		});
 	});
 });

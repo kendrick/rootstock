@@ -280,6 +280,19 @@ export function TaskItem({
 							{plantName}
 						</span>
 					)}
+
+					{/*
+					 * On the row, not only inside the disclosure. The household can
+					 * land on this page too, and a Task that is not theirs to do has
+					 * to say so before anyone reaches its box. Ink, because red is
+					 * kept for recorded work. It reads the `delegable` stamped at
+					 * authoring time and derives nothing (AGENTS.md).
+					 */}
+					{!task.delegable && (
+						<span className="border border-foreground px-1 font-display text-label font-bold tracking-widest text-foreground uppercase">
+							Not delegable
+						</span>
+					)}
 				</span>
 
 				{text !== null && (
@@ -340,7 +353,7 @@ export function TaskItem({
 							<span className="flex flex-col items-center justify-center gap-1 border-l-2 border-rule p-2 text-center font-display text-label font-bold tracking-widest text-muted uppercase">
 								<span>Not yet</span>
 								{task.citation.kind === 'threshold-projection' && (
-									<span className="font-mono text-evidence tracking-tight">{`~${dayOfMonth(task.citation.projectedDate)}`}</span>
+									<span className="font-mono text-evidence tracking-tight">{`About ${dayOfMonth(task.citation.projectedDate)}`}</span>
 								)}
 							</span>
 						</div>
@@ -388,7 +401,13 @@ export function TaskItem({
 										Held
 									</span>
 								)}
-								<span aria-hidden="true" className="pointer-events-none font-display text-label tracking-widest text-muted uppercase peer-checked:hidden peer-disabled:line-through">
+								{/*
+								 * A drawn box, so the cell reads as the control it is. With only
+								 * the words, it matches the column head above and reads as a label.
+								 * The input still fills the whole cell; this is only the mark.
+								 */}
+								<span aria-hidden="true" className="pointer-events-none size-8 border-2 border-foreground peer-checked:hidden peer-disabled:border-muted" />
+								<span aria-hidden="true" className="pointer-events-none font-display text-label tracking-widest text-foreground uppercase peer-checked:hidden peer-disabled:text-muted peer-disabled:line-through">
 									Sign off
 								</span>
 								{pending && !checked && (
@@ -413,7 +432,7 @@ export function TaskItem({
 										 * keyboard reaches it.
 										 */}
 										{phase === 'pending' && (
-											<span className="font-display text-title leading-none font-bold tracking-wide text-foreground uppercase tabular-nums">
+											<span className="font-display text-body leading-none font-bold tracking-wide whitespace-nowrap text-foreground uppercase tabular-nums">
 												{`Cancel · ${secondsLeft}`}
 											</span>
 										)}

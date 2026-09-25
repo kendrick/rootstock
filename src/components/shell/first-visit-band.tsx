@@ -68,7 +68,7 @@ export function FirstVisitBand(): ReactElement | null {
 			    squeezes into a column 150px wide and nine lines tall. */}
 			<p className="min-w-0 flex-1 font-mono text-detail text-foreground">
 				<span className="font-display text-label font-bold tracking-widest text-foreground uppercase">New here — </span>
-				the line under each task is the evidence that fired its rule: a date inside the rule's window, a run of soil readings, or the last time the work was recorded. A model may reword a task; it cannot add one.
+				the line under each task is the evidence that fired its rule: the window it falls in, a run of soil readings, or when the work was last recorded. A model may reword a task; it cannot add one.
 			</p>
 
 			{/* `min-h-11` on each: at text height alone these are 17px tall, a third

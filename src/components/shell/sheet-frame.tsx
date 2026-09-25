@@ -73,7 +73,7 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 					    The gate renders in place of the route rather than around it, so a
 					    page that owned its own main would lose the landmark on exactly the
 					    render where a lost reader needs it. */}
-					<main className="min-w-0 px-3 py-6 sm:px-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+					<main className="min-w-0 px-3 pt-3 pb-6 sm:px-5 sm:py-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
 						{children}
 					</main>
 

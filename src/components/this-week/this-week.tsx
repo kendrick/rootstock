@@ -16,7 +16,7 @@ import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
 import { DeferredSection } from './deferred-section';
 import { CANCELLED, NOT_SAVED, pendingAnnouncement, permanenceNote, recordedAnnouncement, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
-import { announceRecorded, recordedDates } from './recorded';
+import { announceRecorded, recordedDates, weekCounts } from './recorded';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
 import { taskText } from './task-text';
@@ -186,9 +186,8 @@ export function ThisWeek({
 	 * and #50 found it fully present in the DOM and entirely absent from the
 	 * screen: three visible tasks, zero visible citations, a 16px chevron the only
 	 * thing advertising them. Every Task answers that by rendering its Citation on
-	 * a line of its own beneath the instruction, in the one colour this world
-	 * reserves for cited work, so a Task cannot reach the screen without its
-	 * evidence beside it.
+	 * a line of its own beneath the instruction, in typewriter ink, so a Task
+	 * cannot reach the screen without its evidence beside it.
 	 *
 	 * Opening a panel here would cost a screenful to prove what that line already
 	 * proves. The disclosure holds the full apparatus and waits to be asked.
@@ -297,8 +296,8 @@ export function ThisWeek({
 	 * off at all and would otherwise keep a finished week open forever. The
 	 * closed mark is ink, because the rows above already carry the stamps.
 	 */
-	const signable = tasks.filter(task => task.status !== 'approaching').length;
-	const closed = signable > 0 && tasks.every(task => task.status === 'approaching' || completedIds.has(task.id));
+	const counts = weekCounts(tasks, completedIds);
+	const closed = counts.signable > 0 && counts.open === 0;
 
 	// This sentence reports the Plan and nothing else. Whether the runner that
 	// built it is still working is a second question, and `StalenessBanner` above
@@ -410,10 +409,10 @@ export function ThisWeek({
 					{closed
 						? (
 								<span className="border-2 border-foreground px-1.5 py-0.5">
-									{`Closed — ${signable} of ${signable} recorded`}
+									{`Closed — ${counts.signable} of ${counts.signable} recorded`}
 								</span>
 							)
-						: <span>{`Stub — ${tasks.length - completedIds.size} of ${tasks.length} open`}</span>}
+						: <span>{`${counts.open} of ${counts.signable} open`}</span>}
 					<span className="text-muted">{seedYard.region.name}</span>
 				</p>
 			</div>

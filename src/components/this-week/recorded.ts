@@ -42,6 +42,32 @@ export function recordedDates(
 	return recorded;
 }
 
+export interface WeekCounts {
+	/** Tasks a reader can sign off: everything but Approaching work. */
+	signable: number;
+	recorded: number;
+	open: number;
+	approaching: number;
+}
+
+/**
+ * The one count of the week's work that the stub, the Closed mark and the
+ * margin all read. Approaching work is counted apart, because it cannot be
+ * signed off. Folded into "open", it would keep a finished week open in the
+ * stub while the Closed mark said the week was done.
+ */
+export function weekCounts(tasks: readonly Task[], recordedIds: ReadonlySet<string>): WeekCounts {
+	const signableTasks = tasks.filter(task => task.status !== 'approaching');
+	const recorded = signableTasks.filter(task => recordedIds.has(task.id)).length;
+
+	return {
+		signable: signableTasks.length,
+		recorded,
+		open: signableTasks.length - recorded,
+		approaching: tasks.length - signableTasks.length,
+	};
+}
+
 const listeners = new Set<() => void>();
 
 /**

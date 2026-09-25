@@ -19,12 +19,15 @@ import { cn } from '@/lib/utils';
  * link, and a fourth entry here would need the slug in the client bundle to
  * build the href at all.
  *
- * The labels are the domain's own words. Plan is what the Planner returns for
- * one date, so it names the route the Plan is read on; CONTEXT.md forbids
- * Schedule, list, result and output as synonyms, and none of them appear.
+ * The labels are the domain's own words, and each matches the heading of the
+ * route it opens. The first says This Week, the route's name in PRODUCT.md and
+ * a CONTEXT.md term in its own right. Plan is a domain word too, but a reader
+ * who taps PLAN lands on a page titled THIS WEEK, and the owner ruled for the
+ * route's name on 2026-09-25. Plan stays in prose ("Planned Sep 25"), where it
+ * names the thing the Planner returned.
  */
 const ROUTES = [
-	{ href: '/', label: 'Plan' },
+	{ href: '/', label: 'This Week' },
 	{ href: '/yard', label: 'Yard' },
 	{ href: '/rules', label: 'Rules' },
 ] as const;
@@ -40,7 +43,9 @@ export function Nav(): ReactElement {
 		// route this rule actually reaches: Plan, Yard and Rules have no print path
 		// today, so the nav they carry never meets it.
 		<nav aria-label="Main" className="mt-3 print:hidden">
-			<ul className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+			{/* Tighter in the lg margin, which is 200px of text wide. At gap-x-8 the
+			    three labels overrun it and RULES drops to a line of its own. */}
+			<ul className="flex flex-wrap items-baseline gap-x-8 gap-y-2 lg:gap-x-4">
 				{ROUTES.map(({ href, label }) => {
 					const isCurrent = pathname === href;
 

@@ -263,10 +263,10 @@ export function CitationDisclosure({
 			>
 				<ChevronRight
 					aria-hidden="true"
-					className="size-4 shrink-0 text-evidence transition-transform group-open:rotate-90"
+					className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90"
 				/>
 				<span className="min-w-0 flex-1">
-					<span className="font-medium text-evidence">{CITATION_LABEL}</span>
+					<span className="font-medium text-foreground">{CITATION_LABEL}</span>
 					{rule !== null && (
 						<span className="text-muted-foreground">{` · ${rule.name}`}</span>
 					)}

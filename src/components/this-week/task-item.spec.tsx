@@ -24,6 +24,7 @@ function fixtureTask(id: string): Task {
 const firedTask = fixtureTask('fall-pre-emergent@front-lawn');
 const deferredTask = fixtureTask('deep-water-fig@fig-1');
 const approachingTask = fixtureTask('spring-pre-emergent@front-lawn');
+const delegableTask = fixtureTask('last-nitrogen@front-lawn');
 
 /** Narration's line for the fired Task, read off the fixture for the same reason the Tasks are. */
 const firedNarration = combinedNarratedArtifact.narration?.tasks
@@ -130,6 +131,26 @@ describe('taskItem', () => {
 		const list = container.querySelector('ul');
 		expect(list?.children.length).toBe(1);
 		expect(list?.children[0]?.tagName).toBe('LI');
+	});
+
+	// The household can reach this page. A Task that is not theirs to do says so
+	// on the row, before anyone reaches the box; one that is says nothing extra.
+	describe('the delegability mark', () => {
+		// Read from the row, above the disclosure: the disclosure has always said
+		// it, and what matters is that the row says it without being opened.
+		it('marks a Task that is not delegable on the row itself', () => {
+			const { container } = renderItem(<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />);
+
+			expect(firedTask.delegable).toBe(false);
+			expect(container.querySelector('li > div')?.textContent).toMatch(/Not delegable/);
+		});
+
+		it('adds no mark to a Task the household may do', () => {
+			const { container } = renderItem(<TaskItem task={delegableTask} rulesById={rulesById} plantsById={plantsById} />);
+
+			expect(delegableTask.delegable).toBe(true);
+			expect(container.querySelector('li > div')?.textContent).not.toMatch(/Not delegable/);
+		});
 	});
 
 	describe('the check-off box', () => {

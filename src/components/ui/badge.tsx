@@ -23,7 +23,7 @@ const badgeVariants = cva(
         // for recorded work; the wash keeps the pill quieter than the rule
         // name it sits beside.
         evidence:
-          "border-evidence/40 bg-evidence/10 text-evidence hover:bg-evidence/20",
+          "border-foreground/40 bg-foreground/10 text-foreground hover:bg-foreground/20",
       },
     },
     defaultVariants: {

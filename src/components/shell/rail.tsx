@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
 import { NotLit } from '@/components/this-week/not-lit';
-import { onRecorded, recordedDates } from '@/components/this-week/recorded';
+import { onRecorded, recordedDates, weekCounts } from '@/components/this-week/recorded';
 import { TallyBand } from '@/components/this-week/tally-band';
+import { cn } from '@/lib/utils';
 import { seedRules } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { Nav } from './nav';
@@ -48,8 +49,8 @@ const rulesById = new Map(seedRules.map(rule => [rule.id, rule]));
  * The page states the last case in words. The margin leaves the Open figure
  * out, because nobody could vouch for the count.
  */
-function useRecordedCount(plan: Plan | null): number | null {
-	const [recorded, setRecorded] = useState<number | null>(null);
+function useRecordedIds(plan: Plan | null): ReadonlySet<string> | null {
+	const [recorded, setRecorded] = useState<ReadonlySet<string> | null>(null);
 
 	useEffect(() => {
 		if (plan === null) {
@@ -62,7 +63,7 @@ function useRecordedCount(plan: Plan | null): number | null {
 			try {
 				const history = await listOccurrences(await openBrowserStore());
 				if (live) {
-					setRecorded(recordedDates(plan?.tasks ?? [], history, plan?.asOf ?? '', rulesById).size);
+					setRecorded(new Set(recordedDates(plan?.tasks ?? [], history, plan?.asOf ?? '', rulesById).keys()));
 				}
 			}
 			catch {
@@ -84,17 +85,50 @@ function useRecordedCount(plan: Plan | null): number | null {
 	return recorded;
 }
 
-export function RailApparatus(): ReactElement | null {
+/**
+ * The week's counts as this browser knows them, or null before the Store has
+ * answered. Shared by the margin and the phone's count beside the heading, so
+ * the two can't disagree.
+ */
+function useWeekCounts(): { plan: Plan; counts: ReturnType<typeof weekCounts>; known: boolean } | null {
 	const plan = useMemo(committedPlan, []);
-	const recorded = useRecordedCount(plan);
+	const recorded = useRecordedIds(plan);
 
 	if (plan === null) {
 		return null;
 	}
 
-	const total = plan.tasks.length;
-	const counts = { total, recorded: recorded ?? 0 };
-	const open = recorded === null ? null : total - recorded;
+	return { plan, counts: weekCounts(plan.tasks, recorded ?? new Set()), known: recorded !== null };
+}
+
+/**
+ * The open count set beside the page heading on a phone, where the margin's
+ * counts are hidden. It answers "how much is left" without the reader
+ * scrolling to the stub. Renders nothing until the Store has answered.
+ */
+export function OpenCount({ className }: { className?: string }): ReactElement | null {
+	const week = useWeekCounts();
+
+	if (week === null || !week.known || week.counts.signable === 0) {
+		return null;
+	}
+
+	return (
+		<p className={cn('font-display text-label font-bold tracking-widest text-foreground uppercase tabular-nums', className)}>
+			{`${week.counts.open} of ${week.counts.signable} open`}
+		</p>
+	);
+}
+
+export function RailApparatus(): ReactElement | null {
+	const week = useWeekCounts();
+
+	if (week === null) {
+		return null;
+	}
+
+	const { counts } = week;
+	const open = week.known ? counts.open : null;
 
 	/*
 	 * A margin block on a wide screen and one compact row on a phone. Stacked at
@@ -108,25 +142,36 @@ export function RailApparatus(): ReactElement | null {
 		// since these figures support the plan rather than being it.
 		<aside
 			aria-label="The week at a glance"
-			className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 print:hidden lg:mt-8 lg:block lg:space-y-3"
+			className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 print:hidden sm:mt-6 lg:mt-8 lg:block lg:space-y-3"
 		>
 			<Nav />
 
 			{/* Off below sm. The band repeats the counts beside it, and on a phone
 			    its row is space the first Task needs more. */}
 			<div className="hidden w-full sm:block lg:w-auto">
-				<TallyBand total={counts.total} recorded={counts.recorded} />
+				<TallyBand total={counts.signable} recorded={counts.recorded} />
 			</div>
 
-			<dl className="flex gap-x-6 font-display text-label tracking-widest uppercase lg:block lg:space-y-1">
+			{/* Off below sm, where `OpenCount` beside the heading carries the one
+			    figure a phone reader needs and this row would cost a line. */}
+			<dl className="hidden gap-x-6 font-display text-label tracking-widest uppercase sm:flex lg:block lg:space-y-1">
 				<div className="flex gap-x-2 lg:justify-between">
 					<dt className="text-muted">Tasks</dt>
-					<dd className="shrink-0 tabular-nums text-foreground">{counts.total}</dd>
+					<dd className="shrink-0 tabular-nums text-foreground">{counts.signable}</dd>
 				</div>
 				{open !== null && (
 					<div className="flex gap-x-2 lg:justify-between">
 						<dt className="text-muted">Open</dt>
 						<dd className="shrink-0 tabular-nums text-foreground">{open}</dd>
+					</div>
+				)}
+				{/* Its own line, never folded into Tasks or Open. Approaching work
+				    cannot be signed off yet, and counting it as open would keep a
+				    finished week open forever. */}
+				{counts.approaching > 0 && (
+					<div className="flex gap-x-2 lg:justify-between">
+						<dt className="text-muted">Approaching</dt>
+						<dd className="shrink-0 tabular-nums text-foreground">{counts.approaching}</dd>
 					</div>
 				)}
 			</dl>

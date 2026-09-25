@@ -45,7 +45,7 @@ function spokenDay(isoDate: string): string {
  */
 export function permanenceNote(asOf: string | null): string {
 	const when = asOf === null ? '' : ` on ${spokenDay(asOf)}`;
-	return `Signing off records the work as done${when}, in this browser only. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels. After that it cannot be taken back, because the yard keeps every record and changes none.`;
+	return `Signing off records the work as done${when}, in this browser only. Press the box again within ${RECORD_DELAY_MS / 1000} seconds to cancel; after that it cannot be taken back.`;
 }
 
 /** What a refused untick says, on the Task and in the live region. */
@@ -64,7 +64,7 @@ export function pendingAnnouncement(taskText: string): string {
 export const LATE_GRACE_MS = 3000;
 
 /** Said, and left on the row, when a cancel lands just after the wait ran out. */
-export const TOO_LATE = `Too late to cancel. The ${RECORD_DELAY_MS / 1000} seconds had run out, so this is recorded. ${NO_UNDO}`;
+export const TOO_LATE = `Too late to cancel. The ${RECORD_DELAY_MS / 1000} seconds ran out and this is recorded. ${NO_UNDO}`;
 
 /** Said when a reader cancels inside the wait. */
 export const CANCELLED = 'Cancelled. Nothing was recorded.';

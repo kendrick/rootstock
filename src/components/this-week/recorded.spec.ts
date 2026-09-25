@@ -1,7 +1,7 @@
 import type { Occurrence } from '@/planner/occurrence';
 import { describe, expect, it, vi } from 'vitest';
 import { combinedNarratedArtifact, rulesById } from './fixtures';
-import { announceRecorded, onRecorded, recordedDates } from './recorded';
+import { announceRecorded, onRecorded, recordedDates, weekCounts } from './recorded';
 
 const { asOf, tasks } = combinedNarratedArtifact.plan;
 
@@ -40,6 +40,23 @@ describe('recordedDates', () => {
 		const other = occurrence(`${asOf}T12:00:00Z`, { plantId: 'back-lawn' });
 
 		expect(recordedDates(tasks, [other], asOf, rulesById).has(fired.id)).toBe(false);
+	});
+});
+
+describe('weekCounts', () => {
+	// Approaching work cannot be signed off, so it is never open and never
+	// keeps a finished week from closing.
+	// The fixture is two fired Tasks, one deferred and one approaching, so the
+	// expected figures are written out rather than worked out the way the
+	// function works them out.
+	it('counts approaching work apart from what can be signed off', () => {
+		expect(weekCounts(tasks, new Set())).toEqual({ signable: 3, recorded: 0, open: 3, approaching: 1 });
+	});
+
+	it('reaches zero open once the three signable Tasks are recorded', () => {
+		const signableIds = new Set(tasks.filter(task => task.status !== 'approaching').map(task => task.id));
+
+		expect(weekCounts(tasks, signableIds)).toEqual({ signable: 3, recorded: 3, open: 0, approaching: 1 });
 	});
 });
 

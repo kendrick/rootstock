@@ -15,16 +15,16 @@ export interface AdvisoriesProps {
  * household can act on it with the same confidence, which is the one claim
  * this component exists to not make.
  *
- * The distinction is carried three ways past colour alone—a dashed border
- * instead of Task's solid one, an eye glyph instead of a checkbox, and prose
- * that says outright that nothing produced this—because `source-badge.tsx`
+ * The distinction is carried past colour alone: a plain list outside the
+ * ruled Task table, an eye glyph where a Task has a sign-off box, and a
+ * sentence saying outright that nothing produced these. `source-badge.tsx`
  * already established that a colour-only signal fails a reader who can't see
  * colour, or one squinting at a phone in the yard.
  *
- * Flat, and never on `bg-card`. The raised surface belongs to the Tasks. Give
- * it to this block instead and the page's most prominent element becomes the
- * one block carrying no Citation, which is what #50 measured: the LCP element
- * on This Week was an Advisory span.
+ * Nothing on the sheet sits on a raised surface. #50 measured the LCP element
+ * on This Week as an Advisory span when this block was the prominent one, and
+ * the page's most prominent element should never be the one block carrying no
+ * Citation.
  *
  * Returns null on an empty list rather than an empty heading, for the same
  * reason `TaskGroup` will: a label over nothing reads as a promise the page
