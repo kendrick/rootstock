@@ -36,7 +36,7 @@ test('serves the yard route', async ({ page }) => {
 test('the yard photo loads from the built export', async ({ page }) => {
 	await page.goto('yard');
 
-	const photo = page.getByRole('img', { name: /seen from above/ });
+	const photo = page.getByRole('img', { name: /Aerial photo of the yard/ });
 	await expect(photo).toBeVisible();
 
 	// An <img> reserves its box and reports visible the moment it's in the DOM,
@@ -94,7 +94,9 @@ test('every sited Plant appears once in the accessible tab order, not twice', as
 });
 
 // The critique's own method: elementFromPoint at a pin's centre returning a
-// different pin. Three of six failed this at 390px before the fix.
+// different pin. Three of six failed this at 390px before the fix. Pins are
+// named by `data-plant`; they carry no title, and comparing titles compared
+// null with null for every pin.
 test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('yard');
@@ -105,18 +107,42 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 
 	for (let i = 0; i < count; i++) {
 		const pin = pins.nth(i);
-		const title = await pin.getAttribute('title');
+		const plant = await pin.getAttribute('data-plant');
+		expect(plant).not.toBeNull();
 		const box = await pin.boundingBox();
 		if (box === null) {
-			throw new Error(`pin '${title}' has no bounding box: this test has nothing to hit-test.`);
+			throw new Error(`pin '${plant}' has no bounding box: this test has nothing to hit-test.`);
 		}
 
-		const hitTitle = await page.evaluate(
-			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('title') ?? null,
+		const hit = await page.evaluate(
+			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
 			[box.x + box.width / 2, box.y + box.height / 2] as const,
 		);
 
-		expect(hitTitle, `pin '${title}' at its own centre resolved to '${hitTitle}' instead`).toBe(title);
+		expect(hit, `pin '${plant}' at its own centre resolved to '${hit}' instead`).toBe(plant);
+	}
+});
+
+// pin-layout.ts spaces pins against the photo's width on a phone. Measured
+// here, so a change to the sheet's gutters fails by name instead of quietly
+// crowding the pins again. And every pin sits wholly on the photo: the frame
+// clips its overflow, and a pin at the edge once showed 14 of its 24px.
+test('lays pins out against the photo width a phone renders, with none clipped', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('yard');
+
+	const photo = page.getByRole('img', { name: /Aerial photo of the yard/ });
+	const frame = await photo.evaluate(node => node.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
+	expect(Math.round(frame.width)).toBe(346);
+
+	const pins = page.locator('button[data-plant]');
+	for (let i = 0; i < await pins.count(); i++) {
+		const box = await pins.nth(i).boundingBox();
+		expect(box).not.toBeNull();
+		expect(box!.y).toBeGreaterThanOrEqual(frame.top - 0.5);
+		expect(box!.x).toBeGreaterThanOrEqual(frame.left - 0.5);
+		expect(box!.x + box!.width).toBeLessThanOrEqual(frame.right + 0.5);
+		expect(box!.y + box!.height).toBeLessThanOrEqual(frame.bottom + 0.5);
 	}
 });
 

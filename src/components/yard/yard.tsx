@@ -1,15 +1,25 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import type { YardView } from './plant-list';
 import type { Artifact } from '@/artifact/artifact';
 import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant, Yard as YardRecord } from '@/yard/plant';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
+import { ticketLines } from './week-work';
 import { YardPhoto } from './yard-photo';
+
+/** Where the reader's last choice of view is kept, per device. */
+const VIEW_STORAGE_KEY = 'rootstock.yard-view';
+
+function isView(value: string | null): value is YardView {
+	return value === 'week' || value === 'all';
+}
 
 export interface YardProps {
 	yard: YardRecord;
@@ -52,6 +62,48 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 
 	const [selected, setSelected] = useState<Plant | null>(null);
 
+	const lines = useMemo(() => ticketLines(artifact.plan.tasks), [artifact]);
+	const ruleNames = useMemo(() => new Map(rules.map(rule => [rule.id, rule.name])), [rules]);
+
+	/*
+	 * Two readings of one yard: the week's work laid over the plate, or the
+	 * whole inventory. The week view is the default whenever the ticket names
+	 * any Plant, because "what does the yard need this week" is the question
+	 * this product answers. A link's `?view=` wins over the reader's last choice
+	 * on this device, so a shared link opens the view it was shared from.
+	 */
+	const [view, setView] = useState<YardView>(lines.size > 0 ? 'week' : 'all');
+
+	useEffect(() => {
+		const fromUrl = new URLSearchParams(window.location.search).get('view');
+		let stored: string | null = null;
+		try {
+			stored = localStorage.getItem(VIEW_STORAGE_KEY);
+		}
+		catch {}
+		const chosen = isView(fromUrl) ? fromUrl : isView(stored) ? stored : null;
+		if (chosen !== null) {
+			// eslint-disable-next-line react/set-state-in-effect -- the URL and storage are only readable in a browser, and the prerender has neither
+			setView(chosen);
+		}
+	}, []);
+
+	function chooseView(next: YardView): void {
+		setView(next);
+		try {
+			localStorage.setItem(VIEW_STORAGE_KEY, next);
+		}
+		catch {}
+		const url = new URL(window.location.href);
+		url.searchParams.set('view', next);
+		window.history.replaceState(null, '', url);
+	}
+
+	const dimmed = useMemo(
+		() => view === 'week' ? new Set(plants.filter(plant => !lines.has(plant.id)).map(plant => plant.id)) : new Set<string>(),
+		[view, plants, lines],
+	);
+
 	// A pin and a list row can both open the sheet for the same Plant, so
 	// Radix's own trigger-tracking (built for a single Trigger component) has
 	// nothing to restore to. This is the one whichever of the two actually
@@ -68,11 +120,36 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 	return (
 		<TooltipProvider delayDuration={120}>
 			<div className="space-y-6">
+				<p className="max-w-prose text-body text-muted">
+					The numbers on the photo match the list below. Filled callouts are planted, outlined ones are planned. Open one for its site, the Rules that reach it, and the work recorded against it.
+				</p>
+
+				{/* Two ruled cells, not a pill: a pressed cell prints in reverse. */}
+				<div role="group" aria-label="Show" className="inline-flex border-2 border-rule">
+					{(['week', 'all'] as const).map(option => (
+						<button
+							key={option}
+							type="button"
+							aria-pressed={view === option}
+							onClick={() => chooseView(option)}
+							className={cn(
+								'inline-flex min-h-11 items-center px-3 font-display text-label font-extrabold tracking-widest uppercase',
+								'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+								option === 'all' && 'border-l-2 border-rule',
+								view === option ? 'bg-foreground text-background' : 'text-muted hover:text-foreground',
+							)}
+						>
+							{option === 'week' ? 'This week' : 'All plants'}
+						</button>
+					))}
+				</div>
+
 				<YardPhoto
 					yard={yard}
 					plants={plants}
 					ordinals={ordinals}
 					hovered={hovered}
+					dimmed={dimmed}
 					onHoverChange={setHovered}
 					onSelect={handleSelect}
 				/>
@@ -82,6 +159,9 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 					hovered={hovered}
 					onHoverChange={setHovered}
 					onSelect={handleSelect}
+					lines={lines}
+					ruleNames={ruleNames}
+					view={view}
 				/>
 				<PlantSheet
 					plant={selected}

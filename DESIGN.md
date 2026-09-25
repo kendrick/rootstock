@@ -96,6 +96,14 @@ Hovering either a callout or its row lights both. The callout grows rather than 
 
 Callouts are `aria-hidden` and outside the tab order, because the parts list is the equivalent path to every Plant and an integration test pins that each Plant reaches the tab order once rather than twice. Their tooltip is therefore pointer-only by design, and everything it says is in the row the number points at.
 
+Callouts take plate colours, fixed paper and ink that never flip for dark mode, because the photograph under them doesn't flip either. Each carries an invisible 44px hit area around its 24px mark, and the layout keeps pins 28px apart and half a pin in from every edge, so no pad covers another pin's centre and no pin is clipped.
+
+The Yard has two readings, switched by a pair of ruled cells, `THIS WEEK | ALL PLANTS`, the pressed one printed in reverse. This Week leads the list with the Plants the ticket names, each line saying where it sits on the ticket ("On the ticket · Ready now 01 · Fall pre-emergent"), and rules the rest off under NOTHING THIS WEEK with their callouts quieted. All Plants is the inventory, with a count on rows that have work. A Plant keeps its number in both, so no callout renumbers under the reader. The view defaults to This Week whenever the ticket names a Plant; a link's `?view=` wins over the device's last choice.
+
+### The Plant Sheet
+
+The sheet is part of the sheet world, not a dialog borrowed from somewhere else. Its title is Saira and left-aligned, its section heads are ruled strips like the parts list's column heads, and Rules that ask for work are listed apart from Guards, which only hold work back or add a note. A Guard's mark and NOT DELEGABLE are printed text, never pills. A live Rule links to its line on the ticket. A threshold chart sits inside its own Rule's row, captioned with the Rule and its season, and out of season it's drawn muted with a sentence saying nothing can fire it; September soil above a spring line otherwise reads as work that fired. CLOSE is a word at 44px, first in the tab order, and a second one sits at the foot on a phone, where the sheet is full width and the top corner is the last place a thumb reaches.
+
 ### The Sign-Off Box
 
 The ticket's own gesture, and the only thing on a row a reader can touch. Unsigned, it draws an empty ink box over the words SIGN OFF, so it reads as a control and not as a repeat of the column head. During the wait it counts down, CANCEL · 3, 2, 1, so the time left survives reduced motion. Signed, it takes a stamp. A tap that lands just after the wait ran out gets its own sentence saying it came too late, apart from the refusal an older record gets. The input fills the cell rather than sitting inside it, so the whole box is the target and its visible border is the control's own. The cell is the only target, because a label around the row would let a thumb resting on the instruction write a permanent record.

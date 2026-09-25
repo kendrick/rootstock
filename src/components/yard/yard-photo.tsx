@@ -8,8 +8,10 @@ import { withBasePath } from '@/lib/base-path';
 import { declutteredPositions } from './pin-layout';
 import { PlantPin } from './plant-pin';
 
-export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSelect }: {
+export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSelect, dimmed = new Set() }: {
 	yard: Yard;
+	/** Plants the week view quiets, because this week's ticket has nothing for them. */
+	dimmed?: ReadonlySet<string>;
 	plants: Plant[];
 	/** Plant id to its line number in the parts list, so a callout and its row carry the same number. */
 	ordinals: ReadonlyMap<string, number>;
@@ -63,12 +65,11 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 				// withBasePath, this resolves against the domain root, where a
 				// project page has nothing at all.
 				src={withBasePath(photo.path)}
-				alt={`The yard in ${yard.region.name}, seen from above.`}
+				alt={`Aerial photo of the yard in ${yard.region.name}. The numbered callouts match the Plant list below.`}
 				fill
-				// 736px is layout.tsx's max-w-3xl less its px-4 gutters: past that
-				// breakpoint the column stops growing, so telling the browser
-				// otherwise would have it pick a wider candidate than it can use.
-				sizes="(min-width: 768px) 736px, 100vw"
+				// The field beside the margin tops out near 950px at the sheet's
+				// max-w-7xl; below lg the photo runs the sheet's full width.
+				sizes="(min-width: 1024px) 950px, 100vw"
 				className="object-cover"
 				onError={() => setFailed(true)}
 			/>
@@ -91,6 +92,7 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 					position={positions.get(plant.id)}
 					ordinal={ordinals.get(plant.id) ?? 0}
 					hovered={hovered === plant.id}
+					dimmed={dimmed.has(plant.id)}
 					onHoverChange={onHoverChange}
 					onSelect={onSelect}
 				/>

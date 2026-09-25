@@ -50,7 +50,9 @@ describe('yard page', () => {
 
 		const list = screen.getByRole('list', { name: 'Plants' });
 
-		expect(within(list).getAllByRole('listitem')).toHaveLength(seedPlants.length);
+		// Plant rows, counted by their buttons: the week view adds a "Nothing this
+		// week" rule to the list, which is an item but not a Plant.
+		expect(within(list).getAllByRole('button')).toHaveLength(seedPlants.length);
 		// Scoped to the list because a sited Plant also has a pin on the photo
 		// carrying the same name.
 		expect(within(list).getByRole('button', {

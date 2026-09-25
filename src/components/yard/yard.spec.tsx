@@ -65,7 +65,7 @@ describe('yard', () => {
 	it('renders the photo and the list together, with no sheet open', () => {
 		renderYard();
 
-		expect(screen.getByRole('img', { name: /seen from above/ })).toBeDefined();
+		expect(screen.getByRole('img', { name: /Aerial photo of the yard/ })).toBeDefined();
 		expect(screen.getByRole('list', { name: 'Plants' })).toBeDefined();
 		expect(screen.queryByRole('dialog')).toBeNull();
 	});
@@ -128,7 +128,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
@@ -152,7 +152,7 @@ describe('yard', () => {
 		fireEvent.click(pin);
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
@@ -170,11 +170,58 @@ describe('yard', () => {
 		fireEvent.click(row);
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
 
 		expect(document.activeElement).toBe(row);
+	});
+
+	/*
+	 * The fixture's Plan carries one Task, approaching, on the front lawn. So
+	 * the week view leads with the lawn, names its ticket line the way This Week
+	 * numbers it, and rules off every other Plant as having nothing this week.
+	 */
+	describe('the view toggle', () => {
+		function reset(): void {
+			localStorage.clear();
+			window.history.replaceState(null, '', '/');
+		}
+
+		it('opens on the week when the ticket names a Plant, and says what the ticket holds', () => {
+			reset();
+			renderYard();
+
+			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
+			const list = screen.getByRole('list', { name: 'Plants' });
+			expect(within(list).getByText(/^On the ticket · Approaching 01 · /u)).toBeDefined();
+			expect(within(list).getByText('Nothing this week')).toBeDefined();
+		});
+
+		it('switches to the inventory, remembers it, and puts it in the link', () => {
+			reset();
+			renderYard();
+
+			fireEvent.click(screen.getByRole('button', { name: 'All plants' }));
+
+			expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true');
+			expect(screen.getByText('1 task this week')).toBeDefined();
+			expect(screen.queryByText('Nothing this week')).toBeNull();
+			expect(localStorage.getItem('rootstock.yard-view')).toBe('all');
+			expect(new URLSearchParams(window.location.search).get('view')).toBe('all');
+		});
+
+		// A shared link opens the view it was shared from, whatever this device
+		// last chose.
+		it('lets the link choose the view over the device\'s last choice', async () => {
+			reset();
+			localStorage.setItem('rootstock.yard-view', 'week');
+			window.history.replaceState(null, '', '/?view=all');
+			renderYard();
+
+			await waitFor(() => expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true'));
+			reset();
+		});
 	});
 });

@@ -308,4 +308,38 @@ describe('soilSparkline', () => {
 		expect(desc.textContent).toContain('sit at or above it');
 		expect(desc.textContent).not.toContain('crossing');
 	});
+
+	/*
+	 * September soil sat above a spring Rule's 55F line on every day, which is
+	 * the picture of a Rule that has fired. Out of season the caption says it
+	 * cannot, and the series is drawn muted rather than in full ink.
+	 */
+	describe('the Rule\'s season', () => {
+		const spring = { ...thresholdRule, season: { start: '02-01', end: '04-30' } };
+
+		it('names the Rule and says it cannot fire when the Plan falls outside its season', () => {
+			const { container } = render(<SoilSparkline window={planWindow} rule={spring} citation={null} asOf="2026-09-25" />);
+
+			const caption = container.querySelector('figcaption')?.textContent ?? '';
+			expect(caption).toContain(`${spring.name} watches this`);
+			expect(caption).toContain('Feb 1 to Apr 30');
+			expect(caption).toContain('Out of season until Feb 1, so nothing here can fire it.');
+			expect(container.querySelector('svg[data-season="closed"]')).not.toBeNull();
+		});
+
+		it('says nothing about the season while it is open', () => {
+			const { container } = render(<SoilSparkline window={planWindow} rule={spring} citation={null} asOf="2026-03-10" />);
+
+			expect(container.querySelector('figcaption')?.textContent).not.toContain('Out of season');
+			expect(container.querySelector('svg[data-season="open"]')).not.toBeNull();
+		});
+
+		// A season that wraps the year end, Nov 15 to Feb 15, is open in January.
+		it('reads a season that wraps the year end', () => {
+			const winter = { ...thresholdRule, season: { start: '11-15', end: '02-15' } };
+			const { container } = render(<SoilSparkline window={planWindow} rule={winter} citation={null} asOf="2026-01-10" />);
+
+			expect(container.querySelector('svg[data-season="open"]')).not.toBeNull();
+		});
+	});
 });

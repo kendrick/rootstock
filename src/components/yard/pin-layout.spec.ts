@@ -1,7 +1,7 @@
 import type { Plant } from '@/yard/plant';
 import { describe, expect, it } from 'vitest';
-import { seedPlants } from '@/seed';
-import { declutteredPositions, MIN_CENTER_DISTANCE_PX } from './pin-layout';
+import { seedPlants, seedYard } from '@/seed';
+import { declutteredPositions, MIN_CENTER_DISTANCE_PX, MOBILE_BOX_WIDTH_PX } from './pin-layout';
 
 /** The photo's own aspect ratio (2400 / 1800), which every call below assumes. */
 const BOX_ASPECT = 1800 / 2400;
@@ -32,6 +32,41 @@ function distancePx(
 }
 
 describe('declutteredPositions', () => {
+	// 346 is the photo's measured width at 390px under the sheet frame. Written
+	// as the number, not the arithmetic, so a gutter change fails here.
+	it('lays pins out against the photo width a phone actually renders', () => {
+		expect(MOBILE_BOX_WIDTH_PX).toBe(346);
+	});
+
+	// The seed's real positions, at the real phone width: every pair of pins
+	// ends at least MIN_CENTER_DISTANCE_PX apart, edges included. Clamping only
+	// after spacing once pulled two top-edge pins back within 28px.
+	it('keeps every seed pin pair apart once the edges are held', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const aspect = photo.height / photo.width;
+		const positions = declutteredPositions(seedPlants, aspect);
+		const ids = [...positions.keys()];
+		const height = MOBILE_BOX_WIDTH_PX * aspect;
+
+		for (let i = 0; i < ids.length; i++) {
+			for (let j = i + 1; j < ids.length; j++) {
+				expect(distancePx(positions, MOBILE_BOX_WIDTH_PX, height, ids[i]!, ids[j]!)).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.5);
+			}
+		}
+	});
+
+	// A pin at the edge of the photo is clipped by the frame, so no pin centre
+	// may sit closer to an edge than half a 24px pin.
+	it('keeps a pin at the edge fully on the photo', () => {
+		const positions = declutteredPositions([sitedPlant('edge', 0.5, 0)], BOX_ASPECT);
+		const y = positions.get('edge')?.y ?? 0;
+
+		expect(y * MOBILE_BOX_WIDTH_PX * BOX_ASPECT).toBeCloseTo(12, 5);
+	});
+
 	it('leaves a pin untouched when nothing else is nearby', () => {
 		const plants = [sitedPlant('lone', 0.5, 0.5)];
 

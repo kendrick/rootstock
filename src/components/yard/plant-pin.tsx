@@ -21,7 +21,7 @@ import { KIND_TEXT } from './kind-text';
  * keyboard would put it back a second time, and everything it says is already in
  * the row the number points at.
  */
-export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect }: {
+export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect, dimmed = false }: {
 	plant: Plant;
 	/**
 	 * Where to draw the pin, if it differs from `plant.position`. `pin-layout.ts`
@@ -34,6 +34,8 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 	ordinal: number;
 	/** True while this Plant is under the pointer here or on its row below. */
 	hovered: boolean;
+	/** Quieted in the week view when this week's ticket has nothing for this Plant. */
+	dimmed?: boolean;
 	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
@@ -74,18 +76,31 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 					style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
 					className={cn(
 						'absolute grid size-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center',
+						// A 44px hit area around the 24px mark, the target size the rest of
+						// the site holds itself to. Round, and invisible: a 44px square
+						// reaches 31px from its centre at the corners, past the 28px that
+						// pin-layout.ts keeps neighbours apart, so it would cover a
+						// diagonal neighbour's centre. A 22px radius never does. Hit-testing
+						// honours border-radius, and nothing drawn here is rounded.
+						'before:absolute before:-inset-2.5 before:rounded-full before:content-[\'\']',
 						'border-2 font-display text-callout leading-none font-extrabold tabular-nums',
 						'transition-transform',
 						// Fill for what is in the ground, an outline for what is not. Shape
 						// rather than colour, because this is read on a phone in daylight
 						// over a photograph whose own colours cannot be relied on.
+						// Plate colours, not the theme's. The photograph does not invert in
+						// dark mode, so a callout on the dark ground would be a near-black
+						// outline on grass and roof.
 						planned
-							? 'border-ground bg-transparent text-ground'
-							: 'border-ground bg-ground text-foreground',
+							? 'border-plate-paper bg-transparent text-plate-paper'
+							: 'border-plate-paper bg-plate-paper text-plate-ink',
 						// The hovered callout grows rather than changing colour. It sits on
 						// a photograph, so any colour it took would compete with whatever
 						// pixel happens to be beneath it; scale reads on every ground.
 						hovered && 'scale-150',
+						// The callout is aria-hidden and its row carries the same fact in
+						// words, so opacity here makes no contrast claim anybody reads.
+						dimmed && !hovered && 'opacity-40',
 					)}
 				>
 					{ordinal}

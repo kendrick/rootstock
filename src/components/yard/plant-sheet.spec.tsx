@@ -74,7 +74,7 @@ function renderSheet(plant: Plant | null, overrides: {
  */
 async function settled(): Promise<void> {
 	await waitFor(() => {
-		expect(screen.queryByText(/Reading what has been recorded here/)).toBeNull();
+		expect(screen.queryByText(/Reading recorded work/)).toBeNull();
 	});
 }
 
@@ -126,16 +126,19 @@ describe('plantSheet', () => {
 
 	// The critique measured this control last in DOM and tab order, after
 	// three citation links, at a 16x16 hit target with no padding around it.
-	it('puts the Close control first among the sheet\'s focusable elements, at a 24px hit target', async () => {
+	// The word, at 44px, first in the tab order. A second Close sits at the foot
+	// for phones, where the top corner is the last place a thumb reaches.
+	it('puts a worded Close control first among the sheet\'s focusable elements, at a 44px target', async () => {
 		renderSheet(lawnPlant);
 		await settled();
 
 		const dialog = screen.getByRole('dialog');
 		const focusable = dialog.querySelectorAll('button, a[href], summary, [tabindex]:not([tabindex="-1"])');
-		const close = screen.getByRole('button', { name: 'Close' });
+		const closes = screen.getAllByRole('button', { name: 'Close' });
 
-		expect(focusable[0]).toBe(close);
-		expect(close.className).toContain('size-6');
+		expect(focusable[0]).toBe(closes[0]);
+		expect(closes[0]?.className).toContain('min-h-11');
+		expect(closes).toHaveLength(2);
 	});
 
 	// The lawn is the one Plant carrying detail of its own, and every field of
@@ -202,19 +205,21 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
+		const applicable = section('Rules that ask for work here');
 		expect(applicable.textContent).toContain('Fall pre-emergent');
 		expect(applicable.textContent).toContain('Spring pre-emergent');
 		expect(applicable.textContent).not.toContain('Feed the Esperanza');
 	});
 
-	it('gives each Rule its source badge and the region it applies to', async () => {
+	// The region only where it differs from the yard's own: every Rule in the
+	// set is written for this region, and the ticket head already names it.
+	it('gives each Rule its source badge, and leaves off the region the yard is already in', async () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
+		const applicable = section('Rules that ask for work here');
 		expect(within(applicable).getAllByText('Extension').length).toBeGreaterThan(0);
-		expect(applicable.textContent).toContain(ruleFixtures[0]!.region.name);
+		expect(applicable.textContent).not.toContain(ruleFixtures[0]!.region.name);
 	});
 
 	// A Guard creates no work, so a reader who cannot tell one from a Rule that
@@ -229,9 +234,11 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain('Rain expected');
-		expect(applicable.textContent).toContain('Guard · holds work back');
+		const guards = section('Guards that can hold it back or add a note');
+		expect(guards.textContent).toContain('Rain expected');
+		expect(guards.textContent).toContain('Guard · can hold work back');
+		// Listed apart from the Rules that ask for work.
+		expect(section('Rules that ask for work here').textContent).not.toContain('Rain expected');
 	});
 
 	// The Guard here is a copy under its own id and name rather than the seed's
@@ -251,9 +258,9 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant, { rules: [...ruleFixtures, reaching] });
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain(reaching.name);
-		expect(applicable.textContent).toContain('Guard · adds a note');
+		const guards = section('Guards that can hold it back or add a note');
+		expect(guards.textContent).toContain(reaching.name);
+		expect(guards.textContent).toContain('Guard · can add a note');
 	});
 
 	// The other direction of the same rule. Neither seed Guard names fig-1 while
@@ -284,7 +291,7 @@ describe('plantSheet', () => {
 		await settled();
 
 		expect(plannedPlant.status).toBe('planned');
-		expect(screen.getByText('No Rule reaches this plant.')).toBeDefined();
+		expect(screen.getByText(/^Planned, not in the ground yet\./u)).toBeDefined();
 	});
 
 	it('says so when no Rule reaches a planted Plant either', async () => {
@@ -293,7 +300,7 @@ describe('plantSheet', () => {
 
 		expect(unplacedPlantedPlant.status).toBe('planted');
 		expect(unplacedPlantedPlant.position).toBeNull();
-		expect(screen.getByText('No Rule reaches this plant.')).toBeDefined();
+		expect(screen.getByText('No Rule names this plant, so the Planner will never give it a Task.')).toBeDefined();
 	});
 
 	it('lists what has been recorded against this Plant, newest first', async () => {
@@ -326,6 +333,38 @@ describe('plantSheet', () => {
 		expect(recorded.textContent).not.toContain('Feed the Esperanza');
 	});
 
+	/*
+	 * The seed records the fig's compost at 2026-06-01T00:00:00Z. West of
+	 * Greenwich, a formatter left to the visitor's zone printed that as May 31.
+	 * The zone is set before the module loads, because a DateTimeFormat fixes
+	 * its zone when it is built, and the assertion reads the rendered text.
+	 */
+	it('prints a recorded day as the day it names, whatever zone the reader is in', async () => {
+		const zone = process.env.TZ;
+		process.env.TZ = 'America/Chicago';
+		vi.resetModules();
+		try {
+			const { PlantSheet: ZonedSheet } = await import('./plant-sheet');
+			render(
+				<ZonedSheet
+					plant={figPlant}
+					rules={ruleFixtures}
+					plants={plantFixtures}
+					artifact={yardArtifact}
+					store={createYardStore()}
+					onOpenChange={vi.fn()}
+				/>,
+			);
+			await settled();
+
+			expect(section('Recorded work').textContent).toContain('Jun 1, 2026');
+		}
+		finally {
+			process.env.TZ = zone;
+			vi.resetModules();
+		}
+	});
+
 	it('shows an empty state for a Plant nothing has been recorded against', async () => {
 		renderSheet(esperanzaPlant, { store: createYardStore([]) });
 		await settled();
@@ -348,8 +387,9 @@ describe('plantSheet', () => {
 		await settled();
 
 		const recorded = section('Recorded work');
-		expect(recorded.textContent).toContain('could not be read');
-		expect(recorded.textContent).toContain('This browser refused to open its own storage.');
+		expect(recorded.textContent).toContain('won\'t open its record of finished work');
+		// The browser's own error string is not the reader's business.
+		expect(recorded.textContent).not.toContain('This browser refused to open its own storage.');
 		expect(within(recorded).queryByText('Nothing has been recorded against this plant yet.')).toBeNull();
 	});
 

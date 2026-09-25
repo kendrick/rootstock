@@ -152,7 +152,7 @@ describe('plantPin', () => {
 		const planted = plantedContainer.querySelector('button')?.getAttribute('class') ?? '';
 		const planned = plannedContainer.querySelector('button')?.getAttribute('class') ?? '';
 
-		expect(planted).toContain('bg-ground');
+		expect(planted).toContain('bg-plate-paper');
 		expect(planned).toContain('bg-transparent');
 		expect(planted).not.toBe(planned);
 	});

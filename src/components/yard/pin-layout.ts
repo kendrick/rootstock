@@ -1,15 +1,19 @@
 import type { Plant, Position } from '@/yard/plant';
 
 /**
- * layout.tsx's max-w-3xl column at the narrowest supported viewport (390px),
- * less its two 16px px-4 gutters. yard-photo.tsx's own comment carries the
- * same arithmetic for the same reason: this is the smallest the photo ever
- * actually renders at, and the box only grows from here at wider viewports.
- * Two fractions separated by MIN_CENTER_DISTANCE_PX at this width stay
- * separated by at least that much everywhere wider, so clearing this one
- * reference size is sufficient rather than a per-viewport recomputation.
+ * The photo's width at the narrowest supported viewport, 390px, less what the
+ * sheet frame takes on a phone: its 8px padding each side (`p-2`), its 2px
+ * border each side, and the field's 12px gutter each side (`px-3`). This is
+ * the smallest the photo ever renders at, and the box only grows from here.
+ * Two fractions separated by MIN_CENTER_DISTANCE_PX at this width stay at
+ * least that far apart everywhere wider, so clearing this one size is enough.
+ * `pin-layout.spec.ts` pins the arithmetic, and the e2e yard spec measures
+ * the rendered box, so a gutter change fails a test by name.
  */
-const MOBILE_BOX_WIDTH_PX = 358;
+export const MOBILE_BOX_WIDTH_PX = 390 - (2 * 8) - (2 * 2) - (2 * 12);
+
+/** A pin's rendered size (`size-6`). */
+const PIN_SIZE_PX = 24;
 
 /**
  * Pins render at 24px (a size-4 icon inside p-1 padding). Two centres closer
@@ -51,20 +55,28 @@ export function declutteredPositions(plants: Plant[], boxAspect: number): Map<st
 			y: plant.position.y * boxHeight,
 		}));
 
+	// Held half a pin in from every edge, inside each pass. The photo clips its
+	// overflow, so a pin clamped to 0 shows only part of itself. Clamping once
+	// after the last pass would undo the spacing, pulling two top-edge pins
+	// back within 28px of each other, close enough for one pin's hit area to
+	// cover the other's centre.
+	const half = PIN_SIZE_PX / 2;
+
 	for (let pass = 0; pass < RELAXATION_PASSES; pass++) {
 		for (let i = 0; i < points.length; i++) {
 			for (let j = i + 1; j < points.length; j++) {
 				separate(points[i]!, points[j]!);
 			}
 		}
+		for (const point of points) {
+			point.x = clampBetween(point.x, half, boxWidth - half);
+			point.y = clampBetween(point.y, half, boxHeight - half);
+		}
 	}
 
 	return new Map(points.map(point => [
 		point.id,
-		{
-			x: clamp01(point.x / boxWidth),
-			y: clamp01(point.y / boxHeight),
-		},
+		{ x: point.x / boxWidth, y: point.y / boxHeight },
 	]));
 }
 
@@ -88,6 +100,6 @@ function separate(a: Point, b: Point): void {
 	b.y += uy * overlap;
 }
 
-function clamp01(value: number): number {
-	return Math.min(1, Math.max(0, value));
+function clampBetween(value: number, low: number, high: number): number {
+	return Math.min(high, Math.max(low, value));
 }

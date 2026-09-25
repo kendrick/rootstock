@@ -137,6 +137,11 @@ switch off. */
 	--color-muted: var(--muted);
 	--color-rule: var(--rule);
 	--color-rule-faint: var(--rule-faint);
+
+	/* Callouts on the yard photograph. Fixed, never redefined for dark mode or
+		print, because the photo under them does not change either. */
+	--color-plate-paper: #f7f4ec;
+	--color-plate-ink: #1a1815;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 

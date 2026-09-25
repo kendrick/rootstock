@@ -1,7 +1,11 @@
 import type { ReactElement } from 'react';
+import type { TicketLine } from './week-work';
 import type { Plant } from '@/yard/plant';
 import { cn } from '@/lib/utils';
 import { KIND_TEXT } from './kind-text';
+import { ticketLabel } from './week-work';
+
+export type YardView = 'week' | 'all';
 
 /**
  * Two containers on the same patio (see the hibiscus pair in the seed) look
@@ -26,9 +30,13 @@ import { KIND_TEXT } from './kind-text';
  * aria-label so a sighted reader on a phone in the yard sees the same thing a
  * screen reader announces, matching the house rule from `SourceBadge`.
  */
-function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
+function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect, lines, ruleNames, view }: {
 	plant: Plant;
 	ordinal: number;
+	/** This week's ticket lines naming this Plant. Empty when it has none. */
+	lines: readonly TicketLine[];
+	ruleNames: ReadonlyMap<string, string>;
+	view: YardView;
 	/** True while this Plant is under the pointer here or on its callout above. */
 	hovered: boolean;
 	onHoverChange: (plantId: string | null) => void;
@@ -50,6 +58,9 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
 					// reader tabbing the list still sees which Plant on the plate they are
 					// standing on, which is the half a pointer-only link would lose.
 					hovered && 'bg-rule-faint/50',
+					// Quieter, never hidden: the yard still reads as a whole in the
+					// week view. Muted tokens rather than opacity, so contrast holds.
+					view === 'week' && lines.length === 0 && 'text-muted [--foreground:var(--muted-foreground)]',
 				)}
 			>
 				{/* The number that keys this row to its callout on the plate above. */}
@@ -69,6 +80,23 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
 					<span className="text-note text-muted">
 						{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
 					</span>
+					{/*
+					 * What joins the Yard to the week. In the week view each line names
+					 * the ticket line it is, numbered as This Week numbers it; in the
+					 * inventory view one line says how much there is. Ink, not stamp
+					 * red: nothing here has been recorded.
+					 */}
+					{lines.length > 0 && (view === 'week'
+						? lines.map(line => (
+								<span key={`${line.group}-${line.ordinal}`} className="font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+									{`On the ticket · ${ticketLabel(line)} · ${ruleNames.get(line.ruleId) ?? line.ruleId}`}
+								</span>
+							))
+						: (
+								<span className="font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+									{lines.length === 1 ? '1 task this week' : `${lines.length} tasks this week`}
+								</span>
+							))}
 				</span>
 			</button>
 		</li>
@@ -81,8 +109,11 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
  * no `position` and so have no pin to click. Rendering every Plant here,
  * position or not, is what keeps that path equivalent rather than partial.
  */
-export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }: {
+export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect, lines = new Map(), ruleNames = new Map(), view = 'all' }: {
 	plants: Plant[];
+	lines?: ReadonlyMap<string, readonly TicketLine[]>;
+	ruleNames?: ReadonlyMap<string, string>;
+	view?: YardView;
 	/** Plant id to the number its callout carries on the plate above. */
 	ordinals: ReadonlyMap<string, number>;
 	/** The Plant under the pointer, here or on the plate above. */
@@ -90,6 +121,10 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }
 	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement {
+	const withWork = (plant: Plant): boolean => (lines.get(plant.id)?.length ?? 0) > 0;
+	const ordered = view === 'week' ? plants.filter(withWork) : plants;
+	const rest = view === 'week' ? plants.filter(plant => !withWork(plant)) : [];
+
 	return (
 		<div className="border-2 border-rule">
 			{/* The parts list's own column heads, in the sheet's grammar. aria-hidden
@@ -103,8 +138,13 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }
 				<span className="px-3 py-1.5">Plant</span>
 			</div>
 
+			{/*
+			 * The week view leads with the Plants that have work and puts the rest
+			 * under a rule. Their numbers do not change: a Plant keeps its number
+			 * in both views, so a callout never renumbers under the reader.
+			 */}
 			<ul aria-label="Plants" className="flex flex-col">
-				{plants.map(plant => (
+				{ordered.map(plant => (
 					<PlantRow
 						key={plant.id}
 						plant={plant}
@@ -112,6 +152,29 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }
 						hovered={hovered === plant.id}
 						onHoverChange={onHoverChange}
 						onSelect={onSelect}
+						lines={lines.get(plant.id) ?? []}
+						ruleNames={ruleNames}
+						view={view}
+					/>
+				))}
+				{/* A rule across the list, read in place. One list, so its name and
+				    its order stay the same thing in both views. */}
+				{rest.length > 0 && (
+					<li className="border-b-2 border-rule bg-rule-faint/40 px-3 py-1.5 font-display text-label font-extrabold tracking-widest text-muted uppercase">
+						Nothing this week
+					</li>
+				)}
+				{rest.map(plant => (
+					<PlantRow
+						key={plant.id}
+						plant={plant}
+						ordinal={ordinals.get(plant.id) ?? 0}
+						hovered={hovered === plant.id}
+						onHoverChange={onHoverChange}
+						onSelect={onSelect}
+						lines={[]}
+						ruleNames={ruleNames}
+						view={view}
 					/>
 				))}
 			</ul>
