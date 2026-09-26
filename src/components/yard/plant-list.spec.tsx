@@ -143,6 +143,7 @@ describe('plantList', () => {
 	it('says each row\'s number in its name, after the Plant', () => {
 		render(<PlantList plants={[lawnPlant, figPlant]} ordinals={ordinalsFor([lawnPlant, figPlant])} hovered={null} onHoverChange={() => {}} onSelect={() => {}} />);
 
-		expect(screen.getByRole('button', { name: new RegExp(`^${figPlant.name}, number 2`, 'u') })).toBeDefined();
+		// Exact text, so a stray space before the comma fails here.
+		expect(screen.getByRole('button', { name: new RegExp(`^${figPlant.name}, number 2(?!\\d)`, 'u') })).toBeDefined();
 	});
 });

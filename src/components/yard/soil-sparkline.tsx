@@ -172,6 +172,8 @@ export interface SoilSparklineProps {
 	citation: Citation | null;
 	/** `Plan.asOf`. Decides whether the Rule's season is open, which changes what the chart is allowed to look like it says. */
 	asOf?: string | null;
+	/** The chart sits behind a fold whose summary already says it's out of season, so the caption doesn't repeat it. */
+	seasonSaid?: boolean;
 }
 
 /**
@@ -193,7 +195,7 @@ export interface SoilSparklineProps {
  * soil sits above a spring Rule's 55F line on every day, which is the picture
  * of a Rule that has fired, and only the season says it cannot.
  */
-export function SoilSparkline({ window: planWindow, rule, citation, asOf = null }: SoilSparklineProps): ReactElement {
+export function SoilSparkline({ window: planWindow, rule, citation, asOf = null, seasonSaid = false }: SoilSparklineProps): ReactElement {
 	const headingId = useId();
 	const titleId = `${headingId}-title`;
 	const descId = `${headingId}-desc`;
@@ -290,7 +292,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 		: `${seriesName.toLowerCase()} ${DIRECTION_TEXT[rule.direction]} ${thresholdText}`;
 	const caption = [
 		`${rule.name} watches this: ${watches}${seasonText === null ? '' : `, ${seasonText}`}.`,
-		outOfSeason && rule.season !== null ? `Out of season until ${seasonDay(rule.season.start)}, so nothing here can fire it.` : null,
+		outOfSeason && !seasonSaid && rule.season !== null ? `Out of season until ${seasonDay(rule.season.start)}, so nothing here can fire it.` : null,
 	].filter(sentence => sentence !== null).join(' ');
 
 	const description = [

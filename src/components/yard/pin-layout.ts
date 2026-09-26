@@ -1,7 +1,7 @@
 import type { Plant, Position } from '@/yard/plant';
 
 /**
- * The photo's width at the narrowest supported viewport, 390px, less what the
+ * The photo's width at the narrowest phone the Yard is read on, 360px, less what the
  * sheet frame takes on a phone: its 8px padding each side (`p-2`), its 2px
  * border each side, and the field's 12px gutter each side (`px-3`). This is
  * the smallest the photo ever renders at, and the box only grows from here.
@@ -10,7 +10,7 @@ import type { Plant, Position } from '@/yard/plant';
  * `pin-layout.spec.ts` pins the arithmetic, and the e2e yard spec measures
  * the rendered box, so a gutter change fails a test by name.
  */
-export const MOBILE_BOX_WIDTH_PX = 390 - (2 * 8) - (2 * 2) - (2 * 12);
+export const MOBILE_BOX_WIDTH_PX = 360 - (2 * 8) - (2 * 2) - (2 * 12);
 
 /** A pin's rendered size (`size-6`). */
 const PIN_SIZE_PX = 24;
@@ -100,12 +100,12 @@ export function declutteredPositions(plants: Plant[], boxAspect: number): Map<st
 			point.band = point.trueY < boxHeight / 2 ? 'top' : 'bottom';
 		}
 		for (const band of ['top', 'bottom'] as const) {
-			spread(points.filter(point => point.band === band), boxWidth, half);
 			for (const point of points) {
 				if (point.band === band) {
 					point.y = bandCentre[band];
 				}
 			}
+			spread(points.filter(point => point.band === band), boxWidth, half);
 		}
 		if (points.every(point => point.band !== null)) {
 			break;
@@ -142,6 +142,38 @@ function spread(band: Point[], width: number, half: number): void {
 		const next = band[index + 1];
 		band[index]!.x = Math.min(band[index]!.x, next === undefined ? width - half : next.x - MIN_CENTER_DISTANCE_PX);
 	}
+
+	// Anchors at nearly one x can still cross once their slots are set, when the
+	// one farther from the band takes the nearer slot. Swapping a crossing pair's
+	// slots always shortens the leaders' total length, so this ends; the bound is
+	// a guard, not a limit it reaches.
+	for (let guard = 0; guard < band.length * band.length; guard++) {
+		const pair = crossingPair(band);
+		if (pair === null) {
+			break;
+		}
+		const [a, b] = pair;
+		[a.x, b.x] = [b.x, a.x];
+	}
+}
+
+function crossingPair(band: Point[]): [Point, Point] | null {
+	for (let i = 0; i < band.length; i++) {
+		for (let j = i + 1; j < band.length; j++) {
+			if (leadersCross(band[i]!, band[j]!)) {
+				return [band[i]!, band[j]!];
+			}
+		}
+	}
+	return null;
+}
+
+/** Whether two leaders, anchor to callout, cross. Both callouts share the band's y. */
+function leadersCross(a: Point, b: Point): boolean {
+	const side = (px: number, py: number, qx: number, qy: number, rx: number, ry: number) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+	const y = a.y;
+	return side(a.trueX, a.trueY, a.x, y, b.trueX, b.trueY) * side(a.trueX, a.trueY, a.x, y, b.x, y) < 0
+		&& side(b.trueX, b.trueY, b.x, y, a.trueX, a.trueY) * side(b.trueX, b.trueY, b.x, y, a.x, y) < 0;
 }
 
 function clampBetween(value: number, low: number, high: number): number {

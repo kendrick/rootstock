@@ -5,6 +5,7 @@ import type { Plant, Yard } from '@/yard/plant';
 import Image from 'next/image';
 import { useState } from 'react';
 import { withBasePath } from '@/lib/base-path';
+import { cn } from '@/lib/utils';
 import { BAND_FRACTION, declutteredPositions } from './pin-layout';
 import { PlantPin } from './plant-pin';
 
@@ -103,10 +104,12 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 			*/}
 			{leaders.length > 0 && (
 				<svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full">
-					{leaders.map(leader => (
-						<g key={leader.id}>
-							<line x1={leader.from.x * 100} y1={leader.from.y * 100} x2={leader.to.x * 100} y2={leader.to.y * 100} vectorEffect="non-scaling-stroke" className="stroke-plate-paper" strokeWidth={3.5} />
-							<line x1={leader.from.x * 100} y1={leader.from.y * 100} x2={leader.to.x * 100} y2={leader.to.y * 100} vectorEffect="non-scaling-stroke" className="stroke-plate-ink" strokeWidth={1.5} />
+					{/* The hovered Plant's leader draws heavier and last, so it reads
+					    above the others where they converge on the patio. */}
+					{[...leaders].sort((a, b) => Number(a.id === hovered) - Number(b.id === hovered)).map(leader => (
+						<g key={leader.id} data-leader={leader.id}>
+							<line x1={leader.from.x * 100} y1={leader.from.y * 100} x2={leader.to.x * 100} y2={leader.to.y * 100} vectorEffect="non-scaling-stroke" className="stroke-plate-paper" strokeWidth={leader.id === hovered ? 5.5 : 3.5} />
+							<line x1={leader.from.x * 100} y1={leader.from.y * 100} x2={leader.to.x * 100} y2={leader.to.y * 100} vectorEffect="non-scaling-stroke" className="stroke-plate-ink" strokeWidth={leader.id === hovered ? 3 : 1.5} />
 						</g>
 					))}
 				</svg>
@@ -115,8 +118,12 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 				<span
 					key={`spot-${leader.id}`}
 					aria-hidden="true"
+					data-spot={leader.id}
 					style={{ left: `${leader.from.x * 100}%`, top: `${leader.from.y * 100}%` }}
-					className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 border-2 border-plate-paper bg-plate-ink"
+					className={cn(
+						'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 border-2 border-plate-paper bg-plate-ink',
+						leader.id === hovered ? 'z-10 size-3' : 'size-2',
+					)}
 				/>
 			))}
 

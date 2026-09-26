@@ -10,6 +10,7 @@ import type { Store } from '@/store/store';
 import type { Irrigation, Plant } from '@/yard/plant';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { standingFor } from '@/components/rules/waiting';
 import { SourceBadge } from '@/components/source-badge';
 import { ticketAnchor } from '@/components/this-week/ticket-anchor';
 import {
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
+import { calloutFace } from './callout-style';
 import { KIND_TEXT } from './kind-text';
 import { outOfSeasonUntil } from './season';
 import { SoilSparkline } from './soil-sparkline';
@@ -87,6 +89,8 @@ type History
 export interface PlantSheetProps {
 	/** The Plant to show, or null for a closed sheet. */
 	plant: Plant | null;
+	/** The Plant's number on the plate and in the list, printed in the head. */
+	ordinal?: number;
 	rules: Rule[];
 	/** The whole inventory, not just this Plant. `rulesFor` resolves a tag selector against every Plant before asking whether this one is in the result. */
 	plants: Plant[];
@@ -182,7 +186,7 @@ function RuleRow({ rule, children }: { rule: Rule; children?: ReactNode }): Reac
 		<li className="space-y-2 border-b-2 border-rule px-3 py-3 last:border-b-0">
 			<p className="font-display text-body font-extrabold tracking-wide text-foreground uppercase">{rule.name}</p>
 			<div className="flex flex-wrap items-center gap-2">
-				<SourceBadge source={rule.source} />
+				<SourceBadge source={rule.source} sourceOf={rule.name} />
 				{/* Printed on the form, not a pill: this world has no rounded marks. */}
 				{rule.kind === 'guard' && (
 					<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
@@ -230,7 +234,7 @@ function shownTags(plant: Plant): string[] {
 function noRuleText(plant: Plant): string {
 	return plant.status === 'planned'
 		? 'Not in the ground yet. Rules reach a plant once it is planted.'
-		: 'No Rule reaches this plant, so the Planner will never give it a Task.';
+		: 'No Rule reaches this plant, so it never gets a Task.';
 }
 
 /**
@@ -255,9 +259,20 @@ function ThisWeekHere({ plant, lines, tasks, rules, reached }: {
 		if (reached) {
 			return <p className="text-body text-muted">Nothing on this week's ticket.</p>;
 		}
-		// Ink for a planted Plant, because it's the gap #52 names and the one
-		// thing on this sheet that asks the owner for something.
-		return <p className={plant.status === 'planned' ? 'text-body text-muted' : 'text-body text-foreground'}>{noRuleText(plant)}</p>;
+		if (plant.status === 'planned') {
+			return <p className="text-body text-muted">{noRuleText(plant)}</p>;
+		}
+		// Ink, because it's the gap #52 names and the one thing on this sheet
+		// that asks the owner for something, so the next step is said with it:
+		// a Rule reaches a Plant by its id or by one of these tags.
+		return (
+			<div className="space-y-1 text-body text-foreground">
+				<p>{noRuleText(plant)}</p>
+				<p className="text-note">
+					{plant.tags.length === 0 ? 'Add a Rule that names it.' : `Add a Rule that names it or one of its tags: ${plant.tags.join(', ')}.`}
+				</p>
+			</div>
+		);
 	}
 
 	return (
@@ -291,6 +306,26 @@ function ThisWeekHere({ plant, lines, tasks, rules, reached }: {
 				);
 			})}
 		</ul>
+	);
+}
+
+/**
+ * When a quiet Rule next asks for work, in the Rules page's own words
+ * (`standingFor`), so "Quiet this week" isn't where the answer stops. A Rule
+ * on this week's ticket is already in the section above and says nothing
+ * here.
+ */
+function WaitingLine({ rule, artifact }: { rule: Rule; artifact: Artifact }): ReactElement | null {
+	const standing = standingFor(rule, artifact.plan);
+	return standing.band === 'waiting' ? <p className="text-note text-muted">{standing.waitingOn}</p> : null;
+}
+
+/** Whether a Guard is holding or marking anything on this week's ticket, said plainly. */
+function GuardToday({ rule, artifact }: { rule: Rule; artifact: Artifact }): ReactElement {
+	return (
+		<p className="text-note text-muted">
+			{standingFor(rule, artifact.plan).inCurrentPlan ? 'Acting on this week\'s ticket' : 'Holding nothing this week'}
+		</p>
 	);
 }
 
@@ -360,6 +395,7 @@ function RecordedWork({ history, rules }: { history: History | null; rules: Rule
  */
 export function PlantSheet({
 	plant,
+	ordinal,
 	rules,
 	plants,
 	artifact,
@@ -486,12 +522,28 @@ export function PlantSheet({
 							above needs somewhere to send focus that isn't a random control
 							several sections down.
 						*/}
-						<SheetTitle ref={titleRef} tabIndex={-1}>{plant.name}</SheetTitle>
+						<SheetTitle ref={titleRef} tabIndex={-1} className="flex items-start gap-3">
+							{/* The chip the plate draws, so the head keys back to the photo. */}
+							{ordinal !== undefined && <span aria-hidden="true" className={cn('mt-0.5 shrink-0', calloutFace({ planned: plant.status === 'planned', onTicket: false }))}>{ordinal}</span>}
+							<span>
+								{ordinal === undefined
+									? plant.name
+									: (
+											<>
+												<span aria-hidden="true">{plant.name}</span>
+												<span className="sr-only">{`${plant.name}, number ${ordinal}`}</span>
+											</>
+										)}
+							</span>
+						</SheetTitle>
 						{/* Planned status here too, not only on the row that opened this:
 						    the description is what a screen reader announces with the
 						    dialog, and "Plant" alone tells it nothing. */}
 						<SheetDescription>
-							{[plant.status === 'planned' ? 'Planned' : null, KIND_TEXT[plant.kind], plant.site].filter(part => part !== null).join(' · ')}
+							{[plant.status === 'planned' ? 'Planned' : null, KIND_TEXT[plant.kind]].filter(part => part !== null).join(' · ')}
+							{/* The site is the owner's sentence, so it reads as prose, not
+								    lettering, under the kind. */}
+							{plant.site !== null && <span className="mt-1 block font-sans text-body font-normal tracking-normal normal-case">{plant.site}</span>}
 						</SheetDescription>
 					</SheetHeader>
 
@@ -515,19 +567,21 @@ export function PlantSheet({
 									// Rule's evidence and not as the Plant's. Out of season it folds
 									// behind the day it opens, because September soil above a
 									// spring line looks like a Rule that fired.
-									renderExtra={rule => rule.id === thresholdRule?.id && (
-										seasonOpensOn === null
-											? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
-											: (
-													<details className="group">
-														<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
-															<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
-															{`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}
-														</summary>
-														<SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
-													</details>
-												)
-									)}
+									renderExtra={rule => rule.id !== thresholdRule?.id
+										? <WaitingLine rule={rule} artifact={artifact} />
+										: (
+												seasonOpensOn === null
+													? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
+													: (
+															<details className="group">
+																<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+																	<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
+																	{`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}
+																</summary>
+																<SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} seasonSaid />
+															</details>
+														)
+											)}
 								/>
 							</section>
 						)}
@@ -538,7 +592,7 @@ export function PlantSheet({
 								<p className="text-note text-muted">
 									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
 								</p>
-								<RuleList rules={guards} />
+								<RuleList rules={guards} renderExtra={rule => <GuardToday rule={rule} artifact={artifact} />} />
 							</section>
 						)}
 

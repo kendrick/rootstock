@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import type { Plant, Position } from '@/yard/plant';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { calloutFace } from './callout-style';
 import { KIND_TEXT } from './kind-text';
 
 /**
@@ -76,7 +77,7 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 					// that survives that swap without every pin having to be re-sited.
 					style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
 					className={cn(
-						'absolute grid size-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center',
+						'absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer',
 						// A 44px hit area around the 24px mark, the target size the rest of
 						// the site holds itself to. Round, and invisible: a 44px square
 						// reaches 31px from its centre at the corners, past the 28px that
@@ -84,20 +85,8 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 						// diagonal neighbour's centre. A 22px radius never does. Hit-testing
 						// honours border-radius, and nothing drawn here is rounded.
 						'before:absolute before:-inset-2.5 before:rounded-full before:content-[\'\']',
-						'border-2 font-display text-callout leading-none font-extrabold tabular-nums',
 						'transition-transform',
-						// Every callout is a paper chip with an ink numeral, 16:1 whatever
-						// the photograph does underneath. A solid border for what is in the
-						// ground, dashed for what is only planned. Line style carries it
-						// rather than colour, because this is read on a phone in daylight.
-						// Plate colours, not the theme's, because the photograph doesn't
-						// invert in dark mode.
-						planned ? 'border-dashed' : 'border-solid',
-						// Printed in reverse when the week's ticket names the Plant, the
-						// same mark a pressed cell takes, so the week's work stands out
-						// without the rest fading. Its border is paper, so a reversed chip
-						// in the band still has an edge on the dark scheme's ground.
-						onTicket ? 'border-plate-paper bg-plate-ink text-plate-paper' : 'border-plate-ink bg-plate-paper text-plate-ink',
+						calloutFace({ planned, onTicket }),
 						// The hovered callout grows rather than changing colour. It sits on
 						// a photograph, so any colour it took would compete with whatever
 						// pixel happens to be beneath it; scale reads on every ground.

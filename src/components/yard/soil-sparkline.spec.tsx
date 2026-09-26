@@ -343,3 +343,14 @@ describe('soilSparkline', () => {
 		});
 	});
 });
+
+// Folded behind a summary that already says it's out of season, the chart
+// doesn't say it a second time.
+describe('soilSparkline inside a fold', () => {
+	it('leaves the season sentence to the fold when told it was said', () => {
+		const spring = { ...thresholdRule, season: { start: '02-01', end: '04-30' } };
+		const { container } = render(<SoilSparkline window={yardArtifact.plan.window} rule={spring} citation={null} asOf="2026-09-25" seasonSaid />);
+
+		expect(container.querySelector('figcaption')?.textContent).not.toContain('Out of season');
+	});
+});

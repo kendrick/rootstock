@@ -1,5 +1,6 @@
 import type { TicketGroup } from '@/components/this-week/ticket-anchor';
 import type { Task } from '@/planner/task';
+import { dayOfMonth } from '@/components/this-week/citation-line';
 
 export type { TicketGroup };
 
@@ -49,4 +50,18 @@ export function ticketLines(tasks: readonly Task[]): ReadonlyMap<string, TicketL
 /** "Ready now 01", the way the ticket names a line. */
 export function ticketLabel(line: TicketLine): string {
 	return `${line.group} ${String(line.ordinal).padStart(2, '0')}`;
+}
+
+/**
+ * The Yard's line above the plate, e.g. "Plan for Sep 26 · 3 lines on this
+ * week's ticket, for 2 Plants". The Plan's own date, never today's, because
+ * the Yard is showing that Plan and the two can differ.
+ */
+export function weekLine(asOf: string, lines: ReadonlyMap<string, readonly TicketLine[]>): string {
+	const count = [...lines.values()].reduce((total, plantLines) => total + plantLines.length, 0);
+	const head = `Plan for ${dayOfMonth(asOf)}`;
+	if (count === 0) {
+		return `${head} · Nothing on this week's ticket names a Plant`;
+	}
+	return `${head} · ${count} ${count === 1 ? 'line' : 'lines'} on this week's ticket, for ${lines.size} ${lines.size === 1 ? 'Plant' : 'Plants'}`;
 }

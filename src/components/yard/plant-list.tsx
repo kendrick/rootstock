@@ -59,10 +59,12 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect, lines, rul
 				<span className="flex flex-col gap-1 px-3 py-3">
 					<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere text-foreground uppercase">
-							{plant.name}
 							{/* The number in words after the name, so a screen reader user can
-							    follow "number 4" from a sighted partner reading the plate. */}
-							<span className="sr-only">{`, number ${ordinal}`}</span>
+							    follow "number 4" from a sighted partner reading the plate. One
+							    text node for the spoken name: Chrome puts a space before an
+							    out-of-flow sr-only span, which read as "fig , number 2". */}
+							<span aria-hidden="true">{plant.name}</span>
+							<span className="sr-only">{`${plant.name}, number ${ordinal}`}</span>
 						</span>
 						{plant.status === 'planned' && (
 							// Under the week view's Planned head it only needs saying to a

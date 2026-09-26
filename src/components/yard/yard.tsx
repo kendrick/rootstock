@@ -10,13 +10,38 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { coverage } from './applicable-rules';
+import { calloutFace } from './callout-style';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
-import { ticketLines } from './week-work';
+import { ticketLines, weekLine } from './week-work';
 import { YardPhoto } from './yard-photo';
 
 function isView(value: string | null): value is YardView {
 	return value === 'week' || value === 'all';
+}
+
+/**
+ * How to read the plate, printed under it as a parts plate prints its key:
+ * the chips themselves, drawn by the same `calloutFace` the pins use. Hidden
+ * from assistive technology with the callouts it explains; the list says the
+ * same things in words.
+ */
+function PlateKey({ showTicket }: { showTicket: boolean }): ReactElement {
+	const entries = [
+		{ label: 'Planted', planned: false, onTicket: false },
+		{ label: 'Planned', planned: true, onTicket: false },
+		...(showTicket ? [{ label: 'On this week\'s ticket', planned: false, onTicket: true }] : []),
+	];
+	return (
+		<ul aria-hidden="true" className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+			{entries.map(entry => (
+				<li key={entry.label} className="flex items-center gap-2 font-display text-label font-semibold tracking-widest text-muted uppercase">
+					<span className={calloutFace(entry)} />
+					{entry.label}
+				</li>
+			))}
+		</ul>
+	);
 }
 
 export interface YardProps {
@@ -90,6 +115,8 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 		window.history.replaceState(null, '', url);
 	}
 
+	const [weekHead, weekRest] = weekLine(artifact.plan.asOf, lines).split(' · ');
+
 	const onTicket = useMemo(
 		() => view === 'week' ? new Set(plants.filter(plant => lines.has(plant.id)).map(plant => plant.id)) : new Set<string>(),
 		[view, plants, lines],
@@ -111,8 +138,14 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 	return (
 		<TooltipProvider delayDuration={120}>
 			<div className="space-y-6">
-				<p className="max-w-prose text-body text-muted">
-					The numbers on the photo match the Plant list. Solid callouts are planted and dashed ones are planned. In the week view, a callout printed in reverse is on this week's ticket. Open a Plant for its work, its Rules, and what has been recorded against it.
+				{/*
+					What the Yard is showing, in one line: the Plan's date, which nothing
+					else on the route says when the Plan is fresh, and how much of its
+					ticket lands on Plants. The key under the plate says how to read it.
+				*/}
+				<p className="text-body text-foreground">
+					<span className="font-display text-label font-extrabold tracking-widest uppercase">{weekHead}</span>
+					{weekRest === undefined ? null : ` · ${weekRest}`}
 				</p>
 
 				{/* Two ruled cells, not a pill: a pressed cell prints in reverse. */}
@@ -125,9 +158,12 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 							onClick={() => chooseView(option)}
 							className={cn(
 								'inline-flex min-h-11 items-center px-3 font-display text-label font-extrabold tracking-widest uppercase',
-								'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+								// An inset outline with a gap, as the rows use, in the colour
+								// opposite the cell's fill: a pressed cell prints in reverse, so
+								// an ink ring on it draws nothing.
+								'outline-none focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-solid',
 								option === 'all' && 'border-l-2 border-rule',
-								view === option ? 'bg-foreground text-background' : 'text-muted hover:text-foreground',
+								view === option ? 'bg-foreground text-background focus-visible:outline-background' : 'text-muted hover:text-foreground focus-visible:outline-foreground',
 							)}
 						>
 							{option === 'week' ? 'This week' : 'All plants'}
@@ -151,6 +187,7 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 							onHoverChange={setHovered}
 							onSelect={handleSelect}
 						/>
+						<PlateKey showTicket={view === 'week'} />
 					</div>
 					<PlantList
 						plants={plants}
@@ -166,6 +203,7 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 				</div>
 				<PlantSheet
 					plant={selected}
+					ordinal={selected === null ? undefined : ordinals.get(selected.id)}
 					rules={rules}
 					plants={plants}
 					artifact={artifact}

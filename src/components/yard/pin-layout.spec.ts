@@ -32,10 +32,38 @@ function distancePx(
 }
 
 describe('declutteredPositions', () => {
-	// 346 is the photo's measured width at 390px under the sheet frame. Written
-	// as the number, not the arithmetic, so a gutter change fails here.
-	it('lays pins out against the photo width a phone actually renders', () => {
-		expect(MOBILE_BOX_WIDTH_PX).toBe(346);
+	// 316 is the photo's measured width on a 360px phone under the sheet
+	// frame, the narrowest phone the Yard is read on. Written as the number,
+	// not the arithmetic, so a gutter change fails here.
+	it('lays pins out against the photo width the narrowest phone renders', () => {
+		expect(MOBILE_BOX_WIDTH_PX).toBe(316);
+	});
+
+	// Leaders from anchors at one x, or close to it, crossed when the lower
+	// anchor took the nearer slot. Every pair of leaders is checked, on the
+	// seed's own patio.
+	it('never crosses two leaders', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const aspect = photo.height / photo.width;
+		const height = MOBILE_BOX_WIDTH_PX * aspect;
+		const leaders = [...declutteredPositions(seedPlants, aspect).values()]
+			.filter(placement => placement.anchor !== null)
+			.map(placement => [
+				[placement.anchor!.x * MOBILE_BOX_WIDTH_PX, placement.anchor!.y * height],
+				[placement.x * MOBILE_BOX_WIDTH_PX, placement.y * height],
+			] as const);
+		const side = (a: readonly number[], b: readonly number[], c: readonly number[]) => (b[0]! - a[0]!) * (c[1]! - a[1]!) - (b[1]! - a[1]!) * (c[0]! - a[0]!);
+
+		for (let i = 0; i < leaders.length; i++) {
+			for (let j = i + 1; j < leaders.length; j++) {
+				const [p, q] = leaders[i]!;
+				const [r, s] = leaders[j]!;
+				expect(side(p, q, r) * side(p, q, s) < 0 && side(r, s, p) * side(r, s, q) < 0).toBe(false);
+			}
+		}
 	});
 
 	// The seed's real positions, at the real phone width: every pair of pins

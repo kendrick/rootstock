@@ -21,7 +21,15 @@ const KIND_TEXT: Record<Source['kind'], string> = {
  * authorities, and a reader has to be able to tell them apart without relying on
  * colour. The words do that on their own.
  */
-export function SourceBadge({ source }: { source: Source }): ReactElement {
+export function SourceBadge({ source, sourceOf }: {
+	source: Source;
+	/**
+	 * What this is the source of, said only to a screen reader. Several Rules
+	 * sourced to one authority print identical badges, and as links they'd be
+	 * indistinguishable out of context.
+	 */
+	sourceOf?: string;
+}): ReactElement {
 	const content = (
 		<>
 			<span className="font-extrabold">{KIND_TEXT[source.kind]}</span>
@@ -29,6 +37,7 @@ export function SourceBadge({ source }: { source: Source }): ReactElement {
 			    lettering that wraps into a block nobody reads. The kind stays
 			    lettered; the name reads as prose. */}
 			<span className="font-sans text-note font-normal tracking-normal normal-case">{` · ${source.label}`}</span>
+			{sourceOf !== undefined && <span className="sr-only">{`, the source for ${sourceOf}`}</span>}
 		</>
 	);
 

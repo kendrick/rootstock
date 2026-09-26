@@ -76,7 +76,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${figPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	/*
@@ -108,7 +108,7 @@ describe('yard', () => {
 		fireEvent.click(listRowFor(plannedPlant.name));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: plannedPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${plannedPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	it('opens the sheet for a planted Plant that was never sited', async () => {
@@ -117,7 +117,7 @@ describe('yard', () => {
 		fireEvent.click(listRowFor(unplacedPlantedPlant.name));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: unplacedPlantedPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${unplacedPlantedPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	// Closing has to clear the selection, not just hide the sheet: a selection
@@ -136,7 +136,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${figPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	// The critique found `document.activeElement` at `body` after every close,
@@ -195,6 +195,8 @@ describe('yard', () => {
 			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
 			const list = screen.getByRole('list', { name: 'Plants' });
 			expect(within(list).getByText('On this week\'s ticket')).toBeDefined();
+			// The Plan's date heads the page, since nothing else on the route says it.
+			expect(screen.getByText(/^Plan for [A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
 			expect(within(list).getByText('Approaching 01')).toBeDefined();
 			// The group heads are aria-hidden, so a screen reader hears one item
 			// per Plant.

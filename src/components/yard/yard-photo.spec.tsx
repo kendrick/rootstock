@@ -199,4 +199,17 @@ describe('yardPhoto', () => {
 			expect(screen.queryAllByRole('button', { hidden: true })).toHaveLength(0);
 		});
 	});
+
+	// The chip grows on hover, but on a crowded patio the chip is in the band
+	// and the question is which spot it names. The leader and the spot light
+	// with it.
+	it('lights a hovered Plant\'s leader and spot along with its callout', () => {
+		const { container } = render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered="hibiscus-starry-night" onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
+
+		const lit = container.querySelector('[data-leader="hibiscus-starry-night"]');
+		const other = container.querySelector('[data-leader="hibiscus-luna-white"]');
+		expect(Number(lit?.querySelector('line:last-child')?.getAttribute('stroke-width'))).toBeGreaterThan(Number(other?.querySelector('line:last-child')?.getAttribute('stroke-width')));
+		expect(container.querySelector('[data-spot="hibiscus-starry-night"]')?.className).toContain('size-3');
+		expect(container.querySelector('[data-spot="hibiscus-luna-white"]')?.className).toContain('size-2');
+	});
 });

@@ -129,12 +129,12 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 // the callout bands a crowd moves into, and a pin at the edge once showed 14
 // of its 24px.
 test('lays pins out against the photo width a phone renders, with none clipped', async ({ page }) => {
-	await page.setViewportSize({ width: 390, height: 844 });
+	await page.setViewportSize({ width: 360, height: 780 });
 	await page.goto('yard');
 
 	const photo = page.getByRole('img', { name: /Aerial photo of the yard/ });
 	const frame = await photo.evaluate(node => node.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
-	expect(Math.round(frame.width)).toBe(346);
+	expect(Math.round(frame.width)).toBe(316);
 
 	const plate = await photo.evaluate(node => node.parentElement?.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
 	const pins = page.locator('button[data-plant]');
@@ -178,4 +178,32 @@ test('a ticket line on the Yard lands on that line of This Week', async ({ page 
 	await expect(target).toHaveCount(1);
 	await expect(target).toContainText(ruleName ?? '', { ignoreCase: true });
 	await expect(target).toBeInViewport();
+});
+
+/*
+ * The pressed cell prints in reverse, so a focus ring in the ink it shares
+ * with the fill drew nothing: 1.00:1, measured in the third critique. The
+ * check is on what the browser draws, the outline against the cell's fill.
+ */
+test('shows keyboard focus on the pressed view cell', async ({ page }) => {
+	await page.goto('yard?view=week');
+	const pressed = page.getByRole('button', { name: 'This week', exact: true });
+	await page.getByRole('button', { name: 'All plants', exact: true }).focus();
+	await page.keyboard.press('Shift+Tab');
+
+	await expect(pressed).toBeFocused();
+	const [style, outline, fill] = await pressed.evaluate((node) => {
+		const computed = getComputedStyle(node);
+		return [computed.outlineStyle, computed.outlineColor, computed.backgroundColor];
+	});
+	expect(style).toBe('solid');
+	expect(outline).not.toBe(fill);
+});
+
+// Chrome computes the row's name, and put a space before the out-of-flow
+// sr-only span when the number was a separate node: "fig , number 2".
+test('names each Plant row with its number, as the browser reads it', async ({ page }) => {
+	await page.goto('yard?view=all');
+
+	await expect(page.getByRole('list', { name: 'Plants' }).getByRole('button', { name: /^Brown Turkey fig, number 2 /u })).toHaveCount(1);
 });

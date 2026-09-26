@@ -305,7 +305,11 @@ describe('plantSheet', () => {
 
 		expect(unplacedPlantedPlant.status).toBe('planted');
 		expect(unplacedPlantedPlant.position).toBeNull();
-		expect(screen.getByText('No Rule reaches this plant, so the Planner will never give it a Task.')).toBeDefined();
+		// The row's words exactly, then the next step, named from the Plant's own tags.
+		const week = section('This week');
+		expect(week.textContent).toContain('No Rule reaches this plant, so it never gets a Task.');
+		expect(week.textContent).toContain(`Add a Rule that names it or one of its tags: ${unplacedPlantedPlant.tags.join(', ')}.`);
+		expect(week.textContent).not.toContain('Planner');
 	});
 
 	it('lists what has been recorded against this Plant, newest first', async () => {
@@ -526,5 +530,57 @@ describe('plantSheet, this week first', () => {
 		await settled();
 
 		expect(screen.getAllByRole('button', { name: 'Close' })[1]?.closest('.sticky')).not.toBeNull();
+	});
+});
+
+describe('plantSheet head', () => {
+	// The site is the owner's sentence, so it reads as prose under the lettered
+	// kind, and the head carries the number that keys it to the plate.
+	it('sets the site as prose under the kind, and carries the Plant\'s number', async () => {
+		render(
+			<PlantSheet plant={figPlant} ordinal={2} rules={ruleFixtures} plants={plantFixtures} artifact={yardArtifact} store={createYardStore()} onOpenChange={vi.fn()} />,
+		);
+		await settled();
+
+		const site = screen.getByText(figPlant.site ?? '');
+		expect(site.className).not.toContain('uppercase');
+		expect(site.className).toContain('normal-case');
+		expect(screen.getByRole('heading', { level: 2, name: `${figPlant.name}, number 2` })).toBeDefined();
+	});
+});
+
+describe('plantSheet, quiet Rules', () => {
+	// A quiet Plant's Rules say when they next ask for anything, in the Rules
+	// page's own words, so "Quiet this week" isn't the end of the answer.
+	it('says when each quiet Rule next asks for work', async () => {
+		renderSheet(figPlant);
+		await settled();
+
+		const rows = within(section('Rules that ask for work here')).getAllByRole('listitem');
+		for (const row of rows) {
+			expect(row.textContent).toMatch(/Opens [A-Z][a-z]+ \d{1,2}|Open through [A-Z][a-z]+ \d{1,2}|Every \d+(–\d+)? days|Out of season until/u);
+		}
+	});
+
+	it('says whether each Guard is acting on this week\'s ticket', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		for (const guard of guards) {
+			expect(guard.textContent).toMatch(/Acting on this week's ticket|Holding nothing this week/u);
+		}
+	});
+});
+
+describe('plantSheet sources', () => {
+	// Three Rules sourced to one extension service gave a screen reader three
+	// identical links. Each says which Rule it sources.
+	it('names each source link for the Rule it sources', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const names = within(section('Rules that ask for work here')).getAllByRole('link').map(link => link.textContent ?? '');
+		expect(new Set(names).size).toBe(names.length);
 	});
 });
