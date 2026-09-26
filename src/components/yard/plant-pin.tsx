@@ -89,8 +89,11 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 						calloutFace({ planned, onTicket }),
 						// The hovered callout grows rather than changing colour. It sits on
 						// a photograph, so any colour it took would compete with whatever
-						// pixel happens to be beneath it; scale reads on every ground.
-						hovered && 'scale-150',
+						// pixel happens to be beneath it; scale reads on every ground. The
+						// hit area scales back by the same factor and keeps its resting size.
+						// Grown with the chip, it would reach past a neighbour's centre 28px
+						// away.
+						hovered && 'scale-150 before:scale-[calc(2/3)]',
 					)}
 				>
 					{ordinal}

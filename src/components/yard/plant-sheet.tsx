@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from 'react';
 import type { TicketLine } from './week-work';
 import type { Artifact } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
+import type { Plan } from '@/planner/plan';
 import type { Citation, Task } from '@/planner/task';
 import type { GuardRule, Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
@@ -313,18 +314,18 @@ function ThisWeekHere({ plant, lines, tasks, rules, reached }: {
  * When a quiet Rule next asks for work, in the Rules page's own words
  * (`standingFor`), so "Quiet this week" isn't where the answer stops. A Rule
  * on this week's ticket is already in the section above and says nothing
- * here.
+ * here. `plan` is narrowed to the open Plant's Tasks.
  */
-function WaitingLine({ rule, artifact }: { rule: Rule; artifact: Artifact }): ReactElement | null {
-	const standing = standingFor(rule, artifact.plan);
+function WaitingLine({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement | null {
+	const standing = standingFor(rule, plan);
 	return standing.band === 'waiting' ? <p className="text-note text-muted">{standing.waitingOn}</p> : null;
 }
 
-/** Whether a Guard is holding or marking anything on this week's ticket, said plainly. */
-function GuardToday({ rule, artifact }: { rule: Rule; artifact: Artifact }): ReactElement {
+/** Whether a Guard is holding or marking this Plant's work on this week's ticket. `plan` is narrowed to the open Plant's Tasks. */
+function GuardToday({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement {
 	return (
 		<p className="text-note text-muted">
-			{standingFor(rule, artifact.plan).inCurrentPlan ? 'Acting on this week\'s ticket' : 'Holding nothing this week'}
+			{standingFor(rule, plan).inCurrentPlan ? 'Acting on this week\'s ticket' : 'Holding nothing this week'}
 		</p>
 	);
 }
@@ -475,6 +476,10 @@ export function PlantSheet({
 	const workRules = applicable.filter(rule => rule.kind !== 'guard');
 	const onTicket = plant === null ? [] : (ticketLines(artifact.plan.tasks).get(plant.id) ?? []);
 	const plantTasks = plant === null ? [] : artifact.plan.tasks.filter(task => task.plantId === plant.id);
+	// A Rule or Guard can reach several Plants. Its standing on this sheet comes
+	// from this Plant's Tasks alone, or a Guard acting on the lawn would claim to
+	// be acting on the fig too.
+	const plantPlan: Plan = { ...artifact.plan, tasks: plantTasks };
 	const seasonOpensOn = thresholdRule === null ? null : outOfSeasonUntil(artifact.plan.asOf, thresholdRule);
 	const guards = applicable.filter(rule => rule.kind === 'guard');
 
@@ -568,7 +573,7 @@ export function PlantSheet({
 									// behind the day it opens, because September soil above a
 									// spring line looks like a Rule that fired.
 									renderExtra={rule => rule.id !== thresholdRule?.id
-										? <WaitingLine rule={rule} artifact={artifact} />
+										? <WaitingLine rule={rule} plan={plantPlan} />
 										: (
 												seasonOpensOn === null
 													? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
@@ -592,7 +597,7 @@ export function PlantSheet({
 								<p className="text-note text-muted">
 									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
 								</p>
-								<RuleList rules={guards} renderExtra={rule => <GuardToday rule={rule} artifact={artifact} />} />
+								<RuleList rules={guards} renderExtra={rule => <GuardToday rule={rule} plan={plantPlan} />} />
 							</section>
 						)}
 

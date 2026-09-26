@@ -123,6 +123,51 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 	}
 });
 
+// A hovered callout grows, and its 44px hit area must not grow with it: at the
+// 28px spacing a scaled 66px circle covers a neighbour's centre, and the pointer
+// can't leave the hovered pin for the one beside it.
+test('a hovered pin leaves every other pin\'s centre to that pin', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('yard');
+
+	const pins = page.locator('button[data-plant]');
+	const count = await pins.count();
+	const centres = new Map<string, readonly [number, number]>();
+	for (let i = 0; i < count; i++) {
+		const box = await pins.nth(i).boundingBox();
+		const plant = await pins.nth(i).getAttribute('data-plant');
+		if (box !== null && plant !== null) {
+			centres.set(plant, [box.x + box.width / 2, box.y + box.height / 2]);
+		}
+	}
+
+	for (const [hovered, [hx, hy]] of centres) {
+		await page.mouse.move(hx, hy);
+		await expect(pins.and(page.locator(`[data-plant="${hovered}"]`))).toHaveClass(/scale-150/u);
+		// The transition runs 150ms; hit-test the settled size.
+		await page.waitForTimeout(250);
+		// The hit area keeps its resting size, a 20px radius (the before: box
+		// insets from inside the 2px border), so 18px out still lands on it.
+		const edge = await page.evaluate(
+			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
+			[hx, hy + 18] as const,
+		);
+		if (![...centres.entries()].some(([plant, [x, y]]) => plant !== hovered && Math.hypot(x - hx, y - hy - 18) < 20)) {
+			expect(edge, `'${hovered}' hovered no longer catches a point 18px below its centre`).toBe(hovered);
+		}
+		for (const [plant, point] of centres) {
+			if (plant === hovered) {
+				continue;
+			}
+			const hit = await page.evaluate(
+				([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
+				point,
+			);
+			expect(hit, `with '${hovered}' hovered, '${plant}' at its centre resolved to '${hit}'`).toBe(plant);
+		}
+	}
+});
+
 // pin-layout.ts spaces pins against the photo's width on a phone. Measured
 // here, so a change to the sheet's gutters fails by name instead of quietly
 // crowding the pins again. Every pin sits wholly on the plate, the photo plus

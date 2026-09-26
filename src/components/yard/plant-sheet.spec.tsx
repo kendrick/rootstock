@@ -573,6 +573,53 @@ describe('plantSheet, quiet Rules', () => {
 	});
 });
 
+// A Rule or Guard can reach several Plants, and the Plan's Tasks each name one.
+// The sheet answers for the open Plant, so work on another Plant's Task says
+// nothing about this one.
+describe('plantSheet, standing scoped to the open Plant', () => {
+	/** yardArtifact with every Task moved to a Plant that isn't the lawn, each annotated by every Guard. */
+	const guards = ruleFixtures.filter(rule => rule.kind === 'guard');
+	const elsewhere: Artifact = {
+		...yardArtifact,
+		plan: {
+			...yardArtifact.plan,
+			tasks: yardArtifact.plan.tasks.map(task => ({
+				...task,
+				plantId: 'somewhere-else',
+				annotations: guards.map(guard => ({ guardId: guard.id, text: 'Acted on elsewhere' })),
+			})),
+		},
+	};
+
+	it('says a Guard is holding nothing when it acts only on another Plant\'s Task', async () => {
+		renderSheet(lawnPlant, { artifact: elsewhere });
+		await settled();
+
+		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		for (const guard of guards) {
+			expect(guard.textContent).toContain('Holding nothing this week');
+		}
+	});
+
+	it('gives a Rule its waiting line when its only Task is another Plant\'s', async () => {
+		// Fall pre-emergent reaches the lawn. Its one Task here is another Plant's.
+		const rule = ruleFixtures.find(candidate => candidate.id === 'fall-pre-emergent');
+		expect(rule).toBeDefined();
+		const artifact: Artifact = {
+			...yardArtifact,
+			plan: {
+				...yardArtifact.plan,
+				tasks: [{ ...yardArtifact.plan.tasks[0]!, id: 'fall-pre-emergent@somewhere-else', ruleId: 'fall-pre-emergent', plantId: 'somewhere-else', status: 'fired', citation: { kind: 'window', date: yardArtifact.plan.asOf }, deferrals: [], annotations: [] }],
+			},
+		};
+		renderSheet(lawnPlant, { artifact });
+		await settled();
+
+		const row = within(section('Rules that ask for work here')).getAllByRole('listitem').find(candidate => candidate.textContent?.includes(rule?.name ?? ''));
+		expect(row?.textContent).toMatch(/Opens [A-Z][a-z]+ \d{1,2}|Open through [A-Z][a-z]+ \d{1,2}/u);
+	});
+});
+
 describe('plantSheet sources', () => {
 	// Three Rules sourced to one extension service gave a screen reader three
 	// identical links. Each says which Rule it sources.
