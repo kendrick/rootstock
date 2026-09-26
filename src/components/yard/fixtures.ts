@@ -70,7 +70,7 @@ export const isolatedPlant: Plant = {
 	...findPlant('fig-1'),
 	id: 'fixture-isolated',
 	name: 'Fixture: isolated',
-	position: { x: 0.04, y: 0.95 },
+	position: { x: 0.1, y: 0.88 },
 };
 
 /*

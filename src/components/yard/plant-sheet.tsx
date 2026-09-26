@@ -1,37 +1,38 @@
 'use client';
 
 import type { ReactElement, ReactNode } from 'react';
+import type { TicketLine } from './week-work';
 import type { Artifact } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
-import type { Citation } from '@/planner/task';
+import type { Plan } from '@/planner/plan';
+import type { Citation, Task } from '@/planner/task';
 import type { GuardRule, Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Irrigation, Plant } from '@/yard/plant';
+import { ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { standingFor } from '@/components/rules/waiting';
 import { SourceBadge } from '@/components/source-badge';
-import { Badge } from '@/components/ui/badge';
+import { ticketAnchor } from '@/components/this-week/ticket-anchor';
 import {
 	Sheet,
+	SheetClose,
 	SheetContent,
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
 } from '@/components/ui/sheet';
+import { withBasePath } from '@/lib/base-path';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
+import { seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
+import { calloutFace } from './callout-style';
+import { KIND_TEXT } from './kind-text';
+import { outOfSeasonUntil } from './season';
 import { SoilSparkline } from './soil-sparkline';
-
-/**
- * The same four words `plant-list.tsx` prints, deliberately duplicated. The note
- * there carries the reasoning and the alternative that was turned down. Edit the
- * two together.
- */
-const KIND_TEXT: Record<Plant['kind'], string> = {
-	plant: 'Plant',
-	container: 'Container',
-	bed: 'Bed',
-	lawn: 'Lawn',
-};
+import { ticketLabel, ticketLines } from './week-work';
 
 /**
  * `irrigationSchema` keeps `source` so an owner's stated claim stays separable
@@ -51,13 +52,28 @@ const IRRIGATION_SOURCE_TEXT: Record<Irrigation['source'], string> = {
  * the evening" are different news to a reader scanning what governs a plant.
  */
 const GUARD_EFFECT_TEXT: Record<GuardRule['effect'], string> = {
-	defer: 'Guard · holds work back',
-	annotate: 'Guard · adds a note',
+	// "Can", because the list says what a Guard is able to do here, not what
+	// it is doing today. Whether it holds anything this week is on the ticket.
+	defer: 'Guard · can hold work back',
+	annotate: 'Guard · can add a note',
 };
+
+/** A section's head, ruled like the parts list's column heads. */
+function SectionHead({ children }: { children: ReactNode }): ReactElement {
+	return (
+		<h3 className="border-y-2 border-rule py-1.5 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+			{children}
+		</h3>
+	);
+}
 
 /** Pinned rather than left to the visitor's locale, matching `StalenessBanner`. Every other string here is hand-written English. */
 const AREA_FORMAT = new Intl.NumberFormat('en-US');
-const RECORDED_DATE_FORMAT = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+// UTC, because an Occurrence's `completedAt` is a UTC instant and the day it
+// names is the UTC day. Left to the visitor's zone, 2026-06-01T00:00Z prints
+// as May 31 anywhere west of Greenwich. `soil-sparkline.tsx` pins UTC for the
+// same reason.
+const RECORDED_DATE_FORMAT = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
 
 /**
  * What the store said about this plant's Occurrences, carrying the plant it was
@@ -74,6 +90,8 @@ type History
 export interface PlantSheetProps {
 	/** The Plant to show, or null for a closed sheet. */
 	plant: Plant | null;
+	/** The Plant's number on the plate and in the list, printed in the head. */
+	ordinal?: number;
 	rules: Rule[];
 	/** The whole inventory, not just this Plant. `rulesFor` resolves a tag selector against every Plant before asking whether this one is in the result. */
 	plants: Plant[];
@@ -94,11 +112,16 @@ export interface PlantSheetProps {
 	onCloseAutoFocus?: (event: Event) => void;
 }
 
-function Detail({ label, children }: { label: string; children: ReactNode }): ReactElement {
+/**
+ * One recorded fact. Prose by default, because most of these are the owner's
+ * words about a place. `reading` sets the value in mono, for a figure or a
+ * selector a reader compares rather than reads.
+ */
+function Detail({ label, reading = false, children }: { label: string; reading?: boolean; children: ReactNode }): ReactElement {
 	return (
 		<div className="space-y-1">
-			<dt className="font-display text-label font-bold tracking-widest text-muted uppercase">{label}</dt>
-			<dd className="font-mono text-evidence text-foreground">{children}</dd>
+			<dt className="font-display text-label font-extrabold tracking-widest text-muted uppercase">{label}</dt>
+			<dd className={reading ? 'font-mono text-evidence text-foreground' : 'text-body text-foreground'}>{children}</dd>
 		</div>
 	);
 }
@@ -116,16 +139,11 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 
 	return (
 		<dl className="grid gap-4 sm:grid-cols-2">
-			{plant.site !== null && <Detail label="Site">{plant.site}</Detail>}
-
-			{plant.tags.length > 0 && (
-				<Detail label="Tags">
-					<div className="flex flex-wrap gap-1.5">
-						{plant.tags.map(tag => (
-							<span key={tag} className="font-display text-label tracking-widest text-muted uppercase">{tag}</span>
-						))}
-					</div>
-				</Detail>
+			{/* Tags are how a Rule selects a Plant, so the label says that rather
+			    than naming the field. A planned Plant's `planned` tag is left off:
+			    the line under the name already says so. */}
+			{shownTags(plant).length > 0 && (
+				<Detail label="Rules find it by" reading>{shownTags(plant).join(', ')}</Detail>
 			)}
 
 			{plant.notes !== null && <Detail label="Notes">{plant.notes}</Detail>}
@@ -133,11 +151,11 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 			{lawn !== null && (
 				<>
 					<Detail label="Grass">{lawn.grass}</Detail>
-					<Detail label="Area">{`${AREA_FORMAT.format(lawn.areaSqFt)} sq ft`}</Detail>
+					<Detail label="Area" reading>{`${AREA_FORMAT.format(lawn.areaSqFt)} sq ft`}</Detail>
 					<Detail label="Soil">{lawn.soil}</Detail>
 					<Detail label="Irrigation">
 						{lawn.irrigation.schedule}
-						<span className="mt-1 block font-display text-label tracking-widest text-muted uppercase">
+						<span className="mt-1 block text-note text-muted">
 							{IRRIGATION_SOURCE_TEXT[lawn.irrigation.source]}
 						</span>
 					</Detail>
@@ -164,34 +182,151 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
  * weigh once #12 and #14 have both landed and all three presentations can be
  * read side by side, not a commitment made here.
  */
-function RuleRow({ rule }: { rule: Rule }): ReactElement {
+function RuleRow({ rule, children }: { rule: Rule; children?: ReactNode }): ReactElement {
 	return (
 		<li className="space-y-2 border-b-2 border-rule px-3 py-3 last:border-b-0">
-			<p className="font-display text-body font-bold tracking-wide text-foreground uppercase">{rule.name}</p>
+			<p className="font-display text-body font-extrabold tracking-wide text-foreground uppercase">{rule.name}</p>
 			<div className="flex flex-wrap items-center gap-2">
-				<SourceBadge source={rule.source} />
+				<SourceBadge source={rule.source} sourceOf={rule.name} />
+				{/* Printed on the form, not a pill: this world has no rounded marks. */}
 				{rule.kind === 'guard' && (
-					<Badge variant="outline">{GUARD_EFFECT_TEXT[rule.effect]}</Badge>
+					<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+						{GUARD_EFFECT_TEXT[rule.effect]}
+					</span>
 				)}
-				<span className="font-display text-label tracking-widest text-muted uppercase">{rule.region.name}</span>
+				{/* The same mark This Week's row carries, for the same household
+				    reader. A Guard makes no work, so it has nothing to delegate. */}
+				{rule.kind !== 'guard' && !rule.delegable && (
+					<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+						Not delegable
+					</span>
+				)}
+				{/* Only where it differs. Every Rule in the set today is written for
+				    the yard's own region, which the ticket head already names. */}
+				{rule.region.name !== seedYard.region.name && (
+					<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">{rule.region.name}</span>
+				)}
 			</div>
+			{children}
 		</li>
 	);
 }
 
-function ApplicableRules({ rules }: { rules: Rule[] }): ReactElement {
-	// Reachable from two directions: a planned Plant, which `targets()` drops
-	// until it is in the ground, and a planted one no Rule happens to name.
-	if (rules.length === 0) {
-		return <p className="text-sm text-muted">No Rule reaches this plant.</p>;
+function RuleList({ rules, renderExtra }: { rules: Rule[]; renderExtra?: (rule: Rule) => ReactNode }): ReactElement {
+	return (
+		<ul className="flex flex-col border-2 border-rule">
+			{rules.map(rule => (
+				<RuleRow key={rule.id} rule={rule}>{renderExtra?.(rule)}</RuleRow>
+			))}
+		</ul>
+	);
+}
+
+function shownTags(plant: Plant): string[] {
+	return plant.status === 'planned' ? plant.tags.filter(tag => tag !== 'planned') : plant.tags;
+}
+
+/**
+ * Why no Rule reaches this Plant, in the two ways that can happen. A planned
+ * Plant waits to be planted (`targets()` drops it until then). A planted Plant
+ * no Rule reaches will never get a Task at all, which is open issue #52.
+ * "Reaches", because a Rule can select a Plant by tag without naming it.
+ */
+function noRuleText(plant: Plant): string {
+	return plant.status === 'planned'
+		? 'Not in the ground yet. Rules reach a plant once it is planted.'
+		: 'No Rule reaches this plant, so it never gets a Task.';
+}
+
+/**
+ * What the ticket asks of this Plant this week, first on the sheet because
+ * it's the question the owner opened it with. Each line links to its row on
+ * This Week, and a Guard holding or marking the work today is said under it
+ * in its own words, so nobody has to work that out from the Guards list.
+ *
+ * With nothing on the ticket, one sentence says why, and the three reasons
+ * are different news: Rules that are quiet, no Rule at all (#52), or a Plant
+ * not in the ground yet.
+ */
+function ThisWeekHere({ plant, lines, tasks, rules, reached }: {
+	plant: Plant;
+	lines: readonly TicketLine[];
+	tasks: readonly Task[];
+	rules: Rule[];
+	/** Whether any work-creating Rule reaches this Plant at all. */
+	reached: boolean;
+}): ReactElement {
+	if (lines.length === 0) {
+		if (reached) {
+			return <p className="text-body text-muted">Nothing on this week's ticket.</p>;
+		}
+		if (plant.status === 'planned') {
+			return <p className="text-body text-muted">{noRuleText(plant)}</p>;
+		}
+		// Ink, because it's the gap #52 names and the one thing on this sheet
+		// that asks the owner for something, so the next step is said with it:
+		// a Rule reaches a Plant by its id or by one of these tags.
+		return (
+			<div className="space-y-1 text-body text-foreground">
+				<p>{noRuleText(plant)}</p>
+				<p className="text-note">
+					{plant.tags.length === 0 ? 'Add a Rule that names it.' : `Add a Rule that names it or one of its tags: ${plant.tags.join(', ')}.`}
+				</p>
+			</div>
+		);
 	}
 
 	return (
 		<ul className="flex flex-col border-2 border-rule">
-			{rules.map(rule => (
-				<RuleRow key={rule.id} rule={rule} />
-			))}
+			{lines.map((line) => {
+				const task = tasks.find(candidate => candidate.ruleId === line.ruleId);
+				return (
+					<li key={`${line.group}-${line.ordinal}`} className="space-y-1 border-b-2 border-rule px-3 py-2 last:border-b-0">
+						{/* A plain link rather than next/link, because a client-side hop
+						    pushes history without updating `:target`, so the row would
+						    never mark itself and the browser wouldn't scroll to it. */}
+						<a
+							href={withBasePath(`/#${ticketAnchor(line.group, line.ordinal)}`)}
+							className={cn('inline-flex min-h-11 flex-wrap items-center gap-x-2 text-body text-foreground underline underline-offset-4', FOCUS_RING)}
+						>
+							<span className="font-display text-label font-extrabold tracking-widest uppercase">{ticketLabel(line)}</span>
+							{ruleLabel(line.ruleId, rules)}
+						</a>
+						{task?.deferrals.map(deferral => (
+							<p key={deferral.guardId} className="text-note text-foreground">
+								<span className="font-display text-label font-extrabold tracking-widest uppercase">{`Held by ${ruleLabel(deferral.guardId, rules)}`}</span>
+								{` · ${deferral.releaseWhen}`}
+							</p>
+						))}
+						{task?.annotations.map(annotation => (
+							<p key={annotation.guardId} className="text-note text-muted">
+								{`${ruleLabel(annotation.guardId, rules)} · ${annotation.text}`}
+							</p>
+						))}
+					</li>
+				);
+			})}
 		</ul>
+	);
+}
+
+/**
+ * When a quiet Rule next asks for work, in the Rules page's own words
+ * (`standingFor`), so "Quiet this week" isn't where the answer stops. A Rule
+ * on this week's ticket is already in the section above and says nothing
+ * here. `plan` is narrowed to the open Plant's Tasks.
+ */
+function WaitingLine({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement | null {
+	const standing = standingFor(rule, plan);
+	return standing.band === 'waiting' ? <p className="text-note text-muted">{standing.waitingOn}</p> : null;
+}
+
+/** Whether a Guard is holding or marking this Plant's work on this week's ticket. `plan` is narrowed to the open Plant's Tasks. */
+function GuardToday({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement {
+	return (
+		<p className="text-note text-muted">
+			{standingFor(rule, plan).inCurrentPlan ? 'Acting on this week\'s ticket' : 'Holding nothing this week'}
+		</p>
 	);
 }
 
@@ -217,29 +352,33 @@ function ruleLabel(ruleId: string, rules: Rule[]): string {
  */
 function RecordedWork({ history, rules }: { history: History | null; rules: Rule[] }): ReactElement {
 	if (history === null) {
-		return <p className="text-sm text-muted">Reading what has been recorded here…</p>;
+		return <p className="text-body text-muted">Reading recorded work…</p>;
 	}
 
+	// The reason stays out of the sentence. It is a browser's error string, and
+	// the reader can act on what it means, not on what it says.
 	if (history.status === 'failed') {
 		return (
-			<p className="text-sm text-muted">
-				{`What has been recorded here could not be read. ${history.message}`}
+			<p className="text-body text-muted">
+				This browser won't open its record of finished work, so what was recorded here can't be shown. Private windows do this.
 			</p>
 		);
 	}
 
 	if (history.occurrences.length === 0) {
-		return <p className="text-sm text-muted">Nothing has been recorded against this plant yet.</p>;
+		return <p className="text-body text-muted">Nothing has been recorded against this plant yet.</p>;
 	}
 
 	return (
 		<ul className="flex flex-col gap-2">
 			{history.occurrences.map(occurrence => (
-				<li key={occurrence.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-					<time dateTime={occurrence.completedAt} className="font-medium text-foreground">
-						{RECORDED_DATE_FORMAT.format(Date.parse(occurrence.completedAt))}
+				<li key={occurrence.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+					{/* Stamp red, the colour this world keeps for work that was
+					    recorded, set the way This Week's record line is. */}
+					<time dateTime={occurrence.completedAt} className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
+						{`Recorded ${RECORDED_DATE_FORMAT.format(Date.parse(occurrence.completedAt))}`}
 					</time>
-					<span className="text-muted">{ruleLabel(occurrence.ruleId, rules)}</span>
+					<span className="text-body text-foreground">{ruleLabel(occurrence.ruleId, rules)}</span>
 				</li>
 			))}
 		</ul>
@@ -257,6 +396,7 @@ function RecordedWork({ history, rules }: { history: History | null; rules: Rule
  */
 export function PlantSheet({
 	plant,
+	ordinal,
 	rules,
 	plants,
 	artifact,
@@ -333,6 +473,15 @@ export function PlantSheet({
 	 */
 	const thresholdRule: ThresholdRule | null
 		= applicable.find((rule): rule is ThresholdRule => rule.kind === 'threshold') ?? null;
+	const workRules = applicable.filter(rule => rule.kind !== 'guard');
+	const onTicket = plant === null ? [] : (ticketLines(artifact.plan.tasks).get(plant.id) ?? []);
+	const plantTasks = plant === null ? [] : artifact.plan.tasks.filter(task => task.plantId === plant.id);
+	// A Rule or Guard can reach several Plants. Its standing on this sheet comes
+	// from this Plant's Tasks alone, or a Guard acting on the lawn would claim to
+	// be acting on the fig too.
+	const plantPlan: Plan = { ...artifact.plan, tasks: plantTasks };
+	const seasonOpensOn = thresholdRule === null ? null : outOfSeasonUntil(artifact.plan.asOf, thresholdRule);
+	const guards = applicable.filter(rule => rule.kind === 'guard');
 
 	/*
 	 * The Citation off this Rule's Task for this Plant. Both halves of the key
@@ -378,35 +527,104 @@ export function PlantSheet({
 							above needs somewhere to send focus that isn't a random control
 							several sections down.
 						*/}
-						<SheetTitle ref={titleRef} tabIndex={-1}>{plant.name}</SheetTitle>
-						<SheetDescription>{KIND_TEXT[plant.kind]}</SheetDescription>
+						<SheetTitle ref={titleRef} tabIndex={-1} className="flex items-start gap-3">
+							{/* The chip the plate draws, so the head keys back to the photo. */}
+							{ordinal !== undefined && <span aria-hidden="true" className={cn('mt-0.5 shrink-0', calloutFace({ planned: plant.status === 'planned', onTicket: false }))}>{ordinal}</span>}
+							<span>
+								{ordinal === undefined
+									? plant.name
+									: (
+											<>
+												<span aria-hidden="true">{plant.name}</span>
+												<span className="sr-only">{`${plant.name}, number ${ordinal}`}</span>
+											</>
+										)}
+							</span>
+						</SheetTitle>
+						{/* Planned status here too, not only on the row that opened this:
+						    the description is what a screen reader announces with the
+						    dialog, and "Plant" alone tells it nothing. */}
+						<SheetDescription>
+							{[plant.status === 'planned' ? 'Planned' : null, KIND_TEXT[plant.kind]].filter(part => part !== null).join(' · ')}
+							{/* The site is the owner's sentence, so it reads as prose, not
+								    lettering, under the kind. */}
+							{plant.site !== null && <span className="mt-1 block font-sans text-body font-normal tracking-normal normal-case">{plant.site}</span>}
+						</SheetDescription>
 					</SheetHeader>
 
 					<div className="mt-6 space-y-6">
 						<section className="space-y-3">
-							<h3 className="text-sm font-semibold text-foreground">Site conditions</h3>
-							<SiteConditions plant={plant} />
+							<SectionHead>This week</SectionHead>
+							<ThisWeekHere plant={plant} lines={onTicket} tasks={plantTasks} rules={rules} reached={workRules.length > 0} />
 						</section>
 
-						<section className="space-y-3">
-							<h3 className="text-sm font-semibold text-foreground">Rules that reach this plant</h3>
-							<ApplicableRules rules={applicable} />
-							{thresholdRule !== null && (
-								<SoilSparkline
-									window={artifact.plan.window}
-									rule={thresholdRule}
-									citation={citation}
+						{/*
+							Rules that ask for work and Guards that can hold it back are
+							different news, so they are listed apart. With no work Rule,
+							the section above has already said why.
+						*/}
+						{workRules.length > 0 && (
+							<section className="space-y-3">
+								<SectionHead>Rules that ask for work here</SectionHead>
+								<RuleList
+									rules={workRules}
+									// The chart sits in its own Rule's row, so it is read as that
+									// Rule's evidence and not as the Plant's. Out of season it folds
+									// behind the day it opens, because September soil above a
+									// spring line looks like a Rule that fired.
+									renderExtra={rule => rule.id !== thresholdRule?.id
+										? <WaitingLine rule={rule} plan={plantPlan} />
+										: (
+												seasonOpensOn === null
+													? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
+													: (
+															<details className="group">
+																<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+																	<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
+																	{`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}
+																</summary>
+																<SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} seasonSaid />
+															</details>
+														)
+											)}
 								/>
-							)}
-						</section>
+							</section>
+						)}
+
+						{guards.length > 0 && (
+							<section className="space-y-3">
+								<SectionHead>Guards that can hold it back or add a note</SectionHead>
+								<p className="text-note text-muted">
+									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
+								</p>
+								<RuleList rules={guards} renderExtra={rule => <GuardToday rule={rule} plan={plantPlan} />} />
+							</section>
+						)}
 
 						<section className="space-y-3">
-							<h3 className="text-sm font-semibold text-foreground">Recorded work</h3>
+							<SectionHead>Recorded work</SectionHead>
 							<RecordedWork
 								history={history !== null && history.plantId === plant.id ? history : null}
 								rules={rules}
 							/>
 						</section>
+
+						{/* Last, because the inventory's record of where the Plant
+						    lives changes least. */}
+						<section className="space-y-3">
+							<SectionHead>Site conditions</SectionHead>
+							<SiteConditions plant={plant} />
+						</section>
+
+						{/* A second way out at the foot on a phone, where the sheet is full
+						    width, there is no backdrop to tap, and the top corner is the
+						    last place a one-handed thumb reaches. Sticky, so it stays in
+						    reach however far the sheet has scrolled. */}
+						<div className="sticky -bottom-6 -mx-6 border-t-2 border-rule bg-background px-6 py-3 sm:hidden">
+							<SheetClose className={cn('inline-flex min-h-11 w-full items-center justify-center border-2 border-rule font-display text-label font-extrabold tracking-widest text-foreground uppercase', FOCUS_RING)}>
+								Close
+							</SheetClose>
+						</div>
 					</div>
 				</SheetContent>
 			)}

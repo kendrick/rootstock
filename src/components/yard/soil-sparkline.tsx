@@ -5,9 +5,13 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Citation } from '@/planner/task';
 import type { ThresholdRule } from '@/rules/rule';
 import type { Aggregate, Unit } from '@/weather/observation';
+import { ChevronRight } from 'lucide-react';
 import { useId } from 'react';
 import { VARIABLE_TEXT } from '@/components/series-text';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
 import { meetsThreshold } from '@/planner/threshold-rule';
+import { inSeason, seasonDay } from './season';
 
 /*
  * The picture ADR 0003 bought. The Artifact ships the window the Rules read so
@@ -25,12 +29,13 @@ import { meetsThreshold } from '@/planner/threshold-rule';
  * The viewBox is sized near the width this actually renders at, because text
  * inside an SVG scales with the box. A 1000-unit-wide box shrunk into a phone
  * would take the labels down with it, and a threshold nobody can read is a
- * threshold that is not on the chart. Paired with the max-width below, label
- * text lands between roughly 10px and 14px across the range of screens this
- * gets read on.
+ * threshold that is not on the chart. The chart runs about 312px wide in a
+ * phone's sheet and 436px in a desktop's, so LABEL_SIZE lands labels at 13px
+ * to 18px: the lettering floor on a phone, where they're read outdoors.
  */
-const VIEW = { width: 420, height: 170 };
-const PLOT = { top: 22, right: 14, bottom: 30, left: 14 };
+const VIEW = { width: 420, height: 190 };
+const PLOT = { top: 30, right: 14, bottom: 36, left: 14 };
+const LABEL_SIZE = 17.5;
 const PLOT_WIDTH = VIEW.width - PLOT.left - PLOT.right;
 const PLOT_HEIGHT = VIEW.height - PLOT.top - PLOT.bottom;
 
@@ -165,6 +170,10 @@ export interface SoilSparklineProps {
 	rule: ThresholdRule;
 	/** The Citation off the Task this Rule produced, or null on a Rule that produced none. Names the day to mark; nothing else on the chart depends on it. */
 	citation: Citation | null;
+	/** `Plan.asOf`. Decides whether the Rule's season is open, which changes what the chart is allowed to look like it says. */
+	asOf?: string | null;
+	/** The chart sits behind a fold whose summary already says it's out of season, so the caption doesn't repeat it. */
+	seasonSaid?: boolean;
 }
 
 /**
@@ -177,12 +186,16 @@ export interface SoilSparklineProps {
  * under every point says the work has fired, whatever the Task's status field
  * says.
  *
- * Nothing here distinguishes anything by colour alone. The shell is a single
- * dark monochrome theme with no accent hue to spend, so forecast days carry a
+ * Nothing here distinguishes anything by colour alone. The sheet is ink on
+ * stock, and stamp red is kept for recorded work, so forecast days carry a
  * dashed stroke and a named legend key beside their lighter ramp step, and the
  * marked day carries a dated text label beside its marker.
+ *
+ * Out of season the series is drawn muted and the caption says so. September
+ * soil sits above a spring Rule's 55F line on every day, which is the picture
+ * of a Rule that has fired, and only the season says it cannot.
  */
-export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparklineProps): ReactElement {
+export function SoilSparkline({ window: planWindow, rule, citation, asOf = null, seasonSaid = false }: SoilSparklineProps): ReactElement {
 	const headingId = useId();
 	const titleId = `${headingId}-title`;
 	const descId = `${headingId}-desc`;
@@ -206,7 +219,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	 */
 	if (days.length === 0) {
 		return (
-			<p className="text-sm text-muted-foreground">
+			<p className="text-body text-muted-foreground">
 				{`This plan's window carries no ${seriesName.toLowerCase()} readings, so there is nothing to draw against the ${thresholdText} threshold.`}
 			</p>
 		);
@@ -238,7 +251,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	const thresholdY = round(yFor(rule.value));
 	// Flip the label under the line when the line rides near the top of the plot,
 	// rather than letting it ride up out of the viewBox.
-	const thresholdLabelY = thresholdY - PLOT.top < 14 ? thresholdY + 13 : thresholdY - 5;
+	const thresholdLabelY = thresholdY - PLOT.top < LABEL_SIZE + 2 ? thresholdY + LABEL_SIZE + 2 : thresholdY - 6;
 
 	const markedDate = citedDate(citation);
 	const marked = plotted.find(point => point.day.date === markedDate) ?? null;
@@ -251,7 +264,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 	 */
 	const markedLabelY = marked === null
 		? 0
-		: Math.min(Math.max(marked.y <= thresholdY ? marked.y - 11 : marked.y + 18, 12), PLOT.top + PLOT_HEIGHT);
+		: Math.min(Math.max(marked.y <= thresholdY ? marked.y - 12 : marked.y + LABEL_SIZE + 6, LABEL_SIZE), PLOT.top + PLOT_HEIGHT);
 
 	const observedCount = days.filter(day => day.basis === 'observed').length;
 	const forecastCount = days.length - observedCount;
@@ -272,7 +285,18 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 		? `The rule's threshold is ${thresholdText} held for ${rule.consecutiveDays} consecutive days; ${meetingCount} of these ${days.length} days sit ${sideWords}.`
 		: `The rule fires on a crossing, so a run of ${rule.consecutiveDays} consecutive days ${DIRECTION_TEXT[rule.direction]} ${thresholdText} counts only where the day before it sat strictly on the far side. For context, ${meetingCount} of these ${days.length} days sit ${sideWords}.`;
 
+	const seasonText = rule.season === null ? null : `${seasonDay(rule.season.start)} to ${seasonDay(rule.season.end)}`;
+	const outOfSeason = asOf !== null && rule.season !== null && !inSeason(asOf, rule.season);
+	const watches = rule.direction === null
+		? `${seriesName.toLowerCase()} against ${thresholdText}`
+		: `${seriesName.toLowerCase()} ${DIRECTION_TEXT[rule.direction]} ${thresholdText}`;
+	const caption = [
+		`${rule.name} watches this: ${watches}${seasonText === null ? '' : `, ${seasonText}`}.`,
+		outOfSeason && !seasonSaid && rule.season !== null ? `Out of season until ${seasonDay(rule.season.start)}, so nothing here can fire it.` : null,
+	].filter(sentence => sentence !== null).join(' ');
+
 	const description = [
+		outOfSeason ? caption : null,
 		`${observedCount} observed ${observedCount === 1 ? 'day' : 'days'} and ${forecastCount} forecast, running from ${amount(Math.min(...values), rule.unit)} to ${amount(Math.max(...values), rule.unit)}.`,
 		thresholdSentence,
 		marked === null ? null : `${dayLabel(marked.day.date)} is marked, the day this task's citation names.`,
@@ -280,12 +304,13 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 
 	return (
 		<figure className="space-y-2">
-			<figcaption id={headingId} className="text-sm font-medium text-foreground">
-				{`${seriesName} against the ${thresholdText} threshold`}
+			<figcaption id={headingId} className="text-body text-foreground">
+				{caption}
 			</figcaption>
 
 			<svg
 				viewBox={`0 0 ${VIEW.width} ${VIEW.height}`}
+				data-season={outOfSeason ? 'closed' : 'open'}
 				className="h-auto w-full max-w-[520px] text-foreground"
 				role="img"
 				aria-labelledby={`${titleId} ${descId}`}
@@ -306,7 +331,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 					strokeWidth={1.5}
 					strokeDasharray="5 4"
 				/>
-				<text x={PLOT.left} y={thresholdLabelY} className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left} y={thresholdLabelY} className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{`${thresholdText} threshold`}
 				</text>
 
@@ -322,7 +347,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 						// Two channels, never the ramp step alone. CONTEXT.md's Threshold
 						// Rule entry says a forecast can never fire one, so a reader who
 						// cannot tell the forecast days apart cannot check the citation.
-						className={run.basis === 'forecast' ? 'stroke-muted-foreground' : 'stroke-foreground'}
+						className={run.basis === 'forecast' || outOfSeason ? 'stroke-muted-foreground' : 'stroke-foreground'}
 						strokeDasharray={run.basis === 'forecast' ? '4 3' : undefined}
 					/>
 				))}
@@ -353,7 +378,7 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 							y={markedLabelY}
 							textAnchor={marked.x > PLOT.left + PLOT_WIDTH * 0.75 ? 'end' : marked.x < PLOT.left + PLOT_WIDTH * 0.25 ? 'start' : 'middle'}
 							className="fill-foreground font-medium"
-							fontSize={11}
+							fontSize={LABEL_SIZE}
 						>
 							{`${markedText} ${dayLabel(marked.day.date)}`}
 						</text>
@@ -361,17 +386,17 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 				)}
 
 				{/* Both ends of the span only. The table below carries every date. */}
-				<text x={PLOT.left} y={VIEW.height - 9} className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left} y={VIEW.height - 10} className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{dayLabel(days[0]!.date)}
 				</text>
-				<text x={PLOT.left + PLOT_WIDTH} y={VIEW.height - 9} textAnchor="end" className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left + PLOT_WIDTH} y={VIEW.height - 10} textAnchor="end" className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{dayLabel(days.at(-1)!.date)}
 				</text>
 			</svg>
 
 			{/* Words, not just two shades of grey. The legend is the channel that
 			    survives a phone in the sun and a reader who cannot see the ramp step. */}
-			<ul className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+			<ul className="flex flex-wrap gap-4 text-note text-muted-foreground">
 				{observedCount > 0 && (
 					<li className="flex items-center gap-1.5">
 						<svg viewBox="0 0 20 2" aria-hidden="true" className="w-5 text-foreground">
@@ -390,13 +415,13 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 				)}
 			</ul>
 
-			<p className="text-xs text-muted-foreground">{provenanceSentence(days)}</p>
+			<p className="text-note text-muted-foreground">{provenanceSentence(days)}</p>
 
 			{/* The citation can name a day outside the window the Artifact ships—ADR
 			    0003's own consequence. Saying so beats a chart that silently
 			    marks nothing and looks finished. */}
 			{markedDate !== null && marked === null && (
-				<p className="text-xs text-muted-foreground">
+				<p className="text-note text-muted-foreground">
 					{`The cited day, ${dayLabel(markedDate)}, falls outside the window this plan carries, so it is not marked above.`}
 				</p>
 			)}
@@ -404,8 +429,12 @@ export function SoilSparkline({ window: planWindow, rule, citation }: SoilSparkl
 			{/* Native details because the plan fixes it as how things expand here, and
 			    no collapsible component is installed. Every value on the chart is
 			    reachable as text from inside it. */}
-			<details className="text-xs">
-				<summary className="cursor-pointer text-muted-foreground">
+			<details className="group text-note">
+				{/* 44px, the target size the rest of the site holds itself to. The
+				    chevron stands in for the marker `display: flex` removes, so the
+				    line still reads as something that opens. */}
+				<summary className={cn('flex min-h-11 list-none items-center gap-2 text-muted-foreground', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+					<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
 					{`Show these ${days.length} days as a table`}
 				</summary>
 				<div className="mt-2 overflow-x-auto">

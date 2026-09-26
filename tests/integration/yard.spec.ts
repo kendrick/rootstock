@@ -36,7 +36,7 @@ test('serves the yard route', async ({ page }) => {
 test('the yard photo loads from the built export', async ({ page }) => {
 	await page.goto('yard');
 
-	const photo = page.getByRole('img', { name: /seen from above/ });
+	const photo = page.getByRole('img', { name: /Aerial photo of the yard/ });
 	await expect(photo).toBeVisible();
 
 	// An <img> reserves its box and reports visible the moment it's in the DOM,
@@ -94,7 +94,9 @@ test('every sited Plant appears once in the accessible tab order, not twice', as
 });
 
 // The critique's own method: elementFromPoint at a pin's centre returning a
-// different pin. Three of six failed this at 390px before the fix.
+// different pin. Three of six failed this at 390px before the fix. Pins are
+// named by `data-plant`; they carry no title, and comparing titles compared
+// null with null for every pin.
 test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('yard');
@@ -105,25 +107,148 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 
 	for (let i = 0; i < count; i++) {
 		const pin = pins.nth(i);
-		const title = await pin.getAttribute('title');
+		const plant = await pin.getAttribute('data-plant');
+		expect(plant).not.toBeNull();
 		const box = await pin.boundingBox();
 		if (box === null) {
-			throw new Error(`pin '${title}' has no bounding box: this test has nothing to hit-test.`);
+			throw new Error(`pin '${plant}' has no bounding box: this test has nothing to hit-test.`);
 		}
 
-		const hitTitle = await page.evaluate(
-			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('title') ?? null,
+		const hit = await page.evaluate(
+			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
 			[box.x + box.width / 2, box.y + box.height / 2] as const,
 		);
 
-		expect(hitTitle, `pin '${title}' at its own centre resolved to '${hitTitle}' instead`).toBe(title);
+		expect(hit, `pin '${plant}' at its own centre resolved to '${hit}' instead`).toBe(plant);
 	}
 });
 
-// This route has never had committed end-to-end coverage, so nothing here is a
-// regression check: it is the first run that anybody can repeat.
+// A hovered callout grows, and its 44px hit area must not grow with it: at the
+// 28px spacing a scaled 66px circle covers a neighbour's centre, and the pointer
+// can't leave the hovered pin for the one beside it.
+test('a hovered pin leaves every other pin\'s centre to that pin', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('yard');
+
+	const pins = page.locator('button[data-plant]');
+	const count = await pins.count();
+	const centres = new Map<string, readonly [number, number]>();
+	for (let i = 0; i < count; i++) {
+		const box = await pins.nth(i).boundingBox();
+		const plant = await pins.nth(i).getAttribute('data-plant');
+		if (box !== null && plant !== null) {
+			centres.set(plant, [box.x + box.width / 2, box.y + box.height / 2]);
+		}
+	}
+
+	for (const [hovered, [hx, hy]] of centres) {
+		await page.mouse.move(hx, hy);
+		await expect(pins.and(page.locator(`[data-plant="${hovered}"]`))).toHaveClass(/scale-150/u);
+		// The transition runs 150ms; hit-test the settled size.
+		await page.waitForTimeout(250);
+		// The hit area keeps its resting 44px, a 22px radius, so 21px out still
+		// lands on the hovered pin.
+		const edge = await page.evaluate(
+			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
+			[hx, hy + 21] as const,
+		);
+		if (![...centres.entries()].some(([plant, [x, y]]) => plant !== hovered && Math.hypot(x - hx, y - hy - 21) < 22)) {
+			expect(edge, `'${hovered}' hovered no longer catches a point 21px below its centre`).toBe(hovered);
+		}
+		for (const [plant, point] of centres) {
+			if (plant === hovered) {
+				continue;
+			}
+			const hit = await page.evaluate(
+				([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
+				point,
+			);
+			expect(hit, `with '${hovered}' hovered, '${plant}' at its centre resolved to '${hit}'`).toBe(plant);
+		}
+	}
+});
+
+// pin-layout.ts spaces pins against the photo's width on a phone. Measured
+// here, so a change to the sheet's gutters fails by name instead of quietly
+// crowding the pins again. Every pin sits wholly on the plate, the photo plus
+// the callout bands a crowd moves into, and a pin at the edge once showed 14
+// of its 24px.
+test('lays pins out against the photo width a phone renders, with none clipped', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 780 });
+	await page.goto('yard');
+
+	const photo = page.getByRole('img', { name: /Aerial photo of the yard/ });
+	const frame = await photo.evaluate(node => node.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
+	expect(Math.round(frame.width)).toBe(316);
+
+	const plate = await photo.evaluate(node => node.parentElement?.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
+	const pins = page.locator('button[data-plant]');
+	for (let i = 0; i < await pins.count(); i++) {
+		const box = await pins.nth(i).boundingBox();
+		expect(box).not.toBeNull();
+		expect(box!.y).toBeGreaterThanOrEqual(plate.top - 0.5);
+		expect(box!.x).toBeGreaterThanOrEqual(plate.left - 0.5);
+		expect(box!.x + box!.width).toBeLessThanOrEqual(plate.right + 0.5);
+		expect(box!.y + box!.height).toBeLessThanOrEqual(plate.bottom + 0.5);
+	}
+});
+
 test('yard route has no accessibility violations', async ({ page }) => {
 	await page.goto('yard');
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
+});
+
+/*
+ * The link from a Plant's sheet to its line on the ticket. The Yard and This
+ * Week number the ticket separately, so the check is on where the browser
+ * lands: the row the link targets has to carry the Rule the Yard named. The
+ * daily artifact decides which Plants have work, so the first line there is
+ * the one followed.
+ */
+test('a ticket line on the Yard lands on that line of This Week', async ({ page }) => {
+	await page.goto('yard?view=week');
+
+	const list = page.getByRole('list', { name: 'Plants' });
+	const line = list.locator('button span.text-note', { hasText: /^(Ready now|Approaching|Held back) \d{2} · / }).first();
+	test.skip(await line.count() === 0, 'today\'s ticket names no Plant');
+
+	const [label, ruleName] = (await line.textContent() ?? '').split(' · ');
+	await line.locator('xpath=ancestor::button').click();
+
+	await page.getByRole('dialog').getByRole('link', { name: new RegExp(`^${label} `, 'iu') }).first().click();
+	await page.waitForURL(/#(ready-now|approaching|held-back)-\d{2}$/u);
+
+	const target = page.locator(':target');
+	await expect(target).toHaveCount(1);
+	await expect(target).toContainText(ruleName ?? '', { ignoreCase: true });
+	await expect(target).toBeInViewport();
+});
+
+/*
+ * The pressed cell prints in reverse, so a focus ring in the ink it shares
+ * with the fill drew nothing: 1.00:1, measured in the third critique. The
+ * check is on what the browser draws, the outline against the cell's fill.
+ */
+test('shows keyboard focus on the pressed view cell', async ({ page }) => {
+	await page.goto('yard?view=week');
+	const pressed = page.getByRole('button', { name: 'This week', exact: true });
+	await page.getByRole('button', { name: 'All plants', exact: true }).focus();
+	await page.keyboard.press('Shift+Tab');
+
+	await expect(pressed).toBeFocused();
+	const [style, outline, fill] = await pressed.evaluate((node) => {
+		const computed = getComputedStyle(node);
+		return [computed.outlineStyle, computed.outlineColor, computed.backgroundColor];
+	});
+	expect(style).toBe('solid');
+	expect(outline).not.toBe(fill);
+});
+
+// Chrome computes the row's name, and put a space before the out-of-flow
+// sr-only span when the number was a separate node: "fig , number 2".
+test('names each Plant row with its number, as the browser reads it', async ({ page }) => {
+	await page.goto('yard?view=all');
+
+	await expect(page.getByRole('list', { name: 'Plants' }).getByRole('button', { name: /^Brown Turkey fig, number 2 /u })).toHaveCount(1);
 });

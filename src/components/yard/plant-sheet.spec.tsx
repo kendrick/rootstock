@@ -74,7 +74,7 @@ function renderSheet(plant: Plant | null, overrides: {
  */
 async function settled(): Promise<void> {
 	await waitFor(() => {
-		expect(screen.queryByText(/Reading what has been recorded here/)).toBeNull();
+		expect(screen.queryByText(/Reading recorded work/)).toBeNull();
 	});
 }
 
@@ -126,16 +126,19 @@ describe('plantSheet', () => {
 
 	// The critique measured this control last in DOM and tab order, after
 	// three citation links, at a 16x16 hit target with no padding around it.
-	it('puts the Close control first among the sheet\'s focusable elements, at a 24px hit target', async () => {
+	// The word, at 44px, first in the tab order. A second Close sits at the foot
+	// for phones, where the top corner is the last place a thumb reaches.
+	it('puts a worded Close control first among the sheet\'s focusable elements, at a 44px target', async () => {
 		renderSheet(lawnPlant);
 		await settled();
 
 		const dialog = screen.getByRole('dialog');
 		const focusable = dialog.querySelectorAll('button, a[href], summary, [tabindex]:not([tabindex="-1"])');
-		const close = screen.getByRole('button', { name: 'Close' });
+		const closes = screen.getAllByRole('button', { name: 'Close' });
 
-		expect(focusable[0]).toBe(close);
-		expect(close.className).toContain('size-6');
+		expect(focusable[0]).toBe(closes[0]);
+		expect(closes[0]?.className).toContain('min-h-11');
+		expect(closes).toHaveLength(2);
 	});
 
 	// The lawn is the one Plant carrying detail of its own, and every field of
@@ -173,13 +176,15 @@ describe('plantSheet', () => {
 		}
 	});
 
-	it('shows the site and the notes on a Plant that carries them', async () => {
+	// The site is said once, under the name, where the dialog's description
+	// announces it and the three patio hibiscus are told apart.
+	it('shows the site under the name and the notes in the conditions, each once', async () => {
 		renderSheet(notedPlant);
 		await settled();
 
-		const conditions = section('Site conditions');
-		expect(conditions.textContent).toContain(notedPlant.site);
-		expect(conditions.textContent).toContain(notedPlant.notes);
+		const dialog = screen.getByRole('dialog');
+		expect(dialog.textContent?.split(notedPlant.site ?? '').length).toBe(2);
+		expect(section('Site conditions').textContent).toContain(notedPlant.notes);
 	});
 
 	// A placeholder would claim the question was asked and came back empty. The
@@ -202,19 +207,21 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
+		const applicable = section('Rules that ask for work here');
 		expect(applicable.textContent).toContain('Fall pre-emergent');
 		expect(applicable.textContent).toContain('Spring pre-emergent');
 		expect(applicable.textContent).not.toContain('Feed the Esperanza');
 	});
 
-	it('gives each Rule its source badge and the region it applies to', async () => {
+	// The region only where it differs from the yard's own: every Rule in the
+	// set is written for this region, and the ticket head already names it.
+	it('gives each Rule its source badge, and leaves off the region the yard is already in', async () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
+		const applicable = section('Rules that ask for work here');
 		expect(within(applicable).getAllByText('Extension').length).toBeGreaterThan(0);
-		expect(applicable.textContent).toContain(ruleFixtures[0]!.region.name);
+		expect(applicable.textContent).not.toContain(ruleFixtures[0]!.region.name);
 	});
 
 	// A Guard creates no work, so a reader who cannot tell one from a Rule that
@@ -229,9 +236,11 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain('Rain expected');
-		expect(applicable.textContent).toContain('Guard · holds work back');
+		const guards = section('Guards that can hold it back or add a note');
+		expect(guards.textContent).toContain('Rain expected');
+		expect(guards.textContent).toContain('Guard · can hold work back');
+		// Listed apart from the Rules that ask for work.
+		expect(section('Rules that ask for work here').textContent).not.toContain('Rain expected');
 	});
 
 	// The Guard here is a copy under its own id and name rather than the seed's
@@ -251,9 +260,9 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant, { rules: [...ruleFixtures, reaching] });
 		await settled();
 
-		const applicable = section('Rules that reach this plant');
-		expect(applicable.textContent).toContain(reaching.name);
-		expect(applicable.textContent).toContain('Guard · adds a note');
+		const guards = section('Guards that can hold it back or add a note');
+		expect(guards.textContent).toContain(reaching.name);
+		expect(guards.textContent).toContain('Guard · can add a note');
 	});
 
 	// The other direction of the same rule. Neither seed Guard names fig-1 while
@@ -284,7 +293,10 @@ describe('plantSheet', () => {
 		await settled();
 
 		expect(plannedPlant.status).toBe('planned');
-		expect(screen.getByText('No Rule reaches this plant.')).toBeDefined();
+		expect(screen.getByText(/^Not in the ground yet\./u)).toBeDefined();
+		// Said once, on the line under the name, and not again as a tag.
+		// The fixture's own name carries the word, so it's taken out first.
+		expect(screen.getByRole('dialog').textContent?.replace(plannedPlant.name, '').match(/planned/giu)).toHaveLength(1);
 	});
 
 	it('says so when no Rule reaches a planted Plant either', async () => {
@@ -293,7 +305,11 @@ describe('plantSheet', () => {
 
 		expect(unplacedPlantedPlant.status).toBe('planted');
 		expect(unplacedPlantedPlant.position).toBeNull();
-		expect(screen.getByText('No Rule reaches this plant.')).toBeDefined();
+		// The row's words exactly, then the next step, named from the Plant's own tags.
+		const week = section('This week');
+		expect(week.textContent).toContain('No Rule reaches this plant, so it never gets a Task.');
+		expect(week.textContent).toContain(`Add a Rule that names it or one of its tags: ${unplacedPlantedPlant.tags.join(', ')}.`);
+		expect(week.textContent).not.toContain('Planner');
 	});
 
 	it('lists what has been recorded against this Plant, newest first', async () => {
@@ -326,6 +342,38 @@ describe('plantSheet', () => {
 		expect(recorded.textContent).not.toContain('Feed the Esperanza');
 	});
 
+	/*
+	 * The seed records the fig's compost at 2026-06-01T00:00:00Z. West of
+	 * Greenwich, a formatter left to the visitor's zone printed that as May 31.
+	 * The zone is set before the module loads, because a DateTimeFormat fixes
+	 * its zone when it is built, and the assertion reads the rendered text.
+	 */
+	it('prints a recorded day as the day it names, whatever zone the reader is in', async () => {
+		const zone = process.env.TZ;
+		process.env.TZ = 'America/Chicago';
+		vi.resetModules();
+		try {
+			const { PlantSheet: ZonedSheet } = await import('./plant-sheet');
+			render(
+				<ZonedSheet
+					plant={figPlant}
+					rules={ruleFixtures}
+					plants={plantFixtures}
+					artifact={yardArtifact}
+					store={createYardStore()}
+					onOpenChange={vi.fn()}
+				/>,
+			);
+			await settled();
+
+			expect(section('Recorded work').textContent).toContain('Jun 1, 2026');
+		}
+		finally {
+			process.env.TZ = zone;
+			vi.resetModules();
+		}
+	});
+
 	it('shows an empty state for a Plant nothing has been recorded against', async () => {
 		renderSheet(esperanzaPlant, { store: createYardStore([]) });
 		await settled();
@@ -348,8 +396,9 @@ describe('plantSheet', () => {
 		await settled();
 
 		const recorded = section('Recorded work');
-		expect(recorded.textContent).toContain('could not be read');
-		expect(recorded.textContent).toContain('This browser refused to open its own storage.');
+		expect(recorded.textContent).toContain('won\'t open its record of finished work');
+		// The browser's own error string is not the reader's business.
+		expect(recorded.textContent).not.toContain('This browser refused to open its own storage.');
 		expect(within(recorded).queryByText('Nothing has been recorded against this plant yet.')).toBeNull();
 	});
 
@@ -394,5 +443,191 @@ describe('plantSheet', () => {
 
 		expect(screen.getByRole('img', { name: /threshold/i })).toBeDefined();
 		expect(screen.queryByText(/^Projected /)).toBeNull();
+	});
+});
+
+/*
+ * The owner opens a Plant to decide what to do this week, so the sheet
+ * answers that first and keeps the inventory for last. The fixture Plan holds
+ * one Task, the spring pre-emergent approaching on the front lawn.
+ */
+describe('plantSheet, this week first', () => {
+	const springName = ruleFixtures.find(rule => rule.id === 'spring-pre-emergent')?.name ?? 'spring-pre-emergent';
+
+	it('leads with this week and ends with the site', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const heads = within(screen.getByRole('dialog')).getAllByRole('heading', { level: 3 }).map(head => head.textContent);
+		expect(heads[0]).toBe('This week');
+		expect(heads.at(-1)).toBe('Site conditions');
+	});
+
+	it('links each of the Plant\'s ticket lines to that line on This Week', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const link = within(section('This week')).getByRole('link', { name: /Approaching 01/u });
+		expect(link.getAttribute('href')).toMatch(/#approaching-01$/u);
+		expect(link.textContent).toContain(springName);
+	});
+
+	// A Guard holding the work today is the other half of "what does it need",
+	// so it's said here, with what would release it, not left for the reader to
+	// work out from the Guards section.
+	it('says when a Guard is holding the Plant\'s work this week, and what releases it', async () => {
+		const [template] = yardArtifact.plan.tasks;
+		if (template === undefined) {
+			throw new Error('the yard artifact carries no Task to hold back');
+		}
+		const held: Artifact = {
+			...yardArtifact,
+			plan: {
+				...yardArtifact.plan,
+				tasks: [{ ...template, status: 'deferred', deferrals: [{ guardId: 'rain-expected', releaseWhen: 'After the rain passes.' }] }],
+			},
+		};
+		renderSheet(lawnPlant, { artifact: held });
+		await settled();
+
+		const week = section('This week');
+		expect(within(week).getByRole('link', { name: /Held back 01/u })).toBeDefined();
+		expect(week.textContent).toContain(ruleFixtures.find(rule => rule.id === 'rain-expected')?.name ?? 'rain-expected');
+		expect(week.textContent).toContain('After the rain passes.');
+	});
+
+	it('says so when the Plant\'s Rules ask for nothing this week', async () => {
+		renderSheet(figPlant);
+		await settled();
+
+		expect(section('This week').textContent).toContain('Nothing on this week\'s ticket.');
+	});
+
+	// Late September: the spring Rule can't fire, so its chart folds away behind
+	// the date it can, and the reader opens it only if they want the readings.
+	it('folds an out-of-season chart behind the day its season opens', async () => {
+		renderSheet(lawnPlant, { artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
+		await settled();
+
+		const fold = screen.getByText(/Out of season until Feb 1/u, { selector: 'summary' }).closest('details');
+		expect(fold).not.toBeNull();
+		expect(fold?.open).toBe(false);
+		expect(fold?.querySelector('svg')).not.toBeNull();
+	});
+
+	it('stamps recorded work in the colour kept for it', async () => {
+		renderSheet(esperanzaPlant);
+		await settled();
+
+		const line = within(section('Recorded work')).getAllByText(/^Recorded [A-Z][a-z]{2} \d/u)[0];
+		expect(line?.className).toContain('text-accent');
+	});
+
+	// On a phone the foot CLOSE is the one in thumb reach, so it stays on
+	// screen however far the sheet scrolls.
+	it('keeps the foot Close on screen while the sheet scrolls', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		expect(screen.getAllByRole('button', { name: 'Close' })[1]?.closest('.sticky')).not.toBeNull();
+	});
+});
+
+describe('plantSheet head', () => {
+	// The site is the owner's sentence, so it reads as prose under the lettered
+	// kind, and the head carries the number that keys it to the plate.
+	it('sets the site as prose under the kind, and carries the Plant\'s number', async () => {
+		render(
+			<PlantSheet plant={figPlant} ordinal={2} rules={ruleFixtures} plants={plantFixtures} artifact={yardArtifact} store={createYardStore()} onOpenChange={vi.fn()} />,
+		);
+		await settled();
+
+		const site = screen.getByText(figPlant.site ?? '');
+		expect(site.className).not.toContain('uppercase');
+		expect(site.className).toContain('normal-case');
+		expect(screen.getByRole('heading', { level: 2, name: `${figPlant.name}, number 2` })).toBeDefined();
+	});
+});
+
+describe('plantSheet, quiet Rules', () => {
+	// A quiet Plant's Rules say when they next ask for anything, in the Rules
+	// page's own words, so "Quiet this week" isn't the end of the answer.
+	it('says when each quiet Rule next asks for work', async () => {
+		renderSheet(figPlant);
+		await settled();
+
+		const rows = within(section('Rules that ask for work here')).getAllByRole('listitem');
+		for (const row of rows) {
+			expect(row.textContent).toMatch(/Opens [A-Z][a-z]+ \d{1,2}|Open through [A-Z][a-z]+ \d{1,2}|Every \d+(–\d+)? days|Out of season until/u);
+		}
+	});
+
+	it('says whether each Guard is acting on this week\'s ticket', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		for (const guard of guards) {
+			expect(guard.textContent).toMatch(/Acting on this week's ticket|Holding nothing this week/u);
+		}
+	});
+});
+
+// A Rule or Guard can reach several Plants, and the Plan's Tasks each name one.
+// The sheet answers for the open Plant, so work on another Plant's Task says
+// nothing about this one.
+describe('plantSheet, standing scoped to the open Plant', () => {
+	/** yardArtifact with every Task moved to a Plant that isn't the lawn, each annotated by every Guard. */
+	const guards = ruleFixtures.filter(rule => rule.kind === 'guard');
+	const elsewhere: Artifact = {
+		...yardArtifact,
+		plan: {
+			...yardArtifact.plan,
+			tasks: yardArtifact.plan.tasks.map(task => ({
+				...task,
+				plantId: 'somewhere-else',
+				annotations: guards.map(guard => ({ guardId: guard.id, text: 'Acted on elsewhere' })),
+			})),
+		},
+	};
+
+	it('says a Guard is holding nothing when it acts only on another Plant\'s Task', async () => {
+		renderSheet(lawnPlant, { artifact: elsewhere });
+		await settled();
+
+		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		for (const guard of guards) {
+			expect(guard.textContent).toContain('Holding nothing this week');
+		}
+	});
+
+	it('gives a Rule its waiting line when its only Task is another Plant\'s', async () => {
+		// Fall pre-emergent reaches the lawn. Its one Task here is another Plant's.
+		const rule = ruleFixtures.find(candidate => candidate.id === 'fall-pre-emergent');
+		expect(rule).toBeDefined();
+		const artifact: Artifact = {
+			...yardArtifact,
+			plan: {
+				...yardArtifact.plan,
+				tasks: [{ ...yardArtifact.plan.tasks[0]!, id: 'fall-pre-emergent@somewhere-else', ruleId: 'fall-pre-emergent', plantId: 'somewhere-else', status: 'fired', citation: { kind: 'window', date: yardArtifact.plan.asOf }, deferrals: [], annotations: [] }],
+			},
+		};
+		renderSheet(lawnPlant, { artifact });
+		await settled();
+
+		const row = within(section('Rules that ask for work here')).getAllByRole('listitem').find(candidate => candidate.textContent?.includes(rule?.name ?? ''));
+		expect(row?.textContent).toMatch(/Opens [A-Z][a-z]+ \d{1,2}|Open through [A-Z][a-z]+ \d{1,2}/u);
+	});
+});
+
+describe('plantSheet sources', () => {
+	// Three Rules sourced to one extension service gave a screen reader three
+	// identical links. Each says which Rule it sources.
+	it('names each source link for the Rule it sources', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const names = within(section('Rules that ask for work here')).getAllByRole('link').map(link => link.textContent ?? '');
+		expect(new Set(names).size).toBe(names.length);
 	});
 });

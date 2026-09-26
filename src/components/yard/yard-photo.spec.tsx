@@ -96,8 +96,13 @@ describe('yardPhoto', () => {
 		const { container } = render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 		const photo = photoOf(yardFixture);
 
-		const style = container.firstElementChild?.getAttribute('style') ?? '';
-		expect(style).toContain(`${photo.width} / ${photo.height}`);
+		// The plate adds callout bands, so the photo's own ratio is on the box
+		// that holds the image: the plate's height times that box's share of it.
+		const plate = container.firstElementChild as HTMLElement;
+		const box = plate.firstElementChild as HTMLElement;
+		const [plateWidth, plateHeight] = plate.style.aspectRatio.split('/').map(Number);
+		const share = Number.parseFloat(box.style.height) / 100;
+		expect(((plateHeight ?? 0) * share) / (plateWidth ?? 1)).toBeCloseTo(photo.height / photo.width, 6);
 	});
 
 	// yardSchema makes the photo nullable, so this case is reachable, and a
@@ -133,9 +138,13 @@ describe('yardPhoto', () => {
 		const position = positionOf(isolatedPlant);
 		render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
+		// Read back through the photo box's own placement in the plate, so the
+		// check is where the pin lands on the photograph.
 		const pin = pinFor(isolatedPlant.id);
+		const box = pin.closest('[style*="aspect-ratio"]')?.firstElementChild as HTMLElement;
+		const onPhoto = (Number.parseFloat(pin.style.top) - Number.parseFloat(box.style.top)) / Number.parseFloat(box.style.height);
 		expect(pin.style.left).toBe(`${position.x * 100}%`);
-		expect(pin.style.top).toBe(`${position.y * 100}%`);
+		expect(onPhoto).toBeCloseTo(position.y, 6);
 	});
 
 	// The critique measured four seed Plants (esperanza-1 and the three
@@ -189,5 +198,18 @@ describe('yardPhoto', () => {
 
 			expect(screen.queryAllByRole('button', { hidden: true })).toHaveLength(0);
 		});
+	});
+
+	// The chip grows on hover, but on a crowded patio the chip is in the band
+	// and the question is which spot it names. The leader and the spot light
+	// with it.
+	it('lights a hovered Plant\'s leader and spot along with its callout', () => {
+		const { container } = render(<YardPhoto yard={yardFixture} plants={plantFixtures} ordinals={ordinalsFor(plantFixtures)} hovered="hibiscus-starry-night" onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
+
+		const lit = container.querySelector('[data-leader="hibiscus-starry-night"]');
+		const other = container.querySelector('[data-leader="hibiscus-luna-white"]');
+		expect(Number(lit?.querySelector('line:last-child')?.getAttribute('stroke-width'))).toBeGreaterThan(Number(other?.querySelector('line:last-child')?.getAttribute('stroke-width')));
+		expect(container.querySelector('[data-spot="hibiscus-starry-night"]')?.className).toContain('size-3');
+		expect(container.querySelector('[data-spot="hibiscus-luna-white"]')?.className).toContain('size-2');
 	});
 });

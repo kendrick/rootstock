@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import type { Plant, Position } from '@/yard/plant';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { calloutFace } from './callout-style';
 import { KIND_TEXT } from './kind-text';
 
 /**
@@ -21,11 +22,12 @@ import { KIND_TEXT } from './kind-text';
  * keyboard would put it back a second time, and everything it says is already in
  * the row the number points at.
  */
-export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect }: {
+export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect, onTicket = false }: {
 	plant: Plant;
 	/**
-	 * Where to draw the pin, if it differs from `plant.position`. `pin-layout.ts`
-	 * uses this to spread a crowded cluster apart for rendering without touching
+	 * Where to draw the pin, as a fraction of the plate, when that differs from
+	 * `plant.position`. `yard-photo.tsx` passes pin-layout's placement, which
+	 * can move a crowded callout into a band outside the photo, without touching
 	 * the Plant record, so onSelect still hands its caller the Plant exactly as
 	 * the inventory carries it.
 	 */
@@ -34,6 +36,8 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 	ordinal: number;
 	/** True while this Plant is under the pointer here or on its row below. */
 	hovered: boolean;
+	/** Printed in reverse in the week view, because this week's ticket names this Plant. */
+	onTicket?: boolean;
 	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
@@ -73,19 +77,24 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 					// that survives that swap without every pin having to be re-sited.
 					style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
 					className={cn(
-						'absolute grid size-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center',
-						'border-2 font-display text-callout leading-none font-extrabold tabular-nums',
+						'absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer',
+						// A 44px hit area around the 24px mark, the target size the rest of
+						// the site holds itself to. Round, and invisible: a 44px square
+						// reaches 31px from its centre at the corners, past the 28px that
+						// pin-layout.ts keeps neighbours apart, so it would cover a
+						// diagonal neighbour's centre. A 22px radius never does. Hit-testing
+						// honours border-radius, and nothing drawn here is rounded. The inset
+						// is 12px because it measures from inside the 2px border.
+						'before:absolute before:-inset-3 before:rounded-full before:content-[\'\']',
 						'transition-transform',
-						// Fill for what is in the ground, an outline for what is not. Shape
-						// rather than colour, because this is read on a phone in daylight
-						// over a photograph whose own colours cannot be relied on.
-						planned
-							? 'border-ground bg-transparent text-ground'
-							: 'border-ground bg-ground text-foreground',
+						calloutFace({ planned, onTicket }),
 						// The hovered callout grows rather than changing colour. It sits on
 						// a photograph, so any colour it took would compete with whatever
-						// pixel happens to be beneath it; scale reads on every ground.
-						hovered && 'scale-150',
+						// pixel happens to be beneath it; scale reads on every ground. The
+						// hit area scales back by the same factor and keeps its resting size.
+						// Grown with the chip, it would reach past a neighbour's centre 28px
+						// away.
+						hovered && 'scale-150 before:scale-[calc(2/3)]',
 					)}
 				>
 					{ordinal}
@@ -94,7 +103,7 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 
 			<TooltipContent side="top">
 				<p className="font-display text-body font-extrabold tracking-wide uppercase">{plant.name}</p>
-				<p className="font-mono text-evidence text-muted">
+				<p className="text-note text-muted">
 					{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
 				</p>
 				{planned && (

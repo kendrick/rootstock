@@ -65,7 +65,7 @@ describe('yard', () => {
 	it('renders the photo and the list together, with no sheet open', () => {
 		renderYard();
 
-		expect(screen.getByRole('img', { name: /seen from above/ })).toBeDefined();
+		expect(screen.getByRole('img', { name: /Aerial photo of the yard/ })).toBeDefined();
 		expect(screen.getByRole('list', { name: 'Plants' })).toBeDefined();
 		expect(screen.queryByRole('dialog')).toBeNull();
 	});
@@ -76,7 +76,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${figPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	/*
@@ -108,7 +108,7 @@ describe('yard', () => {
 		fireEvent.click(listRowFor(plannedPlant.name));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: plannedPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${plannedPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	it('opens the sheet for a planted Plant that was never sited', async () => {
@@ -117,7 +117,7 @@ describe('yard', () => {
 		fireEvent.click(listRowFor(unplacedPlantedPlant.name));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: unplacedPlantedPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${unplacedPlantedPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	// Closing has to clear the selection, not just hide the sheet: a selection
@@ -128,7 +128,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
@@ -136,7 +136,7 @@ describe('yard', () => {
 		fireEvent.click(pinFor(figPlant.id));
 		await settled();
 
-		expect(screen.getByRole('heading', { name: figPlant.name })).toBeDefined();
+		expect(screen.getByRole('heading', { name: new RegExp(`^${figPlant.name}(,|$)`, 'u') })).toBeDefined();
 	});
 
 	// The critique found `document.activeElement` at `body` after every close,
@@ -152,7 +152,7 @@ describe('yard', () => {
 		fireEvent.click(pin);
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
@@ -170,11 +170,73 @@ describe('yard', () => {
 		fireEvent.click(row);
 		await settled();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
 		await waitFor(() => {
 			expect(screen.queryByRole('dialog')).toBeNull();
 		});
 
 		expect(document.activeElement).toBe(row);
+	});
+
+	/*
+	 * The fixture's Plan carries one Task, approaching, on the front lawn. So
+	 * the week view leads with the lawn, names its ticket line the way This Week
+	 * numbers it, and rules off every other Plant as having nothing this week.
+	 */
+	describe('the view toggle', () => {
+		function reset(): void {
+			window.history.replaceState(null, '', '/');
+		}
+
+		it('opens on the week when the ticket names a Plant, and says what the ticket holds', () => {
+			reset();
+			renderYard();
+
+			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
+			const list = screen.getByRole('list', { name: 'Plants' });
+			expect(within(list).getByText('On this week\'s ticket')).toBeDefined();
+			// The Plan's date heads the page, since nothing else on the route says it.
+			expect(screen.getByText(/^Plan for [A-Z][a-z]{2} \d{1,2}$/u)).toBeDefined();
+			expect(within(list).getByText('Approaching 01')).toBeDefined();
+			// The group heads are aria-hidden, so a screen reader hears one item
+			// per Plant.
+			expect(within(list).getAllByRole('listitem')).toHaveLength(within(list).getAllByRole('button').length);
+		});
+
+		it('switches to the inventory and puts it in the link', () => {
+			reset();
+			renderYard();
+
+			fireEvent.click(screen.getByRole('button', { name: 'All plants' }));
+
+			expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true');
+			expect(screen.getByText('1 task this week')).toBeDefined();
+			expect(screen.queryByText('On this week\'s ticket')).toBeNull();
+			expect(new URLSearchParams(window.location.search).get('view')).toBe('all');
+		});
+
+		// DESIGN.md promises the week whenever the ticket names a Plant. A choice
+		// kept on the device broke that for good after one tap on All plants, so
+		// the choice lives in the link and nowhere else.
+		it('opens on the week again on a fresh visit, whatever was chosen before', () => {
+			reset();
+			const first = renderYard();
+			fireEvent.click(screen.getByRole('button', { name: 'All plants' }));
+			first.unmount();
+
+			window.history.replaceState(null, '', '/');
+			renderYard();
+
+			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
+		});
+
+		it('lets the link choose the view', async () => {
+			reset();
+			window.history.replaceState(null, '', '/?view=all');
+			renderYard();
+
+			await waitFor(() => expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true'));
+			reset();
+		});
 	});
 });

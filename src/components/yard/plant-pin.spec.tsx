@@ -145,16 +145,27 @@ describe('plantPin', () => {
 	// glyph, so the distinction moved from two icon shapes to fill: a solid
 	// callout for what is in the ground, an open one for what is not. The
 	// requirement is the same, and the number is what identifies which Plant.
-	it('fills the callout for planted and leaves it open for planned', () => {
+	// A paper chip either way, so the numeral reads on any photograph; the
+	// border's line style carries planted against planned.
+	it('draws a solid border for planted and a dashed one for planned', () => {
 		const { container: plantedContainer } = render(<PlantPin plant={figPlant} ordinal={1} hovered={false} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 		const { container: plannedContainer } = render(<PlantPin plant={plannedAndSited} ordinal={2} hovered={false} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
 
 		const planted = plantedContainer.querySelector('button')?.getAttribute('class') ?? '';
 		const planned = plannedContainer.querySelector('button')?.getAttribute('class') ?? '';
 
-		expect(planted).toContain('bg-ground');
-		expect(planned).toContain('bg-transparent');
-		expect(planted).not.toBe(planned);
+		expect(planted).toContain('border-solid');
+		expect(planned).toContain('border-dashed');
+		expect(planted).toContain('bg-plate-paper');
+		expect(planned).toContain('bg-plate-paper');
+	});
+
+	it('prints a callout on this week\'s ticket in reverse', () => {
+		const { container } = render(<PlantPin plant={figPlant} ordinal={1} hovered={false} onHoverChange={() => {}} onSelect={vi.fn()} onTicket />, withTooltip);
+
+		const drawn = container.querySelector('button')?.getAttribute('class') ?? '';
+		expect(drawn).toContain('bg-plate-ink');
+		expect(drawn).toContain('text-plate-paper');
 	});
 
 	// The number is the whole point of the callout: it is what keys the pin to
