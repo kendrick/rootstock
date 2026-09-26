@@ -209,9 +209,17 @@ export function RuleSummary({
 	const canDelegate = typeof delegable === 'boolean' ? delegable : isDelegable(rule, tagPolicy);
 
 	return (
-		<div className="space-y-2 text-sm">
+		<div className="space-y-2 text-note">
 			<div className="flex flex-wrap items-center gap-2">
-				<NameTag className="font-medium text-foreground">{rule.name}</NameTag>
+				{/* The title role where the name heads its own entry, as a Task's does on
+				    the ticket. Inside a citation the Task above already carries it. */}
+				<NameTag
+					className={asHeading
+						? 'font-display text-title leading-[1.1] font-extrabold tracking-wide text-foreground uppercase'
+						: 'font-semibold text-foreground'}
+				>
+					{rule.name}
+				</NameTag>
 				<SourceBadge source={rule.source} />
 			</div>
 
@@ -259,7 +267,7 @@ export function RuleSummary({
 
 			{/* Printed marks in a line, not badges. A ticket has no rounded chrome and
 			    no icon system, so each of these states itself in type. */}
-			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-display text-label tracking-widest uppercase">
+			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-display font-semibold text-label tracking-widest uppercase">
 				{/*
 				 * A Guard reaching a reader outside a Task—on the Rules route, say—looks
 				 * exactly like a Rule that asks for work unless it says otherwise on its

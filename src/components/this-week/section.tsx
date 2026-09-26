@@ -41,7 +41,7 @@ export function Section({ id, label, children, emphasis = false }: SectionProps)
 				className={cn(
 					// Hanging in the margin on a wide screen and never wrapping mid-label:
 					// the column is sized for the longest of them.
-					'font-display text-label leading-snug font-bold tracking-widest uppercase',
+					'font-display text-heading leading-snug font-extrabold tracking-wider uppercase',
 					emphasis ? 'text-foreground' : 'text-muted',
 				)}
 			>

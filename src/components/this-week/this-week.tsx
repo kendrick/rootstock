@@ -406,7 +406,7 @@ export function ThisWeek({
 			 */}
 			<div className="pt-2 print:hidden">
 				<div aria-hidden="true" className="perforation" />
-				<p className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-display text-label font-bold tracking-widest uppercase">
+				<p className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-display text-label font-extrabold tracking-widest uppercase">
 					{closed
 						? (
 								<span className="border-2 border-foreground px-1.5 py-0.5">

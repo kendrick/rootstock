@@ -199,10 +199,28 @@ test.describe('evidence and record lines, as rendered', () => {
 		const evidence = row.getByText(/^(Window|Observed run|Forecast|No earlier|\d+ days since) /);
 		const size = await evidence.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
 
-		// `--text-evidence` clamps between 0.75rem and 0.875rem.
-		expect(size).toBeGreaterThanOrEqual(12);
-		expect(size).toBeLessThanOrEqual(14);
+		// `--text-evidence` clamps between 0.875rem and 0.9375rem.
+		expect(size).toBeGreaterThanOrEqual(14);
+		expect(size).toBeLessThanOrEqual(15);
 	});
+
+	/*
+	 * `--text-label` runs from a 13px floor on a 390px phone to a 14px ceiling
+	 * at 900 and wider. The nav link names `text-label` and then a colour in the
+	 * same `cn()` call, which is how tailwind-merge dropped the size and left
+	 * every nav link at the inherited 16px.
+	 */
+	for (const [width, expected] of [[390, 13], [1440, 14]] as const) {
+		test(`sets the nav at the label size, ${expected}px at ${width}px wide`, async ({ page }) => {
+			await page.setViewportSize({ width, height: 900 });
+			await page.goto('');
+
+			const link = page.getByRole('navigation').getByRole('link', { name: 'Yard' });
+			const size = await link.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
+
+			expect(size).toBeCloseTo(expected, 1);
+		});
+	}
 
 	test('draws the record line in the same red as the stamp beside it', async ({ page }) => {
 		await page.goto('');

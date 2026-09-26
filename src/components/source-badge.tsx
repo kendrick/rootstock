@@ -24,13 +24,16 @@ const KIND_TEXT: Record<Source['kind'], string> = {
 export function SourceBadge({ source }: { source: Source }): ReactElement {
 	const content = (
 		<>
-			<span className="font-bold">{KIND_TEXT[source.kind]}</span>
-			<span>{` · ${source.label}`}</span>
+			<span className="font-extrabold">{KIND_TEXT[source.kind]}</span>
+			{/* The authority's name runs to 50 characters, and in uppercase condensed
+			    lettering that wraps into a block nobody reads. The kind stays
+			    lettered; the name reads as prose. */}
+			<span className="font-sans text-note font-normal tracking-normal normal-case">{` · ${source.label}`}</span>
 		</>
 	);
 
 	return (
-		<span className="font-display text-label tracking-widest text-muted uppercase">
+		<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
 			{source.url === null
 				? content
 				: (

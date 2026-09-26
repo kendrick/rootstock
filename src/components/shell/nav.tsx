@@ -64,7 +64,7 @@ export function Nav(): ReactElement {
 									// (1.4.1). Stamp red marks only recorded work, so the nav stays ink.
 									// 44px tall, the page's own target size; the rule still sits
 									// under the word.
-									'inline-flex min-h-11 items-end pb-1 font-display text-label font-bold tracking-widest uppercase',
+									'inline-flex min-h-11 items-end pb-1 font-display text-label font-extrabold tracking-widest uppercase',
 									FOCUS_RING,
 									isCurrent
 										? 'border-b-2 border-foreground text-foreground'

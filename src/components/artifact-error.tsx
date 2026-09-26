@@ -20,7 +20,7 @@ export function ArtifactError({ message }: { message: string }): ReactElement {
 			 * content rather than around it, and the shell header is deliberately
 			 * not a heading, so nothing else on the page competes for the level.
 			 */}
-			<h1 className="text-xl font-medium tracking-tight text-foreground">
+			<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase">
 				This week&rsquo;s Plan cannot be shown
 			</h1>
 
@@ -37,7 +37,7 @@ export function ArtifactError({ message }: { message: string }): ReactElement {
 				 * contrast as a background under zinc-50 and fails it as text.
 				 */}
 				<Badge variant="destructive">Validation failed</Badge>
-				<p className="mt-3 font-mono text-sm break-words text-foreground">{message}</p>
+				<p className="mt-3 font-mono text-evidence break-words text-foreground">{message}</p>
 			</div>
 
 			<p className="mt-6 text-muted-foreground">

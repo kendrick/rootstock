@@ -164,7 +164,7 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 								type="button"
 								onClick={() => window.print()}
 								className={cn(
-									'border-2 border-rule px-3 py-1.5 font-display text-label font-bold tracking-widest uppercase print:hidden',
+									'border-2 border-rule px-3 py-1.5 font-display text-label font-extrabold tracking-widest uppercase print:hidden',
 									FOCUS_RING,
 								)}
 							>
@@ -179,7 +179,7 @@ export function AwayCard({ artifact, status, now }: AwayCardProps): ReactElement
 						    StalenessBanner, which goes silent on a fresh Artifact—this line
 						    is what stays behind when that one has nothing to say. */}
 						<div className="space-y-5 px-5 py-4 print:space-y-4">
-							<p className="font-mono text-detail text-muted print:text-black">
+							<p className="font-mono text-evidence text-muted print:text-black">
 								Generated
 								{' '}
 								<time dateTime={validated.artifact.generatedAt}>

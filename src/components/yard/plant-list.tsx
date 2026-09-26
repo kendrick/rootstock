@@ -53,18 +53,20 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect }: {
 				)}
 			>
 				{/* The number that keys this row to its callout on the plate above. */}
-				<span aria-hidden="true" className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-body leading-none font-extrabold tabular-nums">
+				<span aria-hidden="true" className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold tabular-nums">
 					{String(ordinal).padStart(2, '0')}
 				</span>
 
 				<span className="flex flex-col gap-1 px-3 py-3">
 					<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-						<span className="font-display text-body font-bold tracking-wide text-foreground uppercase">{plant.name}</span>
+						<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere text-foreground uppercase">{plant.name}</span>
 						{plant.status === 'planned' && (
-							<span className="font-display text-label tracking-widest text-muted uppercase">Planned</span>
+							<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">Planned</span>
 						)}
 					</span>
-					<span className="font-mono text-detail text-muted">
+					{/* Assistant, because a site is the owner's description of a place,
+					    a sentence rather than a reading. */}
+					<span className="text-note text-muted">
 						{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
 					</span>
 				</span>
@@ -95,7 +97,7 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect }
 			    each row below is a list item carrying its own labelled parts. */}
 			<div
 				aria-hidden="true"
-				className="grid grid-cols-[3.25rem_minmax(0,1fr)] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
+				className="grid grid-cols-[3.25rem_minmax(0,1fr)] border-b-2 border-rule font-display text-label font-extrabold tracking-widest uppercase"
 			>
 				<span className="border-r-2 border-rule px-2 py-1.5 text-center">No.</span>
 				<span className="px-3 py-1.5">Plant</span>
