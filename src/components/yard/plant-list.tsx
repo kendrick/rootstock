@@ -9,24 +9,6 @@ import { ticketLabel } from './week-work';
 export type YardView = 'week' | 'all';
 
 /**
- * Two containers on the same patio (see the hibiscus pair in the seed) look
- * identical until this word tells them apart, so it is never left implicit in
- * styling alone.
- *
- * `plant-sheet.tsx` keeps an identical copy, which is a duplicate nobody is
- * happy about. Exporting it from here trips `react-refresh/only-export-components`,
- * since a module holding components may not also export a constant, and #13 owns
- * no shared non-component module to move it to. `rule-summary.tsx` shows the
- * third way out, an eslint-disable with a written reason, and the trade it names
- * is a full dev reload on every edit to the file. Four words did not seem worth
- * that; a shared module still would be.
- *
- * The risk the copy carries is a row and the sheet it opens naming one Plant two
- * different things, so the two lists are edited together until there is
- * somewhere to put this.
- */
-
-/**
  * One row's worth of identifying detail. Rendered as text rather than an
  * aria-label so a sighted reader on a phone in the yard sees the same thing a
  * screen reader announces, matching the house rule from `SourceBadge`.
@@ -56,7 +38,8 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect, lines, rul
 				onBlur={() => onHoverChange(null)}
 				className={cn(
 					'grid w-full cursor-pointer grid-cols-[3.25rem_minmax(0,1fr)] items-stretch text-left transition-colors',
-					'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none',
+					// Inset with a gap, so it doesn't merge into the row's own 2px rule.
+					'outline-none focus-visible:outline-2 focus-visible:-outline-offset-6 focus-visible:outline-foreground focus-visible:outline-solid',
 					// The row lights with its callout. Keyboard focus drives it too, so a
 					// reader tabbing the list still sees which Plant on the plate they are
 					// standing on, which is the half a pointer-only link would lose.
@@ -68,14 +51,19 @@ function PlantRow({ plant, ordinal, hovered, onHoverChange, onSelect, lines, rul
 					view === 'week' && lines.length === 0 && standing !== 'unreached' && 'text-muted [--foreground:var(--muted-foreground)]',
 				)}
 			>
-				{/* The number that keys this row to its callout on the plate above. */}
+				{/* The number that keys this row to its callout on the plate. */}
 				<span aria-hidden="true" className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold tabular-nums">
 					{String(ordinal).padStart(2, '0')}
 				</span>
 
 				<span className="flex flex-col gap-1 px-3 py-3">
 					<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-						<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere text-foreground uppercase">{plant.name}</span>
+						<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere text-foreground uppercase">
+							{plant.name}
+							{/* The number in words after the name, so a screen reader user can
+							    follow "number 4" from a sighted partner reading the plate. */}
+							<span className="sr-only">{`, number ${ordinal}`}</span>
+						</span>
 						{plant.status === 'planned' && (
 							// Under the week view's Planned head it only needs saying to a
 							// screen reader, which doesn't hear the head.

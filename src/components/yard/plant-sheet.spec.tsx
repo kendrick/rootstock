@@ -176,13 +176,15 @@ describe('plantSheet', () => {
 		}
 	});
 
-	it('shows the site and the notes on a Plant that carries them', async () => {
+	// The site is said once, under the name, where the dialog's description
+	// announces it and the three patio hibiscus are told apart.
+	it('shows the site under the name and the notes in the conditions, each once', async () => {
 		renderSheet(notedPlant);
 		await settled();
 
-		const conditions = section('Site conditions');
-		expect(conditions.textContent).toContain(notedPlant.site);
-		expect(conditions.textContent).toContain(notedPlant.notes);
+		const dialog = screen.getByRole('dialog');
+		expect(dialog.textContent?.split(notedPlant.site ?? '').length).toBe(2);
+		expect(section('Site conditions').textContent).toContain(notedPlant.notes);
 	});
 
 	// A placeholder would claim the question was asked and came back empty. The

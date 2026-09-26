@@ -137,4 +137,12 @@ describe('plantList', () => {
 
 		expect(screen.getByText('No Rule reaches this plant, so it never gets a Task.').className).not.toContain('sr-only');
 	});
+
+	// The plate's numbers are visual, so a screen reader user following a
+	// sighted partner's "number 2" needs the number in the row's name.
+	it('says each row\'s number in its name, after the Plant', () => {
+		render(<PlantList plants={[lawnPlant, figPlant]} ordinals={ordinalsFor([lawnPlant, figPlant])} hovered={null} onHoverChange={() => {}} onSelect={() => {}} />);
+
+		expect(screen.getByRole('button', { name: new RegExp(`^${figPlant.name}, number 2`, 'u') })).toBeDefined();
+	});
 });

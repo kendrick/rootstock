@@ -26,21 +26,10 @@ import { cn } from '@/lib/utils';
 import { seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
+import { KIND_TEXT } from './kind-text';
 import { outOfSeasonUntil } from './season';
 import { SoilSparkline } from './soil-sparkline';
 import { ticketLabel, ticketLines } from './week-work';
-
-/**
- * The same four words `plant-list.tsx` prints, deliberately duplicated. The note
- * there carries the reasoning and the alternative that was turned down. Edit the
- * two together.
- */
-const KIND_TEXT: Record<Plant['kind'], string> = {
-	plant: 'Plant',
-	container: 'Container',
-	bed: 'Bed',
-	lawn: 'Lawn',
-};
 
 /**
  * `irrigationSchema` keeps `source` so an owner's stated claim stays separable
@@ -145,8 +134,6 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 
 	return (
 		<dl className="grid gap-4 sm:grid-cols-2">
-			{plant.site !== null && <Detail label="Site">{plant.site}</Detail>}
-
 			{/* Tags are how a Rule selects a Plant, so the label says that rather
 			    than naming the field. A planned Plant's `planned` tag is left off:
 			    the line under the name already says so. */}

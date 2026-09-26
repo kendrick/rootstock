@@ -16,11 +16,10 @@ export const MOBILE_BOX_WIDTH_PX = 390 - (2 * 8) - (2 * 2) - (2 * 12);
 const PIN_SIZE_PX = 24;
 
 /**
- * Pins render at 24px (a size-4 icon inside p-1 padding). Two centres closer
- * together than their own diameter put each pin's centre inside its
- * neighbour's hit region, which is what let three of six pins fail their own
- * centre hit-test in the critique. A few px of headroom over the bare
- * diameter absorbs rounding in the relaxation pass below.
+ * Pins render at 24px. Two centres closer together than their own diameter
+ * put each pin's centre inside its neighbour's hit region, which is what let
+ * three of six pins fail their own centre hit-test in the critique. A few px
+ * of headroom over the bare diameter absorbs rounding.
  */
 export const MIN_CENTER_DISTANCE_PX = 28;
 

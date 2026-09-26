@@ -5,8 +5,11 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Citation } from '@/planner/task';
 import type { ThresholdRule } from '@/rules/rule';
 import type { Aggregate, Unit } from '@/weather/observation';
+import { ChevronRight } from 'lucide-react';
 import { useId } from 'react';
 import { VARIABLE_TEXT } from '@/components/series-text';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
 import { meetsThreshold } from '@/planner/threshold-rule';
 import { inSeason, seasonDay } from './season';
 
@@ -26,12 +29,13 @@ import { inSeason, seasonDay } from './season';
  * The viewBox is sized near the width this actually renders at, because text
  * inside an SVG scales with the box. A 1000-unit-wide box shrunk into a phone
  * would take the labels down with it, and a threshold nobody can read is a
- * threshold that is not on the chart. Paired with the max-width below, label
- * text lands between roughly 10px and 14px across the range of screens this
- * gets read on.
+ * threshold that is not on the chart. The chart runs about 312px wide in a
+ * phone's sheet and 436px in a desktop's, so LABEL_SIZE lands labels at 13px
+ * to 18px: the lettering floor on a phone, where they're read outdoors.
  */
-const VIEW = { width: 420, height: 170 };
-const PLOT = { top: 22, right: 14, bottom: 30, left: 14 };
+const VIEW = { width: 420, height: 190 };
+const PLOT = { top: 30, right: 14, bottom: 36, left: 14 };
+const LABEL_SIZE = 17.5;
 const PLOT_WIDTH = VIEW.width - PLOT.left - PLOT.right;
 const PLOT_HEIGHT = VIEW.height - PLOT.top - PLOT.bottom;
 
@@ -245,7 +249,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 	const thresholdY = round(yFor(rule.value));
 	// Flip the label under the line when the line rides near the top of the plot,
 	// rather than letting it ride up out of the viewBox.
-	const thresholdLabelY = thresholdY - PLOT.top < 14 ? thresholdY + 13 : thresholdY - 5;
+	const thresholdLabelY = thresholdY - PLOT.top < LABEL_SIZE + 2 ? thresholdY + LABEL_SIZE + 2 : thresholdY - 6;
 
 	const markedDate = citedDate(citation);
 	const marked = plotted.find(point => point.day.date === markedDate) ?? null;
@@ -258,7 +262,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 	 */
 	const markedLabelY = marked === null
 		? 0
-		: Math.min(Math.max(marked.y <= thresholdY ? marked.y - 11 : marked.y + 18, 12), PLOT.top + PLOT_HEIGHT);
+		: Math.min(Math.max(marked.y <= thresholdY ? marked.y - 12 : marked.y + LABEL_SIZE + 6, LABEL_SIZE), PLOT.top + PLOT_HEIGHT);
 
 	const observedCount = days.filter(day => day.basis === 'observed').length;
 	const forecastCount = days.length - observedCount;
@@ -325,7 +329,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 					strokeWidth={1.5}
 					strokeDasharray="5 4"
 				/>
-				<text x={PLOT.left} y={thresholdLabelY} className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left} y={thresholdLabelY} className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{`${thresholdText} threshold`}
 				</text>
 
@@ -372,7 +376,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 							y={markedLabelY}
 							textAnchor={marked.x > PLOT.left + PLOT_WIDTH * 0.75 ? 'end' : marked.x < PLOT.left + PLOT_WIDTH * 0.25 ? 'start' : 'middle'}
 							className="fill-foreground font-medium"
-							fontSize={11}
+							fontSize={LABEL_SIZE}
 						>
 							{`${markedText} ${dayLabel(marked.day.date)}`}
 						</text>
@@ -380,10 +384,10 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 				)}
 
 				{/* Both ends of the span only. The table below carries every date. */}
-				<text x={PLOT.left} y={VIEW.height - 9} className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left} y={VIEW.height - 10} className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{dayLabel(days[0]!.date)}
 				</text>
-				<text x={PLOT.left + PLOT_WIDTH} y={VIEW.height - 9} textAnchor="end" className="fill-muted-foreground" fontSize={11}>
+				<text x={PLOT.left + PLOT_WIDTH} y={VIEW.height - 10} textAnchor="end" className="fill-muted-foreground" fontSize={LABEL_SIZE}>
 					{dayLabel(days.at(-1)!.date)}
 				</text>
 			</svg>
@@ -423,9 +427,12 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null 
 			{/* Native details because the plan fixes it as how things expand here, and
 			    no collapsible component is installed. Every value on the chart is
 			    reachable as text from inside it. */}
-			<details className="text-note">
-				{/* 44px, the target size the rest of the site holds itself to. */}
-				<summary className="flex min-h-11 cursor-pointer items-center text-muted-foreground">
+			<details className="group text-note">
+				{/* 44px, the target size the rest of the site holds itself to. The
+				    chevron stands in for the marker `display: flex` removes, so the
+				    line still reads as something that opens. */}
+				<summary className={cn('flex min-h-11 list-none items-center gap-2 text-muted-foreground', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+					<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
 					{`Show these ${days.length} days as a table`}
 				</summary>
 				<div className="mt-2 overflow-x-auto">
