@@ -78,3 +78,13 @@ test('prints nothing in stamp red', async ({ page }) => {
 	});
 	expect(accent).toEqual([]);
 });
+
+// The page lists the silent Rules under Waiting, so the margin doesn't.
+test('leaves the margin\'s Not This Week list to the other routes', async ({ page }) => {
+	await page.goto('rules');
+	await expect(page.getByRole('heading', { level: 1, name: 'Rules' })).toBeVisible();
+	await expect(page.getByText('Not this week', { exact: true })).toHaveCount(0);
+
+	await page.goto('./');
+	await expect(page.getByText('Not this week', { exact: true })).toHaveCount(1);
+});

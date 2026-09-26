@@ -30,6 +30,9 @@ import { RailApparatus, RailNotLit } from './rail';
 export function SheetFrame({ children }: { children: ReactNode }): ReactElement {
 	const pathname = usePathname();
 	const isAwayCard = pathname.startsWith('/away/');
+	// The Rules route lists every Rule itself, the silent ones under Waiting, so
+	// the margin's copy of them would name the same Rules a second time.
+	const showNotLit = pathname.replace(/\/$/u, '') !== '/rules';
 
 	if (isAwayCard) {
 		// Still a main landmark. The card brings its own sheet, not its own document
@@ -78,7 +81,7 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 					</main>
 
 					<div className="min-w-0 px-3 pb-6 sm:px-5 lg:col-start-1 lg:row-start-2 lg:border-r-2 lg:border-rule">
-						<RailNotLit />
+						{showNotLit && <RailNotLit />}
 					</div>
 				</div>
 			</div>
