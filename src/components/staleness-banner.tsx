@@ -139,7 +139,7 @@ export function StalenessBanner({
 			role="status"
 			className={cn(
 				'flex items-start gap-3 rounded-md border',
-				prominent ? 'border-2 px-5 py-4 text-base' : 'px-4 py-3 text-sm',
+				prominent ? 'border-2 px-5 py-4 text-body' : 'px-4 py-3 text-note',
 				isExpired
 					? 'border-destructive bg-destructive text-destructive-foreground'
 					: 'border-border bg-background text-muted-foreground',

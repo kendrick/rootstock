@@ -21,6 +21,9 @@ ground. */
 	--ground: #f7f4ec;
 	--ink: #1a1815;
 
+	/* Body leading, a variable so the dark scheme can open it up. */
+	--leading-body: 1.5;
+
 	/* The two sheets under the top copy, showing as thin edges. They are the
 		genre's signature and they carry no information, so they appear once, at
 		the sheet's head, and nowhere else. */
@@ -77,6 +80,19 @@ that picks the scheme is the ambient light the phone is already measuring. */
 	}
 }
 
+/* Light type on a dark ground spreads into its own counters, so letters and
+lines get a little more room. Weight stays put, because Saira at 800 already
+blooms. Screen only: the colour block above is undone by print, but Chromium
+keeps matching the dark scheme while it prints, and paper is always light. */
+@media screen and (prefers-color-scheme: dark) {
+	:root {
+		--tracking-wide: 0.035em;
+		--tracking-wider: 0.06em;
+		--tracking-widest: 0.11em;
+		--leading-body: 1.55;
+	}
+}
+
 /* Paper has one scheme. The Away Card is printed and read in a hand, and a dark
 ground there is a sheet of wasted toner that still reproduces badly, so print
 pins the light values whatever the screen was doing. The grid does not print
@@ -108,9 +124,9 @@ switch off. */
 	dates and product-label figures are read down a column.
 
 	Assistant carries running prose that is neither. */
-	--font-display: var(--font-display-face);
-	--font-sans: var(--font-assistant);
-	--font-mono: var(--font-atkinson-mono);
+	--font-display: var(--font-display-face), sans-serif;
+	--font-sans: var(--font-assistant), sans-serif;
+	--font-mono: var(--font-atkinson-mono), monospace;
 
 	--color-ground: var(--ground);
 	--color-ink: var(--ink);
@@ -152,27 +168,48 @@ switch off. */
 
 	/* The scale stops growing well before the viewport does.
 
-		Sizes were derived from cap heights measured off a portrait 1024 comp and
-		expressed in vw, which grows without limit: at 1440 the first screen held a
-		wordmark, a headline and one sentence, which is a phone layout enlarged
-		rather than a desktop one. A wide viewport should carry more of the week,
-		not a bigger version of less of it.
+		Each step is at its floor on a 390px phone and at its ceiling by 900px,
+		tracking the viewport in between, so a tablet gets sizes of its own rather
+		than the phone's. Above 900 extra width goes to the layout, since one
+		column enlarged is a phone layout on a desktop.
 
-		So each step reaches its ceiling around 900px and holds there. Below that
-		the middle term still tracks the viewport, because a phone genuinely needs
-		the display sizes to come down. Above it, extra width goes to the layout. */
-	--text-wordmark: clamp(1.5rem, 3.2vw, 2rem);
-	--text-display: clamp(1.875rem, 4.4vw, 2.75rem);
-	--text-title: clamp(1.125rem, 2.4vw, 1.5rem);
-	--text-body: clamp(0.9375rem, 1.5vw, 1.0625rem);
-	--text-label: clamp(0.6875rem, 1.1vw, 0.8125rem);
+		The floors are set for the owner reading one-handed in full sun. An 11px
+		condensed uppercase label has a 7.6px cap, which glare erases, so no
+		lettering role goes below 13px. Assistant's small x-height is why body
+		needs 17 to read the way 16 does in most faces.
+
+		Each middle term is min + (max - min) * (vw - 390) / 510, written as rem +
+		vw. A new token goes in `cn()`'s list in src/lib/utils.ts too, or
+		tailwind-merge drops it beside a colour class. */
+	--text-wordmark: clamp(1.5rem, 1.1176rem + 1.5686vw, 2rem);
+	--text-display: clamp(1.875rem, 1.2059rem + 2.7451vw, 2.75rem);
+
+	/* Rule names, Plant names and row numerals: the things a reader looks for. */
+	--text-title: clamp(1.3125rem, 1.0735rem + 0.9804vw, 1.625rem);
+
+	/* Section heads. Two px and a weight above a label, so a head never reads
+		as one more field on the form. */
+	--text-heading: clamp(0.9375rem, 0.8419rem + 0.3922vw, 1.0625rem);
+	--text-body: clamp(1.0625rem, 1.0147rem + 0.1961vw, 1.125rem);
+
+	/* stylelint-disable custom-property-pattern -- Tailwind's own name for a size's companion line height. */
+	--text-body--line-height: var(--leading-body);
+
+	/* stylelint-enable custom-property-pattern */
+
+	/* Assistant prose that sits under the body: notes, disclosures, warnings. */
+	--text-note: clamp(0.9375rem, 0.8897rem + 0.1961vw, 1rem);
+	--text-label: clamp(0.8125rem, 0.7647rem + 0.1961vw, 0.875rem);
 
 	/* No `--color-evidence` may sit beside this. Tailwind reads `text-evidence`
 		from one namespace only, so a colour token of the same name takes the class
 		over. Evidence lines then lose this size, and the token's colour overrides
-		`text-accent` on the red record line. */
-	--text-evidence: clamp(0.75rem, 1.2vw, 0.875rem);
-	--text-detail: clamp(0.75rem, 1.2vw, 0.875rem);
+		`text-accent` on the red record line. Every mono reading uses it, not only
+		the evidence line. */
+	--text-evidence: clamp(0.875rem, 0.8272rem + 0.1961vw, 0.9375rem);
+
+	/* Fixed, because it sits inside a 24px callout that doesn't scale either. */
+	--text-callout: 0.875rem;
 }
 
 @layer base {

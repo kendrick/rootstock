@@ -65,16 +65,34 @@ function specimen(): { task: Task; rule: Rule | null; ruleName: string; source: 
 	};
 }
 
+/**
+ * The line and its marker, with the marker held to the last word. On a phone
+ * the evidence line fills its column, and a marker left free wraps onto a
+ * line of its own, where it annotates nothing.
+ */
+function LastWordWith({ marker, children }: { marker: number; children: string }): ReactElement {
+	const cut = children.lastIndexOf(' ') + 1;
+	return (
+		<>
+			{children.slice(0, cut)}
+			<span className="whitespace-nowrap">
+				{children.slice(cut)}
+				<sup className="relative -top-[0.4em] ml-1 inline-block align-baseline leading-none font-display text-callout font-extrabold text-muted">{marker}</sup>
+			</span>
+		</>
+	);
+}
+
 function Callout({ number, children }: { number: number; children: React.ReactNode }): ReactElement {
 	return (
 		<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-1">
 			<span
 				aria-hidden="true"
-				className="grid size-6 place-items-center border-2 border-rule font-display text-label leading-none font-extrabold tabular-nums"
+				className="grid size-6 place-items-center border-2 border-rule font-display text-callout leading-none font-extrabold tabular-nums"
 			>
 				{number}
 			</span>
-			<span className="font-mono text-detail leading-relaxed text-foreground">{children}</span>
+			<span className="text-note text-foreground">{children}</span>
 		</li>
 	);
 }
@@ -94,14 +112,14 @@ export default function AboutPage(): ReactElement {
 					Nothing here was invented
 				</h1>
 
-				<p className="max-w-prose font-mono text-body leading-relaxed text-foreground">
+				<p className="max-w-prose text-body text-foreground">
 					{`rootstock plans one yard in ${seedYard.region.name}. Every morning it reads the weather, checks the yard's rules against it, and writes a work ticket for the week. Every job on that ticket names the rule that asked for it and the dated reading that fired it.`}
 				</p>
 			</section>
 
 			{found !== null && (
 				<section aria-labelledby="specimen-heading" className="space-y-4 border-t-2 border-rule pt-6">
-					<h2 id="specimen-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
+					<h2 id="specimen-heading" className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">
 						This morning's ticket, annotated
 					</h2>
 
@@ -111,7 +129,7 @@ export default function AboutPage(): ReactElement {
 					<div className="border-2 border-rule">
 						<div
 							aria-hidden="true"
-							className="grid grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-bold tracking-widest uppercase"
+							className="grid grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] border-b-2 border-rule font-display text-label font-extrabold tracking-widest uppercase"
 						>
 							<span className="border-r-2 border-rule px-2 py-1.5 text-center">Task</span>
 							<span className="px-3 py-1.5">Target</span>
@@ -124,23 +142,22 @@ export default function AboutPage(): ReactElement {
 							</span>
 
 							<span className="flex flex-col gap-1 px-3 py-3">
-								<span className="font-display text-title leading-none font-bold tracking-wide uppercase">
+								<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere uppercase">
 									{found.ruleName}
-									<sup className="ml-1 align-super font-mono text-label text-muted">1</sup>
+									<sup className="relative -top-[0.4em] ml-1 inline-block align-baseline leading-none font-display text-callout font-extrabold text-muted">1</sup>
 								</span>
 								{found.instruction !== null && (
-									<span className="font-mono text-detail leading-relaxed">{found.instruction}</span>
+									<span className="text-body">{found.instruction}</span>
 								)}
 								<span className="font-mono text-evidence tracking-tight text-foreground uppercase">
-									{citationLine(found.task.citation, found.rule)}
-									<sup className="ml-1 align-super">2</sup>
+									<LastWordWith marker={2}>{citationLine(found.task.citation, found.rule)}</LastWordWith>
 								</span>
 							</span>
 
 							<span className="relative flex items-center justify-center border-l-2 border-rule p-2">
-								<span className="font-display text-label tracking-widest text-muted uppercase">
+								<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
 									Sign off
-									<sup className="ml-1 align-super text-muted">3</sup>
+									<sup className="relative -top-[0.4em] ml-1 inline-block align-baseline leading-none font-display text-callout font-extrabold text-muted">3</sup>
 								</span>
 							</span>
 						</div>
@@ -163,11 +180,11 @@ export default function AboutPage(): ReactElement {
 			)}
 
 			<section aria-labelledby="machine-heading" className="space-y-4 border-t-2 border-rule pt-6">
-				<h2 id="machine-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
+				<h2 id="machine-heading" className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">
 					What the model is allowed to do
 				</h2>
 
-				<p className="max-w-prose font-mono text-body leading-relaxed text-foreground">
+				<p className="max-w-prose text-body text-foreground">
 					A pure function writes the tickets. It reads the inventory, the rules, the weather and the history, and returns the week's work. The weather comes from Open-Meteo over plain HTTP; no model is involved in fetching it, and none is involved in deciding what the yard needs.
 				</p>
 
@@ -176,8 +193,8 @@ export default function AboutPage(): ReactElement {
 				    specification. */}
 				<div className="grid border-2 border-rule sm:grid-cols-2">
 					<div className="border-b-2 border-rule p-4 sm:border-r-2 sm:border-b-0">
-						<h3 className="font-display text-label font-bold tracking-widest text-foreground uppercase">May</h3>
-						<ul className="mt-2 space-y-1 font-mono text-detail leading-relaxed text-foreground">
+						<h3 className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">May</h3>
+						<ul className="mt-2 space-y-1 text-note text-foreground">
 							<li>Choose which tasks to mention</li>
 							<li>Put them in an order</li>
 							<li>Write the sentence each one is described in</li>
@@ -186,8 +203,8 @@ export default function AboutPage(): ReactElement {
 					</div>
 
 					<div className="p-4">
-						<h3 className="font-display text-label font-bold tracking-widest text-foreground uppercase">May not</h3>
-						<ul className="mt-2 space-y-1 font-mono text-detail leading-relaxed text-foreground">
+						<h3 className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">May not</h3>
+						<ul className="mt-2 space-y-1 text-note text-foreground">
 							<li>Add a task</li>
 							<li>Remove one</li>
 							<li>Change a date</li>
@@ -196,7 +213,7 @@ export default function AboutPage(): ReactElement {
 					</div>
 				</div>
 
-				<p className="max-w-prose font-mono text-body leading-relaxed text-foreground">
+				<p className="max-w-prose text-body text-foreground">
 					That last one is checked rather than trusted. Every sentence the model returns is matched against the jobs the planner authored, and prose naming anything else is thrown away whole. The run then publishes the terse sentences the planner had already written, records that it did, and stays green. Losing the writing is not worth a wrong line.
 				</p>
 
@@ -204,41 +221,41 @@ export default function AboutPage(): ReactElement {
 				    scripts/codex-narrator.ts sends, so the page cannot drift into a
 				    flattering paraphrase of what the model was asked. */}
 				<div className="space-y-3">
-					<h3 className="font-display text-label font-bold tracking-widest text-muted uppercase">
+					<h3 className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">
 						What it is told, word for word
 					</h3>
 
-					<blockquote className="space-y-3 border-2 border-rule p-4 font-mono text-detail leading-relaxed text-foreground">
+					<blockquote className="space-y-3 border-2 border-rule p-4 max-w-[65ch] font-mono text-evidence leading-relaxed text-foreground">
 						{NARRATOR_BRIEF.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
 					</blockquote>
 
-					<p className="max-w-prose font-mono text-detail leading-relaxed text-muted">
+					<p className="max-w-prose text-note text-muted">
 						That, the finished plan as JSON, and nothing else. The call runs once against a pinned model, in a sandbox that can read but not write. It keeps no memory of the run before it.
 					</p>
 				</div>
 
 				{found !== null && found.narrated !== null && (
 					<div className="space-y-3">
-						<h3 className="font-display text-label font-bold tracking-widest text-muted uppercase">
+						<h3 className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">
 							The same job, written both ways
 						</h3>
 
 						<dl className="border-2 border-rule">
 							<div className="grid border-b-2 border-rule sm:grid-cols-[9rem_minmax(0,1fr)]">
-								<dt className="border-b-2 border-rule px-3 py-2 font-display text-label font-bold tracking-widest text-muted uppercase sm:border-r-2 sm:border-b-0">
+								<dt className="border-b-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-muted uppercase sm:border-r-2 sm:border-b-0">
 									Model on
 								</dt>
-								<dd className="px-3 py-2 font-mono text-detail leading-relaxed">{found.narrated}</dd>
+								<dd className="px-3 py-2 text-body">{found.narrated}</dd>
 							</div>
 							<div className="grid sm:grid-cols-[9rem_minmax(0,1fr)]">
-								<dt className="border-b-2 border-rule px-3 py-2 font-display text-label font-bold tracking-widest text-muted uppercase sm:border-r-2 sm:border-b-0">
+								<dt className="border-b-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-muted uppercase sm:border-r-2 sm:border-b-0">
 									Model off
 								</dt>
-								<dd className="px-3 py-2 font-mono text-detail leading-relaxed">{found.mechanical}</dd>
+								<dd className="px-3 py-2 text-body">{found.mechanical}</dd>
 							</div>
 						</dl>
 
-						<p className="max-w-prose font-mono text-detail leading-relaxed text-muted">
+						<p className="max-w-prose text-note text-muted">
 							Same job, same date, same rule, same reading. Only the wording moved. Switch the model off and compare the output yourself.
 						</p>
 					</div>
@@ -246,11 +263,11 @@ export default function AboutPage(): ReactElement {
 			</section>
 
 			<section aria-labelledby="scope-heading" className="space-y-4 border-t-2 border-rule pt-6">
-				<h2 id="scope-heading" className="font-display text-label font-bold tracking-widest text-muted uppercase">
+				<h2 id="scope-heading" className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase">
 					What this is not
 				</h2>
 
-				<p className="max-w-prose font-mono text-body leading-relaxed text-foreground">
+				<p className="max-w-prose text-body text-foreground">
 					It is one household's tool for one property, published because the pages it builds are static and there is nothing to hide. There is no account to make and nothing to buy. If you are reading this because somebody handed you a link, the work they need is on
 					{' '}
 					<Link href="/" className={`underline underline-offset-4 ${FOCUS_RING}`}>this week's ticket</Link>

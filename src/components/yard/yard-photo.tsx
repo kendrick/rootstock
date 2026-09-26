@@ -39,7 +39,7 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 				style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
 				className="flex w-full items-center justify-center border-2 border-rule"
 			>
-				<p className="px-4 text-center text-sm text-muted-foreground">
+				<p className="px-4 text-center text-note text-muted">
 					The yard photo could not be loaded.
 				</p>
 			</div>

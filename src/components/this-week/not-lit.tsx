@@ -39,7 +39,7 @@ export function NotLit({ rules, tasks }: NotLitProps): ReactElement | null {
 		<section aria-labelledby="not-lit-heading" className="border-t border-rule pt-4">
 			<h2
 				id="not-lit-heading"
-				className="font-display text-label font-bold tracking-widest text-muted uppercase"
+				className="font-display text-heading font-extrabold tracking-wider text-muted uppercase"
 			>
 				Not this week
 			</h2>
@@ -54,7 +54,7 @@ export function NotLit({ rules, tasks }: NotLitProps): ReactElement | null {
 				{silent.map(rule => (
 					<li
 						key={rule.id}
-						className="font-display text-label leading-snug tracking-wide break-words text-muted uppercase"
+						className="font-display text-heading leading-snug font-semibold tracking-wider break-words text-muted uppercase"
 					>
 						{rule.name}
 					</li>

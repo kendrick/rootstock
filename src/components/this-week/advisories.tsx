@@ -51,7 +51,7 @@ export function Advisories({ advisories }: AdvisoriesProps): ReactElement | null
 			    Card, and this section now sits above the work rather than under it, so
 			    the sentence has to carry the distinction the old dashed border was
 			    doing quietly. */}
-			<p className="max-w-prose text-detail text-muted">
+			<p className="max-w-prose text-note text-muted">
 				No rule produced these. The model noticed them on its own, so none of them carries a citation, and none of them reaches the Away Card.
 			</p>
 		</Section>

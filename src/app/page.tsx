@@ -36,7 +36,7 @@ export default function ThisWeekPage(): ReactElement {
 
 					<div className="space-y-3">
 						<div className="flex items-baseline justify-between gap-4">
-							<h1 className="font-display text-display leading-none font-bold tracking-tight text-foreground uppercase outline-none">This Week</h1>
+							<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase outline-none">This Week</h1>
 							<OpenCount className="sm:hidden" />
 						</div>
 

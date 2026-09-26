@@ -49,7 +49,7 @@ export function Header(): ReactElement {
 			<span className="flex items-center px-3 py-2 font-mono text-body tracking-widest text-foreground sm:border-b-2 sm:border-rule sm:px-5">
 				{ticketNumber()}
 			</span>
-			<span className="col-span-2 border-t-2 border-rule px-3 py-2 font-display text-label font-bold tracking-widest text-muted uppercase sm:col-span-1 sm:col-start-2 sm:border-t-0 sm:px-5">
+			<span className="col-span-2 border-t-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-muted uppercase sm:col-span-1 sm:col-start-2 sm:border-t-0 sm:px-5">
 				{`${seedYard.region.name} — Zone ${seedYard.region.hardinessZone}`}
 			</span>
 		</header>

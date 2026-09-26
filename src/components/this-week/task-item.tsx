@@ -90,9 +90,9 @@ function GuardNote({
 	children: ReactElement | ReactElement[];
 }): ReactElement {
 	return (
-		<p className="flex items-start gap-2 text-detail text-muted">
+		<p className="flex items-start gap-2 text-note text-muted">
 			<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-			<span className="min-w-0">{children}</span>
+			<span className="min-w-0 max-w-prose">{children}</span>
 		</p>
 	);
 }
@@ -268,7 +268,7 @@ export function TaskItem({
 			<span id={textId} className="flex flex-col gap-1">
 				<span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
 					<span className={cn(
-						'font-display text-title leading-none font-bold tracking-wide uppercase',
+						'font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-anywhere uppercase',
 						checked && 'text-muted',
 					)}
 					>
@@ -276,7 +276,7 @@ export function TaskItem({
 					</span>
 
 					{plantName !== null && (
-						<span className="font-display text-label tracking-widest text-muted uppercase">
+						<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
 							{plantName}
 						</span>
 					)}
@@ -289,7 +289,7 @@ export function TaskItem({
 					 * authoring time and derives nothing (AGENTS.md).
 					 */}
 					{!task.delegable && (
-						<span className="border border-foreground px-1 font-display text-label font-bold tracking-widest text-foreground uppercase">
+						<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
 							Not delegable
 						</span>
 					)}
@@ -342,7 +342,7 @@ export function TaskItem({
 							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold text-muted">
 								{ordinal === undefined ? '' : String(ordinal).padStart(2, '0')}
 							</span>
-							<span className="px-3 py-3">{body}</span>
+							<span className="px-2 py-3 sm:px-3">{body}</span>
 							{/*
 							 * The sign-off column says why there is no box, in words rather
 							 * than a blank or a glyph: colour and shape alone fail a reader who
@@ -350,7 +350,7 @@ export function TaskItem({
 							 * render. The forecast day is when the threshold is expected to
 							 * be crossed, which is when this row turns into work.
 							 */}
-							<span className="flex flex-col items-center justify-center gap-1 border-l-2 border-rule p-2 text-center font-display text-label font-bold tracking-widest text-muted uppercase">
+							<span className="flex flex-col items-center justify-center gap-1 border-l-2 border-rule p-2 text-center font-display text-label font-extrabold tracking-widest text-muted uppercase">
 								<span>Not yet</span>
 								{task.citation.kind === 'threshold-projection' && (
 									<span className="font-mono text-evidence tracking-tight">{`About ${dayOfMonth(task.citation.projectedDate)}`}</span>
@@ -368,7 +368,7 @@ export function TaskItem({
 							<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold">
 								{ordinal === undefined ? '' : String(ordinal).padStart(2, '0')}
 							</span>
-							<span className="px-3 py-3">{body}</span>
+							<span className="px-2 py-3 sm:px-3">{body}</span>
 
 							{/*
 							 * The sign-off box: the ticket's own gesture, and the only thing on the
@@ -397,7 +397,7 @@ export function TaskItem({
 								 * ADR 0002 makes a Deferral advice rather than a lock.
 								 */}
 								{held && (
-									<span aria-hidden="true" className="pointer-events-none border-2 border-foreground px-1.5 py-0.5 font-display text-label font-bold tracking-widest text-foreground uppercase peer-checked:hidden">
+									<span aria-hidden="true" className="pointer-events-none border-2 border-foreground px-1.5 py-0.5 font-display text-label font-extrabold tracking-widest text-foreground uppercase peer-checked:hidden">
 										Held
 									</span>
 								)}
@@ -407,12 +407,12 @@ export function TaskItem({
 								 * The input still fills the whole cell; this is only the mark.
 								 */}
 								<span aria-hidden="true" className="pointer-events-none size-8 border-2 border-foreground peer-checked:hidden peer-disabled:border-muted" />
-								<span aria-hidden="true" className="pointer-events-none font-display text-label tracking-widest text-foreground uppercase peer-checked:hidden peer-disabled:text-muted peer-disabled:line-through">
+								<span aria-hidden="true" className="pointer-events-none font-display font-semibold text-label tracking-widest text-foreground uppercase peer-checked:hidden peer-disabled:text-muted peer-disabled:line-through">
 									Sign off
 								</span>
 								{pending && !checked && (
 									<span aria-hidden="true" className="pointer-events-none flex flex-col items-center gap-1.5 text-center">
-										<span className="relative border-2 border-muted px-1.5 py-0.5 font-display text-label font-bold tracking-widest text-muted uppercase">
+										<span className="relative border-2 border-muted px-1.5 py-0.5 font-display text-label font-extrabold tracking-widest text-muted uppercase">
 											Recording
 											{/*
 											 * The same stamp in red, revealed left to right over the wait.
@@ -432,14 +432,14 @@ export function TaskItem({
 										 * keyboard reaches it.
 										 */}
 										{phase === 'pending' && (
-											<span className="font-display text-body leading-none font-bold tracking-wide whitespace-nowrap text-foreground uppercase tabular-nums">
+											<span className="font-display text-body leading-none font-extrabold tracking-wide whitespace-nowrap text-foreground uppercase tabular-nums">
 												{`Cancel · ${secondsLeft}`}
 											</span>
 										)}
 									</span>
 								)}
 								{checked && (
-									<span className="stamp-mark pointer-events-none flex items-center gap-1 border-2 border-accent px-1.5 py-0.5 font-display text-label font-bold tracking-widest text-accent uppercase">
+									<span className="stamp-mark pointer-events-none flex items-center gap-1 border-2 border-accent px-1.5 py-0.5 font-display text-label font-extrabold tracking-widest text-accent uppercase">
 										<Check aria-hidden="true" className="size-3" />
 										Recorded
 									</span>
@@ -449,13 +449,13 @@ export function TaskItem({
 					)}
 
 			{failed && (
-				<p className="flex items-start gap-2 px-3 pb-2.5 text-detail text-foreground">
+				<p className="flex items-start gap-2 px-3 pb-2.5 text-note text-foreground">
 					<span>{NOT_SAVED}</span>
 				</p>
 			)}
 
 			{refused !== 'no' && (
-				<p className="flex items-start gap-2 px-3 pb-2.5 text-detail text-muted">
+				<p className="flex items-start gap-2 px-3 pb-2.5 text-note text-muted">
 					<Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
 					<span>{refused === 'late' ? TOO_LATE : UNDO_REFUSAL}</span>
 				</p>

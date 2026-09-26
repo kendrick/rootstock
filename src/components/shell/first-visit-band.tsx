@@ -66,8 +66,8 @@ export function FirstVisitBand(): ReactElement | null {
 		>
 			{/* Text above the links on a phone. Side by side at 390, the sentence
 			    squeezes into a column 150px wide and nine lines tall. */}
-			<p className="min-w-0 flex-1 font-mono text-detail text-foreground">
-				<span className="font-display text-label font-bold tracking-widest text-foreground uppercase">New here — </span>
+			<p className="min-w-0 max-w-[65ch] flex-1 text-note text-foreground">
+				<span className="font-display text-label font-extrabold tracking-widest text-foreground uppercase">New here — </span>
 				the line under each task is the evidence that fired its rule: the window it falls in, a run of soil readings, or when the work was last recorded. A model may reword a task; it cannot add one.
 			</p>
 
@@ -76,7 +76,7 @@ export function FirstVisitBand(): ReactElement | null {
 			<div className="flex gap-x-6">
 				<Link
 					href="/about"
-					className={`inline-flex min-h-11 items-center font-display text-label font-bold tracking-widest text-foreground uppercase underline underline-offset-4 ${FOCUS_RING}`}
+					className={`inline-flex min-h-11 items-center font-display text-label font-extrabold tracking-widest text-foreground uppercase underline underline-offset-4 ${FOCUS_RING}`}
 				>
 					How this works
 				</Link>
@@ -84,7 +84,7 @@ export function FirstVisitBand(): ReactElement | null {
 				<button
 					type="button"
 					onClick={dismiss}
-					className={`inline-flex min-h-11 items-center font-display text-label font-bold tracking-widest text-muted uppercase ${FOCUS_RING}`}
+					className={`inline-flex min-h-11 items-center font-display text-label font-extrabold tracking-widest text-muted uppercase ${FOCUS_RING}`}
 				>
 					Dismiss
 				</button>
