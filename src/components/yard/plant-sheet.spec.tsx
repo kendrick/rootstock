@@ -439,3 +439,90 @@ describe('plantSheet', () => {
 		expect(screen.queryByText(/^Projected /)).toBeNull();
 	});
 });
+
+/*
+ * The owner opens a Plant to decide what to do this week, so the sheet
+ * answers that first and keeps the inventory for last. The fixture Plan holds
+ * one Task, the spring pre-emergent approaching on the front lawn.
+ */
+describe('plantSheet, this week first', () => {
+	const springName = ruleFixtures.find(rule => rule.id === 'spring-pre-emergent')?.name ?? 'spring-pre-emergent';
+
+	it('leads with this week and ends with the site', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const heads = within(screen.getByRole('dialog')).getAllByRole('heading', { level: 3 }).map(head => head.textContent);
+		expect(heads[0]).toBe('This week');
+		expect(heads.at(-1)).toBe('Site conditions');
+	});
+
+	it('links each of the Plant\'s ticket lines to that line on This Week', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const link = within(section('This week')).getByRole('link', { name: /Approaching 01/u });
+		expect(link.getAttribute('href')).toMatch(/#approaching-01$/u);
+		expect(link.textContent).toContain(springName);
+	});
+
+	// A Guard holding the work today is the other half of "what does it need",
+	// so it's said here, with what would release it, not left for the reader to
+	// work out from the Guards section.
+	it('says when a Guard is holding the Plant\'s work this week, and what releases it', async () => {
+		const [template] = yardArtifact.plan.tasks;
+		if (template === undefined) {
+			throw new Error('the yard artifact carries no Task to hold back');
+		}
+		const held: Artifact = {
+			...yardArtifact,
+			plan: {
+				...yardArtifact.plan,
+				tasks: [{ ...template, status: 'deferred', deferrals: [{ guardId: 'rain-expected', releaseWhen: 'After the rain passes.' }] }],
+			},
+		};
+		renderSheet(lawnPlant, { artifact: held });
+		await settled();
+
+		const week = section('This week');
+		expect(within(week).getByRole('link', { name: /Held back 01/u })).toBeDefined();
+		expect(week.textContent).toContain(ruleFixtures.find(rule => rule.id === 'rain-expected')?.name ?? 'rain-expected');
+		expect(week.textContent).toContain('After the rain passes.');
+	});
+
+	it('says so when the Plant\'s Rules ask for nothing this week', async () => {
+		renderSheet(figPlant);
+		await settled();
+
+		expect(section('This week').textContent).toContain('Nothing on this week\'s ticket.');
+	});
+
+	// Late September: the spring Rule can't fire, so its chart folds away behind
+	// the date it can, and the reader opens it only if they want the readings.
+	it('folds an out-of-season chart behind the day its season opens', async () => {
+		renderSheet(lawnPlant, { artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
+		await settled();
+
+		const fold = screen.getByText(/Out of season until Feb 1/u, { selector: 'summary' }).closest('details');
+		expect(fold).not.toBeNull();
+		expect(fold?.open).toBe(false);
+		expect(fold?.querySelector('svg')).not.toBeNull();
+	});
+
+	it('stamps recorded work in the colour kept for it', async () => {
+		renderSheet(esperanzaPlant);
+		await settled();
+
+		const line = within(section('Recorded work')).getAllByText(/^Recorded [A-Z][a-z]{2} \d/u)[0];
+		expect(line?.className).toContain('text-accent');
+	});
+
+	// On a phone the foot CLOSE is the one in thumb reach, so it stays on
+	// screen however far the sheet scrolls.
+	it('keeps the foot Close on screen while the sheet scrolls', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		expect(screen.getAllByRole('button', { name: 'Close' })[1]?.closest('.sticky')).not.toBeNull();
+	});
+});

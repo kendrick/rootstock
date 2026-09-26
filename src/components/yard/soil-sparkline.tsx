@@ -8,6 +8,7 @@ import type { Aggregate, Unit } from '@/weather/observation';
 import { useId } from 'react';
 import { VARIABLE_TEXT } from '@/components/series-text';
 import { meetsThreshold } from '@/planner/threshold-rule';
+import { inSeason, seasonDay } from './season';
 
 /*
  * The picture ADR 0003 bought. The Artifact ships the window the Rules read so
@@ -71,25 +72,6 @@ const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'nume
 
 function dayLabel(date: string): string {
 	return DAY_FORMAT.format(Date.parse(`${date}T00:00:00Z`));
-}
-
-/** A season bound (`MM-DD`) as "Feb 1". Seasons recur, so they carry no year. */
-function seasonDay(monthDay: string): string {
-	return DAY_FORMAT.format(Date.parse(`2000-${monthDay}T00:00:00Z`));
-}
-
-/**
- * Whether the Plan's date falls inside the Rule's season, wrapping the year
- * end for a season like Nov 15 to Feb 15. No season means always in season.
- */
-function inSeason(asOf: string, season: ThresholdRule['season']): boolean {
-	if (season === null) {
-		return true;
-	}
-	const day = asOf.slice(5);
-	return season.start <= season.end
-		? day >= season.start && day <= season.end
-		: day >= season.start || day <= season.end;
 }
 
 /** Trailing `.0` on a whole number reads like a template that got away from someone, so 55 stays 55 and 56.9 keeps its tenth. */

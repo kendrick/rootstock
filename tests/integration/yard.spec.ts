@@ -171,7 +171,7 @@ test('a ticket line on the Yard lands on that line of This Week', async ({ page 
 	const [label, ruleName] = (await line.textContent() ?? '').split(' · ');
 	await line.locator('xpath=ancestor::button').click();
 
-	await page.getByRole('dialog').getByRole('link', { name: new RegExp(`${label}$`, 'iu') }).first().click();
+	await page.getByRole('dialog').getByRole('link', { name: new RegExp(`^${label} `, 'iu') }).first().click();
 	await page.waitForURL(/#(ready-now|approaching|held-back)-\d{2}$/u);
 
 	const target = page.locator(':target');

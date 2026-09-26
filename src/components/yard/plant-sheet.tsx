@@ -1,12 +1,14 @@
 'use client';
 
 import type { ReactElement, ReactNode } from 'react';
+import type { TicketLine } from './week-work';
 import type { Artifact } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
-import type { Citation } from '@/planner/task';
+import type { Citation, Task } from '@/planner/task';
 import type { GuardRule, Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Irrigation, Plant } from '@/yard/plant';
+import { ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { SourceBadge } from '@/components/source-badge';
 import { ticketAnchor } from '@/components/this-week/ticket-anchor';
@@ -19,9 +21,12 @@ import {
 	SheetTitle,
 } from '@/components/ui/sheet';
 import { withBasePath } from '@/lib/base-path';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
 import { seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
+import { outOfSeasonUntil } from './season';
 import { SoilSparkline } from './soil-sparkline';
 import { ticketLabel, ticketLines } from './week-work';
 
@@ -113,11 +118,16 @@ export interface PlantSheetProps {
 	onCloseAutoFocus?: (event: Event) => void;
 }
 
-function Detail({ label, children }: { label: string; children: ReactNode }): ReactElement {
+/**
+ * One recorded fact. Prose by default, because most of these are the owner's
+ * words about a place. `reading` sets the value in mono, for a figure or a
+ * selector a reader compares rather than reads.
+ */
+function Detail({ label, reading = false, children }: { label: string; reading?: boolean; children: ReactNode }): ReactElement {
 	return (
 		<div className="space-y-1">
 			<dt className="font-display text-label font-extrabold tracking-widest text-muted uppercase">{label}</dt>
-			<dd className="font-mono text-evidence text-foreground">{children}</dd>
+			<dd className={reading ? 'font-mono text-evidence text-foreground' : 'text-body text-foreground'}>{children}</dd>
 		</div>
 	);
 }
@@ -141,7 +151,7 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 			    than naming the field. A planned Plant's `planned` tag is left off:
 			    the line under the name already says so. */}
 			{shownTags(plant).length > 0 && (
-				<Detail label="Rules find it by">{shownTags(plant).join(', ')}</Detail>
+				<Detail label="Rules find it by" reading>{shownTags(plant).join(', ')}</Detail>
 			)}
 
 			{plant.notes !== null && <Detail label="Notes">{plant.notes}</Detail>}
@@ -149,11 +159,11 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 			{lawn !== null && (
 				<>
 					<Detail label="Grass">{lawn.grass}</Detail>
-					<Detail label="Area">{`${AREA_FORMAT.format(lawn.areaSqFt)} sq ft`}</Detail>
+					<Detail label="Area" reading>{`${AREA_FORMAT.format(lawn.areaSqFt)} sq ft`}</Detail>
 					<Detail label="Soil">{lawn.soil}</Detail>
 					<Detail label="Irrigation">
 						{lawn.irrigation.schedule}
-						<span className="mt-1 block font-display font-semibold text-label tracking-widest text-muted uppercase">
+						<span className="mt-1 block text-note text-muted">
 							{IRRIGATION_SOURCE_TEXT[lawn.irrigation.source]}
 						</span>
 					</Detail>
@@ -237,6 +247,67 @@ function noRuleText(plant: Plant): string {
 }
 
 /**
+ * What the ticket asks of this Plant this week, first on the sheet because
+ * it's the question the owner opened it with. Each line links to its row on
+ * This Week, and a Guard holding or marking the work today is said under it
+ * in its own words, so nobody has to work that out from the Guards list.
+ *
+ * With nothing on the ticket, one sentence says why, and the three reasons
+ * are different news: Rules that are quiet, no Rule at all (#52), or a Plant
+ * not in the ground yet.
+ */
+function ThisWeekHere({ plant, lines, tasks, rules, reached }: {
+	plant: Plant;
+	lines: readonly TicketLine[];
+	tasks: readonly Task[];
+	rules: Rule[];
+	/** Whether any work-creating Rule reaches this Plant at all. */
+	reached: boolean;
+}): ReactElement {
+	if (lines.length === 0) {
+		if (reached) {
+			return <p className="text-body text-muted">Nothing on this week's ticket.</p>;
+		}
+		// Ink for a planted Plant, because it's the gap #52 names and the one
+		// thing on this sheet that asks the owner for something.
+		return <p className={plant.status === 'planned' ? 'text-body text-muted' : 'text-body text-foreground'}>{noRuleText(plant)}</p>;
+	}
+
+	return (
+		<ul className="flex flex-col border-2 border-rule">
+			{lines.map((line) => {
+				const task = tasks.find(candidate => candidate.ruleId === line.ruleId);
+				return (
+					<li key={`${line.group}-${line.ordinal}`} className="space-y-1 border-b-2 border-rule px-3 py-2 last:border-b-0">
+						{/* A plain link rather than next/link, because a client-side hop
+						    pushes history without updating `:target`, so the row would
+						    never mark itself and the browser wouldn't scroll to it. */}
+						<a
+							href={withBasePath(`/#${ticketAnchor(line.group, line.ordinal)}`)}
+							className={cn('inline-flex min-h-11 flex-wrap items-center gap-x-2 text-body text-foreground underline underline-offset-4', FOCUS_RING)}
+						>
+							<span className="font-display text-label font-extrabold tracking-widest uppercase">{ticketLabel(line)}</span>
+							{ruleLabel(line.ruleId, rules)}
+						</a>
+						{task?.deferrals.map(deferral => (
+							<p key={deferral.guardId} className="text-note text-foreground">
+								<span className="font-display text-label font-extrabold tracking-widest uppercase">{`Held by ${ruleLabel(deferral.guardId, rules)}`}</span>
+								{` · ${deferral.releaseWhen}`}
+							</p>
+						))}
+						{task?.annotations.map(annotation => (
+							<p key={annotation.guardId} className="text-note text-muted">
+								{`${ruleLabel(annotation.guardId, rules)} · ${annotation.text}`}
+							</p>
+						))}
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
+/**
  * The Rule an Occurrence belongs to, by name where the Rule is still in the set
  * and by id where it is not. An Occurrence is append-only and outlives the Rule
  * that produced it, so a deleted Rule leaves the id as the only honest label.
@@ -278,11 +349,13 @@ function RecordedWork({ history, rules }: { history: History | null; rules: Rule
 	return (
 		<ul className="flex flex-col gap-2">
 			{history.occurrences.map(occurrence => (
-				<li key={occurrence.id} className="flex flex-wrap items-baseline gap-x-2 text-body">
-					<time dateTime={occurrence.completedAt} className="font-mono text-foreground">
-						{RECORDED_DATE_FORMAT.format(Date.parse(occurrence.completedAt))}
+				<li key={occurrence.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+					{/* Stamp red, the colour this world keeps for work that was
+					    recorded, set the way This Week's record line is. */}
+					<time dateTime={occurrence.completedAt} className="font-mono text-evidence tracking-tight text-accent uppercase print:text-black">
+						{`Recorded ${RECORDED_DATE_FORMAT.format(Date.parse(occurrence.completedAt))}`}
 					</time>
-					<span className="text-muted">{ruleLabel(occurrence.ruleId, rules)}</span>
+					<span className="text-body text-foreground">{ruleLabel(occurrence.ruleId, rules)}</span>
 				</li>
 			))}
 		</ul>
@@ -378,6 +451,8 @@ export function PlantSheet({
 		= applicable.find((rule): rule is ThresholdRule => rule.kind === 'threshold') ?? null;
 	const workRules = applicable.filter(rule => rule.kind !== 'guard');
 	const onTicket = plant === null ? [] : (ticketLines(artifact.plan.tasks).get(plant.id) ?? []);
+	const plantTasks = plant === null ? [] : artifact.plan.tasks.filter(task => task.plantId === plant.id);
+	const seasonOpensOn = thresholdRule === null ? null : outOfSeasonUntil(artifact.plan.asOf, thresholdRule);
 	const guards = applicable.filter(rule => rule.kind === 'guard');
 
 	/*
@@ -435,55 +510,40 @@ export function PlantSheet({
 
 					<div className="mt-6 space-y-6">
 						<section className="space-y-3">
-							<SectionHead>Site conditions</SectionHead>
-							<SiteConditions plant={plant} />
+							<SectionHead>This week</SectionHead>
+							<ThisWeekHere plant={plant} lines={onTicket} tasks={plantTasks} rules={rules} reached={workRules.length > 0} />
 						</section>
 
 						{/*
 							Rules that ask for work and Guards that can hold it back are
-							different news, so they are listed apart. Both sections stay when
-							empty only where the empty state says something true.
+							different news, so they are listed apart. With no work Rule,
+							the section above has already said why.
 						*/}
-						<section className="space-y-3">
-							<SectionHead>Rules that ask for work here</SectionHead>
-							{workRules.length === 0
-								// Ink for a planted Plant, because it's the gap #52 names and the
-								// one thing on this sheet that asks the owner for something.
-								? <p className={plant.status === 'planned' ? 'text-body text-muted' : 'text-body text-foreground'}>{noRuleText(plant)}</p>
-								: (
-										<RuleList
-											rules={workRules}
-											// The chart sits in its own Rule's row, so it is read as that
-											// Rule's evidence and not as the Plant's.
-											renderExtra={rule => (
-												<>
-													{/* Which Rules are live this week, and where on the
-													    ticket their Task is. */}
-													{onTicket.filter(line => line.ruleId === rule.id).map(line => (
-														// A plain link rather than next/link, because a client-side hop
-														// pushes history without updating `:target`, so the row would
-														// never mark itself and the browser wouldn't scroll to it.
-														<a
-															key={`${line.group}-${line.ordinal}`}
-															href={withBasePath(`/#${ticketAnchor(line.group, line.ordinal)}`)}
-															className="inline-flex min-h-11 items-center font-display text-label font-extrabold tracking-widest text-foreground uppercase underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-														>
-															{`On this week's ticket · ${ticketLabel(line)}`}
-														</a>
-													))}
-													{rule.id === thresholdRule?.id && (
-														<SoilSparkline
-															window={artifact.plan.window}
-															rule={thresholdRule}
-															citation={citation}
-															asOf={artifact.plan.asOf}
-														/>
-													)}
-												</>
-											)}
-										/>
+						{workRules.length > 0 && (
+							<section className="space-y-3">
+								<SectionHead>Rules that ask for work here</SectionHead>
+								<RuleList
+									rules={workRules}
+									// The chart sits in its own Rule's row, so it is read as that
+									// Rule's evidence and not as the Plant's. Out of season it folds
+									// behind the day it opens, because September soil above a
+									// spring line looks like a Rule that fired.
+									renderExtra={rule => rule.id === thresholdRule?.id && (
+										seasonOpensOn === null
+											? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
+											: (
+													<details className="group">
+														<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+															<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
+															{`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}
+														</summary>
+														<SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
+													</details>
+												)
 									)}
-						</section>
+								/>
+							</section>
+						)}
 
 						{guards.length > 0 && (
 							<section className="space-y-3">
@@ -503,12 +563,22 @@ export function PlantSheet({
 							/>
 						</section>
 
+						{/* Last, because the inventory's record of where the Plant
+						    lives changes least. */}
+						<section className="space-y-3">
+							<SectionHead>Site conditions</SectionHead>
+							<SiteConditions plant={plant} />
+						</section>
+
 						{/* A second way out at the foot on a phone, where the sheet is full
 						    width, there is no backdrop to tap, and the top corner is the
-						    last place a one-handed thumb reaches. */}
-						<SheetClose className="inline-flex min-h-11 w-full items-center justify-center border-2 border-rule font-display text-label font-extrabold tracking-widest text-foreground uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden">
-							Close
-						</SheetClose>
+						    last place a one-handed thumb reaches. Sticky, so it stays in
+						    reach however far the sheet has scrolled. */}
+						<div className="sticky -bottom-6 -mx-6 border-t-2 border-rule bg-background px-6 py-3 sm:hidden">
+							<SheetClose className={cn('inline-flex min-h-11 w-full items-center justify-center border-2 border-rule font-display text-label font-extrabold tracking-widest text-foreground uppercase', FOCUS_RING)}>
+								Close
+							</SheetClose>
+						</div>
 					</div>
 				</SheetContent>
 			)}
