@@ -61,3 +61,19 @@ export function rulesFor(plant: Plant, rules: Rule[], plants: Plant[]): Rule[] {
 			|| authoring.some(candidate => candidate.tags.some(tag => ruleTags.includes(tag)));
 	});
 }
+
+/** Where a Plant stands with the rule set, independent of this week. */
+export type Coverage = 'planned' | 'unreached' | 'reached';
+
+/**
+ * Planned first, because `targets()` drops planned Plants and every one would
+ * otherwise read as unreached. Guards don't count, because a Plant only Guards
+ * reach still never gets a Task. That's the gap #52 tracks.
+ */
+export function coverage(plant: Plant, rules: Rule[], plants: Plant[]): Coverage {
+	if (plant.status === 'planned') {
+		return 'planned';
+	}
+
+	return rulesFor(plant, rules, plants).some(rule => rule.kind !== 'guard') ? 'reached' : 'unreached';
+}

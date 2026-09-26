@@ -85,4 +85,56 @@ describe('plantList', () => {
 
 		expect(screen.getByRole('list', { name: 'Plants' })).toBeDefined();
 	});
+
+	/*
+	 * The week view files each Plant under what it needs. An unreached Plant
+	 * (no Rule will ever give it a Task) must not share a group with one whose
+	 * Rules are merely quiet, or the list tells the owner "fine for now" about
+	 * a Plant the system never looks at.
+	 */
+	describe('the week view', () => {
+		const plants = [lawnPlant, figPlant, unplacedPlantedPlant, plannedPlant];
+		const lines = new Map([[lawnPlant.id, [{ group: 'Ready now' as const, ordinal: 1, ruleId: 'rule-a' }]]]);
+		const standings = new Map([
+			[lawnPlant.id, 'reached' as const],
+			[figPlant.id, 'reached' as const],
+			[unplacedPlantedPlant.id, 'unreached' as const],
+			[plannedPlant.id, 'planned' as const],
+		]);
+		const renderWeek = () => render(
+			<PlantList plants={plants} ordinals={ordinalsFor(plants)} hovered={null} onHoverChange={() => {}} onSelect={() => {}} lines={lines} ruleNames={new Map([['rule-a', 'Rule A']])} view="week" standings={standings} />,
+		);
+
+		it('prints the work first, then the unreached, the quiet and the planned', () => {
+			renderWeek();
+
+			const printed = [...screen.getByRole('list', { name: 'Plants' }).children].map(item => item.getAttribute('aria-hidden') === 'true' ? item.textContent : `row:${item.textContent?.includes(lawnPlant.name) ? 'lawn' : item.textContent?.includes(figPlant.name) ? 'fig' : item.textContent?.includes(unplacedPlantedPlant.name) ? 'unplaced' : 'planned'}`);
+
+			expect(printed).toEqual([
+				'On this week\'s ticket',
+				'row:lawn',
+				'No Rule reaches these',
+				'row:unplaced',
+				'Quiet this week',
+				'row:fig',
+				'Planned',
+				'row:planned',
+			]);
+		});
+
+		it('gives each row its reason in words, where the heads are hidden from a screen reader', () => {
+			renderWeek();
+
+			expect(screen.getAllByRole('listitem')).toHaveLength(plants.length);
+			expect(screen.getByRole('button', { name: /No Rule reaches this plant, so it never gets a Task\./u }).textContent).toContain(unplacedPlantedPlant.name);
+			expect(screen.getByRole('button', { name: new RegExp(`${figPlant.name}.*Nothing on this week's ticket\\.`, 'u') })).toBeDefined();
+		});
+	});
+
+	// The inventory has no group heads, so the gap has to be on the row itself.
+	it('names an unreached Plant on its row in the inventory view', () => {
+		render(<PlantList plants={[unplacedPlantedPlant]} ordinals={ordinalsFor([unplacedPlantedPlant])} hovered={null} onHoverChange={() => {}} onSelect={() => {}} view="all" standings={new Map([[unplacedPlantedPlant.id, 'unreached' as const]])} />);
+
+		expect(screen.getByText('No Rule reaches this plant, so it never gets a Task.').className).not.toContain('sr-only');
+	});
 });

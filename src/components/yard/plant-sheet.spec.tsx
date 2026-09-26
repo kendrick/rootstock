@@ -291,7 +291,10 @@ describe('plantSheet', () => {
 		await settled();
 
 		expect(plannedPlant.status).toBe('planned');
-		expect(screen.getByText(/^Planned, not in the ground yet\./u)).toBeDefined();
+		expect(screen.getByText(/^Not in the ground yet\./u)).toBeDefined();
+		// Said once, on the line under the name, and not again as a tag.
+		// The fixture's own name carries the word, so it's taken out first.
+		expect(screen.getByRole('dialog').textContent?.replace(plannedPlant.name, '').match(/planned/giu)).toHaveLength(1);
 	});
 
 	it('says so when no Rule reaches a planted Plant either', async () => {
@@ -300,7 +303,7 @@ describe('plantSheet', () => {
 
 		expect(unplacedPlantedPlant.status).toBe('planted');
 		expect(unplacedPlantedPlant.position).toBeNull();
-		expect(screen.getByText('No Rule names this plant, so the Planner will never give it a Task.')).toBeDefined();
+		expect(screen.getByText('No Rule reaches this plant, so the Planner will never give it a Task.')).toBeDefined();
 	});
 
 	it('lists what has been recorded against this Plant, newest first', async () => {

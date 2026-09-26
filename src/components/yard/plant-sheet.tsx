@@ -136,14 +136,11 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
 		<dl className="grid gap-4 sm:grid-cols-2">
 			{plant.site !== null && <Detail label="Site">{plant.site}</Detail>}
 
-			{plant.tags.length > 0 && (
-				<Detail label="Tags">
-					<div className="flex flex-wrap gap-1.5">
-						{plant.tags.map(tag => (
-							<span key={tag} className="font-display font-semibold text-label tracking-widest text-muted uppercase">{tag}</span>
-						))}
-					</div>
-				</Detail>
+			{/* Tags are how a Rule selects a Plant, so the label says that rather
+			    than naming the field. A planned Plant's `planned` tag is left off:
+			    the line under the name already says so. */}
+			{shownTags(plant).length > 0 && (
+				<Detail label="Rules find it by">{shownTags(plant).join(', ')}</Detail>
 			)}
 
 			{plant.notes !== null && <Detail label="Notes">{plant.notes}</Detail>}
@@ -222,15 +219,20 @@ function RuleList({ rules, renderExtra }: { rules: Rule[]; renderExtra?: (rule: 
 	);
 }
 
+function shownTags(plant: Plant): string[] {
+	return plant.status === 'planned' ? plant.tags.filter(tag => tag !== 'planned') : plant.tags;
+}
+
 /**
  * Why no Rule reaches this Plant, in the two ways that can happen. A planned
  * Plant waits to be planted (`targets()` drops it until then). A planted Plant
- * no Rule names will never get a Task at all, which is open issue #52.
+ * no Rule reaches will never get a Task at all, which is open issue #52.
+ * "Reaches", because a Rule can select a Plant by tag without naming it.
  */
 function noRuleText(plant: Plant): string {
 	return plant.status === 'planned'
-		? 'Planned, not in the ground yet. Rules reach a plant once it is planted.'
-		: 'No Rule names this plant, so the Planner will never give it a Task.';
+		? 'Not in the ground yet. Rules reach a plant once it is planted.'
+		: 'No Rule reaches this plant, so the Planner will never give it a Task.';
 }
 
 /**
@@ -444,7 +446,9 @@ export function PlantSheet({
 						<section className="space-y-3">
 							<SectionHead>Rules that ask for work here</SectionHead>
 							{workRules.length === 0
-								? <p className="text-body text-muted">{noRuleText(plant)}</p>
+								// Ink for a planted Plant, because it's the gap #52 names and the
+								// one thing on this sheet that asks the owner for something.
+								? <p className={plant.status === 'planned' ? 'text-body text-muted' : 'text-body text-foreground'}>{noRuleText(plant)}</p>
 								: (
 										<RuleList
 											rules={workRules}
@@ -480,6 +484,9 @@ export function PlantSheet({
 						{guards.length > 0 && (
 							<section className="space-y-3">
 								<SectionHead>Guards that can hold it back or add a note</SectionHead>
+								<p className="text-note text-muted">
+									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
+								</p>
 								<RuleList rules={guards} />
 							</section>
 						)}

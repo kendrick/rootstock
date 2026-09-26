@@ -195,8 +195,11 @@ describe('yard', () => {
 
 			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
 			const list = screen.getByRole('list', { name: 'Plants' });
-			expect(within(list).getByText(/^On the ticket · Approaching 01 · /u)).toBeDefined();
-			expect(within(list).getByText('Nothing this week')).toBeDefined();
+			expect(within(list).getByText('On this week\'s ticket')).toBeDefined();
+			expect(within(list).getByText('Approaching 01')).toBeDefined();
+			// The group heads are aria-hidden, so a screen reader hears one item
+			// per Plant.
+			expect(within(list).getAllByRole('listitem')).toHaveLength(within(list).getAllByRole('button').length);
 		});
 
 		it('switches to the inventory, remembers it, and puts it in the link', () => {
@@ -207,7 +210,7 @@ describe('yard', () => {
 
 			expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true');
 			expect(screen.getByText('1 task this week')).toBeDefined();
-			expect(screen.queryByText('Nothing this week')).toBeNull();
+			expect(screen.queryByText('On this week\'s ticket')).toBeNull();
 			expect(localStorage.getItem('rootstock.yard-view')).toBe('all');
 			expect(new URLSearchParams(window.location.search).get('view')).toBe('all');
 		});

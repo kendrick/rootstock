@@ -9,6 +9,7 @@ import type { Plant, Yard as YardRecord } from '@/yard/plant';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { coverage } from './applicable-rules';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
 import { ticketLines } from './week-work';
@@ -64,6 +65,7 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 
 	const lines = useMemo(() => ticketLines(artifact.plan.tasks), [artifact]);
 	const ruleNames = useMemo(() => new Map(rules.map(rule => [rule.id, rule.name])), [rules]);
+	const standings = useMemo(() => new Map(plants.map(plant => [plant.id, coverage(plant, rules, plants)])), [plants, rules]);
 
 	/*
 	 * Two readings of one yard: the week's work laid over the plate, or the
@@ -161,6 +163,7 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 					onSelect={handleSelect}
 					lines={lines}
 					ruleNames={ruleNames}
+					standings={standings}
 					view={view}
 				/>
 				<PlantSheet
