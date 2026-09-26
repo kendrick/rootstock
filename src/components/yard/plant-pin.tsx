@@ -83,8 +83,9 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 						// reaches 31px from its centre at the corners, past the 28px that
 						// pin-layout.ts keeps neighbours apart, so it would cover a
 						// diagonal neighbour's centre. A 22px radius never does. Hit-testing
-						// honours border-radius, and nothing drawn here is rounded.
-						'before:absolute before:-inset-2.5 before:rounded-full before:content-[\'\']',
+						// honours border-radius, and nothing drawn here is rounded. The inset
+						// is 12px because it measures from inside the 2px border.
+						'before:absolute before:-inset-3 before:rounded-full before:content-[\'\']',
 						'transition-transform',
 						calloutFace({ planned, onTicket }),
 						// The hovered callout grows rather than changing colour. It sits on

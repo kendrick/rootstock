@@ -146,14 +146,14 @@ test('a hovered pin leaves every other pin\'s centre to that pin', async ({ page
 		await expect(pins.and(page.locator(`[data-plant="${hovered}"]`))).toHaveClass(/scale-150/u);
 		// The transition runs 150ms; hit-test the settled size.
 		await page.waitForTimeout(250);
-		// The hit area keeps its resting size, a 20px radius (the before: box
-		// insets from inside the 2px border), so 18px out still lands on it.
+		// The hit area keeps its resting 44px, a 22px radius, so 21px out still
+		// lands on the hovered pin.
 		const edge = await page.evaluate(
 			([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('data-plant') ?? null,
-			[hx, hy + 18] as const,
+			[hx, hy + 21] as const,
 		);
-		if (![...centres.entries()].some(([plant, [x, y]]) => plant !== hovered && Math.hypot(x - hx, y - hy - 18) < 20)) {
-			expect(edge, `'${hovered}' hovered no longer catches a point 18px below its centre`).toBe(hovered);
+		if (![...centres.entries()].some(([plant, [x, y]]) => plant !== hovered && Math.hypot(x - hx, y - hy - 21) < 22)) {
+			expect(edge, `'${hovered}' hovered no longer catches a point 21px below its centre`).toBe(hovered);
 		}
 		for (const [plant, point] of centres) {
 			if (plant === hovered) {
