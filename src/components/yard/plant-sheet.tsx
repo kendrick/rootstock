@@ -7,9 +7,9 @@ import type { Citation } from '@/planner/task';
 import type { GuardRule, Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Irrigation, Plant } from '@/yard/plant';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { SourceBadge } from '@/components/source-badge';
+import { ticketAnchor } from '@/components/this-week/ticket-anchor';
 import {
 	Sheet,
 	SheetClose,
@@ -18,6 +18,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from '@/components/ui/sheet';
+import { withBasePath } from '@/lib/base-path';
 import { seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
@@ -459,13 +460,16 @@ export function PlantSheet({
 													{/* Which Rules are live this week, and where on the
 													    ticket their Task is. */}
 													{onTicket.filter(line => line.ruleId === rule.id).map(line => (
-														<Link
+														// A plain link rather than next/link, because a client-side hop
+														// pushes history without updating `:target`, so the row would
+														// never mark itself and the browser wouldn't scroll to it.
+														<a
 															key={`${line.group}-${line.ordinal}`}
-															href="/"
+															href={withBasePath(`/#${ticketAnchor(line.group, line.ordinal)}`)}
 															className="inline-flex min-h-11 items-center font-display text-label font-extrabold tracking-widest text-foreground uppercase underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
 														>
 															{`On this week's ticket · ${ticketLabel(line)}`}
-														</Link>
+														</a>
 													))}
 													{rule.id === thresholdRule?.id && (
 														<SoilSparkline

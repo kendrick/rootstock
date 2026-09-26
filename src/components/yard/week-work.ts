@@ -1,7 +1,7 @@
+import type { TicketGroup } from '@/components/this-week/ticket-anchor';
 import type { Task } from '@/planner/task';
 
-/** The This Week group a Task sits in, named as that page names it. */
-export type TicketGroup = 'Ready now' | 'Approaching' | 'Held back';
+export type { TicketGroup };
 
 export interface TicketLine {
 	group: TicketGroup;

@@ -153,3 +153,29 @@ test('yard route has no accessibility violations', async ({ page }) => {
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
 });
+
+/*
+ * The link from a Plant's sheet to its line on the ticket. The Yard and This
+ * Week number the ticket separately, so the check is on where the browser
+ * lands: the row the link targets has to carry the Rule the Yard named. The
+ * daily artifact decides which Plants have work, so the first line there is
+ * the one followed.
+ */
+test('a ticket line on the Yard lands on that line of This Week', async ({ page }) => {
+	await page.goto('yard?view=week');
+
+	const list = page.getByRole('list', { name: 'Plants' });
+	const line = list.locator('button span.text-note', { hasText: /^(Ready now|Approaching|Held back) \d{2} · / }).first();
+	test.skip(await line.count() === 0, 'today\'s ticket names no Plant');
+
+	const [label, ruleName] = (await line.textContent() ?? '').split(' · ');
+	await line.locator('xpath=ancestor::button').click();
+
+	await page.getByRole('dialog').getByRole('link', { name: new RegExp(`${label}$`, 'iu') }).first().click();
+	await page.waitForURL(/#(ready-now|approaching|held-back)-\d{2}$/u);
+
+	const target = page.locator(':target');
+	await expect(target).toHaveCount(1);
+	await expect(target).toContainText(ruleName ?? '', { ignoreCase: true });
+	await expect(target).toBeInViewport();
+});

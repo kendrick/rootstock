@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import type { TicketGroup } from './ticket-anchor';
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
 import type { Task } from '@/planner/task';
@@ -20,6 +21,7 @@ import { announceRecorded, recordedDates, weekCounts } from './recorded';
 import { TaskGroup } from './task-group';
 import { TaskItem } from './task-item';
 import { taskText } from './task-text';
+import { ticketAnchor } from './ticket-anchor';
 import { WeekSummary } from './week-summary';
 
 export interface ThisWeekProps {
@@ -268,28 +270,27 @@ export function ThisWeek({
 		signOffDisabled: storeFailed,
 	};
 
-	// `.map(taskItem)` hands the index through, which is where the ticket's line
+	// `.map(taskItemIn(group))` hands the index through, which is where the ticket's line
 	// numbers come from. They number the run a reader is looking at rather than
 	// anything stored on the Task, so a filtered group counts from one. The owner
 	// kept per-group numbering on 2026-09-25 over numbering the whole sheet.
-	function taskItem(task: Task, index: number): ReactElement {
-		return (
-			<TaskItem
-				key={task.id}
-				task={task}
-				ordinal={index + 1}
-				rulesById={rulesById}
-				plantsById={plantsById}
-				narrationText={narrationById.get(task.id) ?? null}
-				window={artifact.plan.window}
-				checked={completedIds.has(task.id)}
-				recordedOn={recordedOn.get(task.id) ?? null}
-				citationOpen={task.id === openCitationId}
-				{...signOff}
-				describedBy={noteId}
-			/>
-		);
-	}
+	const taskItemIn = (group: TicketGroup) => (task: Task, index: number): ReactElement => (
+		<TaskItem
+			key={task.id}
+			task={task}
+			ordinal={index + 1}
+			anchorId={ticketAnchor(group, index + 1)}
+			rulesById={rulesById}
+			plantsById={plantsById}
+			narrationText={narrationById.get(task.id) ?? null}
+			window={artifact.plan.window}
+			checked={completedIds.has(task.id)}
+			recordedOn={recordedOn.get(task.id) ?? null}
+			citationOpen={task.id === openCitationId}
+			{...signOff}
+			describedBy={noteId}
+		/>
+	);
 
 	/*
 	 * The week closes when every Task a reader can sign off is recorded.
@@ -355,7 +356,7 @@ export function ThisWeek({
 				)}
 
 				<TaskGroup heading="Ready now" emptyText={nothingDue} description={permanenceNote(artifact.plan.asOf)} descriptionId={noteId}>
-					{tasks.filter(task => task.status === 'fired').map(taskItem)}
+					{tasks.filter(task => task.status === 'fired').map(taskItemIn('Ready now'))}
 				</TaskGroup>
 
 				{/*
@@ -366,7 +367,7 @@ export function ThisWeek({
 				 * Task that vanished.
 				 */}
 				<TaskGroup heading="Approaching">
-					{tasks.filter(task => task.status === 'approaching').map(taskItem)}
+					{tasks.filter(task => task.status === 'approaching').map(taskItemIn('Approaching'))}
 				</TaskGroup>
 
 				<DeferredSection

@@ -185,7 +185,6 @@ describe('yard', () => {
 	 */
 	describe('the view toggle', () => {
 		function reset(): void {
-			localStorage.clear();
 			window.history.replaceState(null, '', '/');
 		}
 
@@ -202,7 +201,7 @@ describe('yard', () => {
 			expect(within(list).getAllByRole('listitem')).toHaveLength(within(list).getAllByRole('button').length);
 		});
 
-		it('switches to the inventory, remembers it, and puts it in the link', () => {
+		it('switches to the inventory and puts it in the link', () => {
 			reset();
 			renderYard();
 
@@ -211,15 +210,26 @@ describe('yard', () => {
 			expect(screen.getByRole('button', { name: 'All plants' }).getAttribute('aria-pressed')).toBe('true');
 			expect(screen.getByText('1 task this week')).toBeDefined();
 			expect(screen.queryByText('On this week\'s ticket')).toBeNull();
-			expect(localStorage.getItem('rootstock.yard-view')).toBe('all');
 			expect(new URLSearchParams(window.location.search).get('view')).toBe('all');
 		});
 
-		// A shared link opens the view it was shared from, whatever this device
-		// last chose.
-		it('lets the link choose the view over the device\'s last choice', async () => {
+		// DESIGN.md promises the week whenever the ticket names a Plant. A choice
+		// kept on the device broke that for good after one tap on All plants, so
+		// the choice lives in the link and nowhere else.
+		it('opens on the week again on a fresh visit, whatever was chosen before', () => {
 			reset();
-			localStorage.setItem('rootstock.yard-view', 'week');
+			const first = renderYard();
+			fireEvent.click(screen.getByRole('button', { name: 'All plants' }));
+			first.unmount();
+
+			window.history.replaceState(null, '', '/');
+			renderYard();
+
+			expect(screen.getByRole('button', { name: 'This week' }).getAttribute('aria-pressed')).toBe('true');
+		});
+
+		it('lets the link choose the view', async () => {
+			reset();
 			window.history.replaceState(null, '', '/?view=all');
 			renderYard();
 

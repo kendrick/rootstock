@@ -15,9 +15,6 @@ import { PlantSheet } from './plant-sheet';
 import { ticketLines } from './week-work';
 import { YardPhoto } from './yard-photo';
 
-/** Where the reader's last choice of view is kept, per device. */
-const VIEW_STORAGE_KEY = 'rootstock.yard-view';
-
 function isView(value: string | null): value is YardView {
 	return value === 'week' || value === 'all';
 }
@@ -71,31 +68,23 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 	 * Two readings of one yard: the week's work laid over the plate, or the
 	 * whole inventory. The week view is the default whenever the ticket names
 	 * any Plant, because "what does the yard need this week" is the question
-	 * this product answers. A link's `?view=` wins over the reader's last choice
-	 * on this device, so a shared link opens the view it was shared from.
+	 * this product answers. The choice lives in the link's `?view=` and nowhere
+	 * else, so a reload or a shared link keeps it and a fresh visit gets the
+	 * week back. A choice kept on the device would hide the week for good after
+	 * one tap on All plants.
 	 */
 	const [view, setView] = useState<YardView>(lines.size > 0 ? 'week' : 'all');
 
 	useEffect(() => {
 		const fromUrl = new URLSearchParams(window.location.search).get('view');
-		let stored: string | null = null;
-		try {
-			stored = localStorage.getItem(VIEW_STORAGE_KEY);
-		}
-		catch {}
-		const chosen = isView(fromUrl) ? fromUrl : isView(stored) ? stored : null;
-		if (chosen !== null) {
-			// eslint-disable-next-line react/set-state-in-effect -- the URL and storage are only readable in a browser, and the prerender has neither
-			setView(chosen);
+		if (isView(fromUrl)) {
+			// eslint-disable-next-line react/set-state-in-effect -- the URL is only readable in a browser, and the prerender has none
+			setView(fromUrl);
 		}
 	}, []);
 
 	function chooseView(next: YardView): void {
 		setView(next);
-		try {
-			localStorage.setItem(VIEW_STORAGE_KEY, next);
-		}
-		catch {}
 		const url = new URL(window.location.href);
 		url.searchParams.set('view', next);
 		window.history.replaceState(null, '', url);
