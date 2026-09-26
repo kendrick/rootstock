@@ -54,3 +54,30 @@ test('prints its heading in ink, hides the nav, and carries a date and a box to 
 	// replacement for them.
 	expect(pdf.length).toBeGreaterThan(1000);
 });
+
+/*
+ * The dark scheme opens tracking and body leading for light type on a dark
+ * ground. Paper is always light, so a reader whose system is dark must get the
+ * same printed sheet as one whose system is light. Chromium keeps
+ * `prefers-color-scheme` matching while it prints, so the dark block reaches
+ * the print cascade unless it's scoped away from it.
+ */
+test('prints the same type whether the reader\'s system is light or dark', async ({ page, browserName }) => {
+	test.skip(browserName !== 'chromium', 'print emulation is only exercised in Chromium');
+
+	await page.goto(`away/${slug}`);
+
+	const printed = async (colorScheme: 'light' | 'dark') => {
+		await page.emulateMedia({ media: 'print', colorScheme });
+		return page.evaluate(() => [...document.querySelectorAll('body *')]
+			.filter(node => [...node.childNodes].some(child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()))
+			.map((node) => {
+				const style = getComputedStyle(node);
+				return `${style.fontSize} ${style.letterSpacing} ${style.lineHeight}`;
+			}));
+	};
+
+	const light = await printed('light');
+	expect(light.length).toBeGreaterThan(0);
+	expect(await printed('dark')).toEqual(light);
+});

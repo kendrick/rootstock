@@ -77,10 +77,15 @@ that picks the scheme is the ambient light the phone is already measuring. */
 		--muted: #a09789;
 		--rule: #f2efe6;
 		--rule-faint: #2e2a24;
+	}
+}
 
-		/* Light type on a dark ground spreads into its own counters, so letters
-			and lines get a little more room. Weight stays put, because Saira
-			at 800 already blooms. */
+/* Light type on a dark ground spreads into its own counters, so letters and
+lines get a little more room. Weight stays put, because Saira at 800 already
+blooms. Screen only: the colour block above is undone by print, but Chromium
+keeps matching the dark scheme while it prints, and paper is always light. */
+@media screen and (prefers-color-scheme: dark) {
+	:root {
 		--tracking-wide: 0.035em;
 		--tracking-wider: 0.06em;
 		--tracking-widest: 0.11em;
