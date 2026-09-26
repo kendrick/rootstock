@@ -168,6 +168,8 @@ export interface RuleSummaryProps {
 	 * Defaults to false, which keeps every other caller's rendered shape as it was.
 	 */
 	hideRegion?: boolean;
+	/** Prints the Rule's kind in words among its marks. The Rules route passes it. */
+	showKind?: boolean;
 	/**
 	 * The named Rule a chained Cadence Rule is measured from. Omitted and the
 	 * "Measured from" row prints the raw id.
@@ -177,8 +179,8 @@ export interface RuleSummaryProps {
 	 * Renders the Rule's name as an `<h3>` instead of a `<span>`, so a screen
 	 * reader gets a heading landmark for the name that is actually on screen,
 	 * rather than a second, invisible element carrying the same text next to
-	 * it. The heading also carries the Rule's kind for a screen reader, since
-	 * the Rules route's kind mark is a letter it can't read. Defaults to false,
+	 * it. The heading also carries the Rule's kind for a screen reader, which
+	 * is why the `showKind` mark is hidden from one. Defaults to false,
 	 * which keeps every other caller's rendered shape—
 	 * This Week's `<details>` and the Yard plant sheet compose this at depths
 	 * an `<h3>` here would not suit.
@@ -205,6 +207,7 @@ export function RuleSummary({
 	tagPolicy = seedTagPolicy,
 	hideRegion = false,
 	after = null,
+	showKind = false,
 	asHeading = false,
 }: RuleSummaryProps): ReactElement {
 	const NameTag = asHeading ? 'h3' : 'span';
@@ -223,7 +226,7 @@ export function RuleSummary({
 				    the ticket. Inside a citation the Task above already carries it. */}
 				<NameTag
 					className={asHeading
-						? 'font-display text-title leading-[1.1] font-extrabold tracking-wide text-foreground uppercase'
+						? 'font-display text-title leading-[1.1] font-extrabold tracking-wide wrap-break-word text-foreground uppercase'
 						: 'font-semibold text-foreground'}
 				>
 					{/* One sr-only text node for the whole spoken name. Chrome puts a space
@@ -271,13 +274,17 @@ export function RuleSummary({
 							href={rule.productLabel.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							className={cn(
-								'inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 outline-none',
-								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-							)}
+							className={cn('underline underline-offset-4', FOCUS_RING)}
 						>
-							Read the manufacturer&rsquo;s label
-							<ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
+							{/* Inline, with the icon bound to the last word, so a narrow cell wraps
+							    the link like text instead of pushing the icon past the cell's rule. */}
+							Read the manufacturer&rsquo;s
+							{' '}
+							<span className="whitespace-nowrap">
+								label
+								<ExternalLink aria-hidden="true" className="ml-1.5 inline size-3.5 align-[-0.1em]" />
+							</span>
+							<span className="sr-only"> (opens in a new tab)</span>
 						</a>
 					</Row>
 				)}
@@ -295,6 +302,12 @@ export function RuleSummary({
 					<span className="text-muted">Guard &middot; creates no work</span>
 				)}
 
+				{/* The kind in words, where a page lists Rules of every kind. Hidden from
+				    a screen reader, which hears it in the heading (`asHeading`). */}
+				{showKind && rule.kind !== 'guard' && (
+					<span aria-hidden="true" className="text-muted">{`${rule.kind} rule`}</span>
+				)}
+
 				{/*
 				 * The word carries this, and nothing else does. A reader with a
 				 * colour-vision deficiency has to be able to tell delegable work from work
@@ -303,9 +316,13 @@ export function RuleSummary({
 				 * be a word beside a glyph; the glyph is gone, which leaves the word
 				 * load-bearing on its own and means it must never become a colour.
 				 */}
-				<span className={canDelegate ? 'text-muted' : 'font-bold text-foreground'}>
-					{canDelegate ? 'Delegable' : 'Not delegable'}
-				</span>
+				{/* Delegable is a property of a Task (CONTEXT.md). A Guard creates none,
+				    so the mark would be a claim about nothing. */}
+				{rule.kind !== 'guard' && (
+					<span className={canDelegate ? 'text-muted' : 'font-bold text-foreground'}>
+						{canDelegate ? 'Delegable' : 'Not delegable'}
+					</span>
+				)}
 			</div>
 		</div>
 	);

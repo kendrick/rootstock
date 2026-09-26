@@ -11,7 +11,7 @@ import { MONTHS } from '@/planner/dates';
  * kinds and joined them to the current Plan, which made the taxonomy the
  * organising idea. A reader standing in the yard is asking what is next, and
  * the kind of Rule that answers them is an implementation fact they did not ask
- * about. The kinds are still shown, on every row, as a one-letter mark.
+ * about. Each row still prints its kind, in words, among its marks.
  */
 export type Band = 'fired' | 'approaching' | 'waiting' | 'guard';
 
@@ -22,6 +22,8 @@ export interface RuleStanding {
 	inCurrentPlan: boolean;
 	/** What the Rule is waiting on, stated as fact and never as a forecast. */
 	waitingOn: string;
+	/** For a Guard, the titles of the Tasks it holds or marks on this Plan. Empty for every other Rule. */
+	touched: string[];
 	/** Days until a Window Rule opens. Sorts the waiting band; null where no honest number exists. */
 	daysAway: number | null;
 }
@@ -125,6 +127,10 @@ function firedLine(rule: Exclude<Rule, { kind: 'guard' }>): string {
 		: 'Fired on the latest reading';
 }
 
+function listOf(items: string[]): string {
+	return items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+}
+
 function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
 	const { min, max } = rule.everyDays;
 
@@ -141,35 +147,38 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		// and cannot be ranked beside Rules that do. It gets its own band, and what
 		// it reports instead is whether it reached a Task on this Plan: a Guard that
 		// deferred or annotated something acted, even though it authored nothing.
-		const acted = plan.tasks.some(task =>
+		const touched = plan.tasks.filter(task =>
 			task.deferrals.some(deferral => deferral.guardId === rule.id)
 			|| task.annotations.some(annotation => annotation.guardId === rule.id));
 
 		// ADR 0002's two effects get two verbs. An annotating Guard holds nothing
-		// back, and saying it does would be the page inventing a Deferral.
+		// back, and saying it does would be the page inventing a Deferral. The
+		// Tasks go by the Planner's own titles, so a reader can find each one on
+		// This Week.
 		const verb = rule.effect === 'defer' ? 'Holding' : 'Marking';
 
 		return {
 			rule,
 			band: 'guard',
-			inCurrentPlan: acted,
-			waitingOn: `${verb} ${acted ? 'work' : 'nothing'} this week`,
+			inCurrentPlan: touched.length > 0,
+			waitingOn: touched.length === 0 ? `${verb} nothing this week` : `${verb} ${listOf(touched.map(task => task.title))}`,
+			touched: touched.map(task => task.title),
 			daysAway: null,
 		};
 	}
 
 	if (fired) {
-		return { rule, band: 'fired', inCurrentPlan: true, waitingOn: firedLine(rule), daysAway: 0 };
+		return { rule, band: 'fired', inCurrentPlan: true, waitingOn: firedLine(rule), touched: [], daysAway: 0 };
 	}
 
 	if (approaching) {
-		return { rule, band: 'approaching', inCurrentPlan: true, waitingOn: 'Forecast to be satisfied', daysAway: 0 };
+		return { rule, band: 'approaching', inCurrentPlan: true, waitingOn: 'Forecast to be satisfied', touched: [], daysAway: 0 };
 	}
 
 	if (rule.kind === 'window') {
 		const { waitingOn, daysAway } = windowStanding(rule, plan.asOf);
 
-		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn, daysAway };
+		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn, touched: [], daysAway };
 	}
 
 	// Out of season a Rule can't fire whatever it reads, so its opening day is
@@ -177,7 +186,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 	// missed firing to anyone checking the Planner's work.
 	const away = rule.season === null ? 0 : daysUntilOpen(plan.asOf, rule.season.start, rule.season.end);
 	if (rule.season !== null && away > 0) {
-		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn: `Opens ${formatMonthDay(rule.season.start)}`, daysAway: away };
+		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn: `Opens ${formatMonthDay(rule.season.start)}`, touched: [], daysAway: away };
 	}
 
 	if (rule.kind === 'threshold') {
@@ -200,6 +209,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 				// this page was not given rather than against nothing at all.
 				? `No reading in the Artifact's window; needs ${wants}`
 				: `Last read ${formatReading(observed.value, rule.unit)}; needs ${wants}`,
+			touched: [],
 			daysAway: null,
 		};
 	}
@@ -212,6 +222,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		band: 'waiting',
 		inCurrentPlan: false,
 		waitingOn: `Every ${intervalText(rule)}; not due this week`,
+		touched: [],
 		daysAway: null,
 	};
 }

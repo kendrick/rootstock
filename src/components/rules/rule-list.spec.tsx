@@ -127,7 +127,8 @@ describe('ruleList', () => {
 		// the derivation rather than letting isDelegable run inside RuleSummary.
 		expect(delegable.length).toBeGreaterThan(0);
 		expect(notDelegable.length).toBeGreaterThan(0);
-		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.length);
+		// A Guard creates no Task, so it carries neither.
+		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.filter(rule => rule.kind !== 'guard').length);
 	});
 
 	// #64: the four kinds are the spine of CONTEXT.md, and a reader had no way to
@@ -153,17 +154,15 @@ describe('ruleList', () => {
 		expect(screen.getByRole('region', { name: 'Waiting' })).toBeDefined();
 	});
 
-	// The mark in the first column is a letter nobody can decode on sight, so the
-	// page carries its key. The rows already name their kind in accessible text,
-	// which is why the legend is hidden from it rather than repeated into it.
-	it('explains the kind marks with a legend', () => {
+	// The kind is printed in words among the row's marks, so no key is needed
+	// to read it. A Guard's own mark already says it is one.
+	it('prints each rule\'s kind in words, with no key to decode', () => {
 		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		const legend = container.querySelector('dl[aria-hidden="true"]');
-		expect(legend).not.toBeNull();
-
-		for (const label of ['Window', 'Threshold', 'Cadence', 'Guard']) {
-			expect(legend?.textContent).toContain(label);
+		expect(container.querySelector('dl[aria-hidden="true"]')).toBeNull();
+		for (const rule of allFixtureRules.filter(candidate => candidate.kind !== 'guard')) {
+			const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') }).closest('li');
+			expect(within(row as HTMLElement).getByText(`${rule.kind} rule`)).toBeDefined();
 		}
 	});
 
@@ -195,10 +194,22 @@ describe('ruleList', () => {
 		expect(screen.getByText('Status:', { exact: false }).closest('p')?.textContent).toMatch(/^Status: /u);
 	});
 
-	it('gives a deferring Guard its release condition', () => {
+	// The release condition says what would free held work, so it shows only
+	// while the Guard is holding some.
+	it('gives a deferring Guard its release condition only while it holds work', () => {
+		const { unmount } = render(<RuleList rules={[guardRule]} plan={emptyPlan} />);
+		expect(screen.queryByText(/^Released once no day/u)).toBeNull();
+		unmount();
+
+		render(<RuleList rules={[guardRule]} plan={planWithTasks} />);
+		expect(screen.getByText(/^Released once no day in the next two days/u)).toBeDefined();
+	});
+
+	// Delegable is a property of a Task (CONTEXT.md), and a Guard creates none.
+	it('prints no delegability mark on a Guard', () => {
 		render(<RuleList rules={[guardRule]} plan={emptyPlan} />);
 
-		expect(screen.getByText(/^Released once no day in the next two days/u)).toBeDefined();
+		expect(screen.queryByText(/delegable/iu)).toBeNull();
 	});
 
 	it('links a follow-up to the row of the Rule it is measured from', () => {

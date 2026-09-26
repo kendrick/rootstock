@@ -111,16 +111,19 @@ describe('standingFor, guards', () => {
 		expect(standingFor(deferringGuard, plan('2026-09-26')).waitingOn).toBe('Holding nothing this week');
 	});
 
-	it('says a deferring Guard is holding work when a Deferral names it', () => {
-		const held = firedTask('fall-pre-emergent', { status: 'deferred', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
+	// A reader checking the Guard's claim needs the Task it touched, by the
+	// title the Planner gave it.
+	it('names the Task a deferring Guard is holding', () => {
+		const held = firedTask('fall-pre-emergent', { status: 'deferred', title: 'Fall pre-emergent (Front lawn)', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
 
-		expect(standingFor(deferringGuard, plan('2026-09-26', [held])).waitingOn).toBe('Holding work this week');
+		expect(standingFor(deferringGuard, plan('2026-09-26', [held])).waitingOn).toBe('Holding Fall pre-emergent (Front lawn)');
 	});
 
-	it('says an annotating Guard is marking work, never holding it', () => {
-		const marked = firedTask('fall-pre-emergent', { annotations: [{ guardId: annotatingGuard.id, text: 'Water it in' }] });
+	it('names every Task an annotating Guard is marking, never holding', () => {
+		const lawn = firedTask('fall-pre-emergent', { title: 'Fall pre-emergent (Front lawn)', annotations: [{ guardId: annotatingGuard.id, text: 'Water it in' }] });
+		const fig = firedTask('last-nitrogen', { title: 'Last nitrogen (Fig)', annotations: [{ guardId: annotatingGuard.id, text: 'Water it in' }] });
 
-		expect(standingFor(annotatingGuard, plan('2026-09-26', [marked])).waitingOn).toBe('Marking work this week');
+		expect(standingFor(annotatingGuard, plan('2026-09-26', [lawn, fig])).waitingOn).toBe('Marking Fall pre-emergent (Front lawn) and Last nitrogen (Fig)');
 		expect(standingFor(annotatingGuard, plan('2026-09-26')).waitingOn).toBe('Marking nothing this week');
 	});
 });

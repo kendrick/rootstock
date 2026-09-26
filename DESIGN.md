@@ -124,11 +124,11 @@ The Rules the yard holds that no evidence lit, kept in the margin. This is the o
 
 ### The Rule Register
 
-The Rules page lists every Rule under four bands in the order a reader asks: Fired this week, Approaching, Waiting, Guards. A band with nothing in it isn't drawn. Each Rule is a ruled row with its kind lettered in the first cell, its record in the second, and a status in the third. The kind's full name is in the heading for a screen reader, and a key of the four letters sits under the page head, two by two on a phone.
+The Rules page lists every Rule under four bands in the order a reader asks: Fired this week, Approaching, Waiting, Guards. A band with nothing in it isn't drawn. Each Rule is a ruled row holding its record and its status, with the kind printed in words among the record's marks ("WINDOW RULE") and in the heading for a screen reader. The page has no key to the kinds, since each one is spelled out.
 
-The status says only what the band doesn't. A fired Rule gives the day its window or season closes. A waiting Rule gives the day it opens, and in season it gives the reading it's waiting on in the Rule's own terms: a directed Rule needs a Crossing, so the line says "needs a rise through 55°F". Readings round to one decimal. A Guard says whether it's holding or marking work this week, following its effect, and a deferring Guard adds what releases it. Below `lg` the status runs across the row as a strip of its own, because the 40px kind column can't hold it.
+The status says only what the band doesn't. A fired Rule gives the day its window or season closes. A waiting Rule gives the day it opens, and in season it gives the reading it's waiting on in the Rule's own terms: a directed Rule needs a Crossing, so the line says "needs a rise through 55°F". Readings round to one decimal. A Guard names each Task it's holding or marking this week by the Planner's title, one to a line, or says it's holding nothing. A deferring Guard that's holding work adds what releases it. Below `lg` the status sits under the record behind a faint rule, so the row's heavy outline still holds both, and from `lg` it takes a column of its own.
 
-Nothing on this page is stamp red. It records nothing, so the fired band and its status lines print in ink. The page doesn't repeat the Region either, since the ticket head already carries it.
+Readings are ink, and nothing on this page is stamp red, since it records nothing. A Guard carries no delegability mark, because Delegable is a property of a Task and a Guard creates none. The page doesn't repeat the Region either, since the ticket head already carries it, and the margin drops its Not This Week list, since Waiting already names those Rules.
 
 ## Motion
 

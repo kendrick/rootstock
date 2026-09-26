@@ -43,7 +43,7 @@ test('runs each Rule\'s status across the whole row on a phone', async ({ page }
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('rules');
 
-	const rows = page.locator('main li');
+	const rows = page.locator('main li[id^="rule-"]');
 	const count = await rows.count();
 	expect(count).toBeGreaterThan(0);
 	for (let index = 0; index < count; index++) {
@@ -87,4 +87,37 @@ test('leaves the margin\'s Not This Week list to the other routes', async ({ pag
 
 	await page.goto('./');
 	await expect(page.getByText('Not this week', { exact: true })).toHaveCount(1);
+});
+
+// Reflow means more than no sideways scroll: at 195px nothing inside a Rule's
+// row may run past the row's own ruled edge.
+test('keeps every line inside its row at 200% zoom', async ({ page }) => {
+	await page.setViewportSize({ width: 195, height: 422 });
+	await page.goto('rules');
+
+	const overruns = await page.evaluate(() => [...document.querySelectorAll('main li[id^="rule-"]')].flatMap((row) => {
+		const edge = row.getBoundingClientRect().right;
+		const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+		const out: string[] = [];
+		for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+			const range = document.createRange();
+			range.selectNodeContents(node);
+			const parent = node.parentElement;
+			if (parent === null || parent.closest('.sr-only') !== null) {
+				continue;
+			}
+			for (const rect of range.getClientRects()) {
+				if (rect.right > edge + 0.5) {
+					out.push(`${node.textContent?.trim()} ends ${Math.round(rect.right - edge)}px past its row`);
+				}
+			}
+		}
+		for (const icon of row.querySelectorAll('svg')) {
+			if (icon.getBoundingClientRect().right > edge + 0.5) {
+				out.push('an icon ends past its row');
+			}
+		}
+		return out;
+	}));
+	expect(overruns).toEqual([]);
 });

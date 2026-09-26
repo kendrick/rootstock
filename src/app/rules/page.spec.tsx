@@ -151,8 +151,10 @@ describe('rules page', () => {
 		]);
 		// rain-expected deferred the fig watering; water-in-after-application
 		// annotated the pre-emergent Task. Neither owns a Task itself.
-		expect(screen.getByText('Holding work this week')).toBeDefined();
-		expect(screen.getByText('Marking work this week')).toBeDefined();
+		// Each names the Task it touched, by the Planner's title.
+		const guards = screen.getByRole('region', { name: 'Guards' });
+		expect(within(guards).getByText('Deep water the fig')).toBeDefined();
+		expect(within(guards).getByText('Apply fall pre-emergent to the front lawn')).toBeDefined();
 	});
 
 	// `output: 'export'` prerenders this route in Node at build time. A timestamp
