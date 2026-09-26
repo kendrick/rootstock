@@ -121,3 +121,21 @@ test('keeps every line inside its row at 200% zoom', async ({ page }) => {
 	}));
 	expect(overruns).toEqual([]);
 });
+
+// The head holds the wordmark and the ticket number side by side until they
+// don't fit, then stacks. At 195px, 390 at 200% zoom, they drew over each other.
+for (const width of [195, 299, 300, 390]) {
+	test(`keeps the wordmark and ticket number apart at ${width}px`, async ({ page }) => {
+		await page.setViewportSize({ width, height: 600 });
+		await page.goto('rules');
+
+		const [mark, number] = await page.evaluate(() => [...document.querySelectorAll('header > *')].slice(0, 2).map((cell) => {
+			const range = document.createRange();
+			range.selectNodeContents(cell);
+			const box = range.getBoundingClientRect();
+			return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+		}));
+		const overlaps = mark!.left < number!.right && number!.left < mark!.right && mark!.top < number!.bottom && number!.top < mark!.bottom;
+		expect(overlaps).toBe(false);
+	});
+}
