@@ -1,6 +1,11 @@
+import type { GuardVerdict } from '@/planner/guard-conditions';
 import type { DailyAggregate, Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
+import type { Plant } from '@/yard/plant';
 import { MONTHS } from '@/planner/dates';
+import { guardTargets } from '@/planner/guard-targets';
+import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
+import { seedPlants, seedRules } from '@/seed';
 
 /**
  * Which band a Rule sits in on the Rules route, ordered the way a reader asks
@@ -22,8 +27,8 @@ export interface RuleStanding {
 	inCurrentPlan: boolean;
 	/** What the Rule is waiting on, stated as fact and never as a forecast. */
 	waitingOn: string;
-	/** For a Guard, the titles of the Tasks it holds or marks on this Plan. Empty for every other Rule. */
-	touched: string[];
+	/** For a Guard, each Task it reached on this Plan and what its condition concluded there. Empty for every other Rule. */
+	checks: GuardCheck[];
 	/** Days until a Window Rule opens. Sorts the waiting band; null where no honest number exists. */
 	daysAway: number | null;
 }
@@ -127,6 +132,57 @@ function firedLine(rule: Exclude<Rule, { kind: 'guard' }>): string {
 		: 'Fired on the latest reading';
 }
 
+/** One Task a Guard reached, and its verdict there. */
+export interface GuardCheck {
+	title: string;
+	verdict: GuardVerdict;
+}
+
+/** Deferred or annotated first, then work the Guard couldn't check, then work it let through. */
+export const CHECK_ORDER: readonly GuardVerdict[] = ['met', 'unavailable', 'unmet'];
+
+/**
+ * The label over a Guard's Tasks for one verdict. `met` takes the Guard's own
+ * effect, in the Effect row's verbs; CONTEXT.md keeps "hold" off a Deferral.
+ */
+export function checkLabel(rule: Extract<Rule, { kind: 'guard' }>, verdict: GuardVerdict): string {
+	if (verdict === 'met') {
+		return rule.effect === 'defer' ? 'Deferring:' : 'Annotating:';
+	}
+
+	return verdict === 'unavailable' ? 'Let through unchecked:' : 'Let through:';
+}
+
+/**
+ * What a Guard concluded on each Task it reached, read back off the Plan.
+ *
+ * `applyGuards` leaves each verdict on the Task in a form this can read: a
+ * Deferral or the Guard's own Annotation for `met`, the unavailable Annotation
+ * for `unavailable`, and nothing at all for `unmet`. Nothing is the one that
+ * needs the reach, because a Task the Guard never reached carries nothing
+ * either. `guardTargets` is the Planner's own answer to which Tasks it reached,
+ * so this asks it rather than keeping a second copy of the rule.
+ */
+function guardChecks(rule: Extract<Rule, { kind: 'guard' }>, plan: Plan, rules: Rule[], plants: Plant[]): GuardCheck[] {
+	// Every Task carrying this Guard's Deferral or Annotation counts too, reach
+	// or no reach. A Deferral on the Plan never drops off the page because a
+	// second reading of the reach disagreed with the first.
+	const reached = new Set(guardTargets(rule, plan.tasks, rules, plants));
+	const touched = plan.tasks.filter(task => reached.has(task)
+		|| task.deferrals.some(deferral => deferral.guardId === rule.id)
+		|| task.annotations.some(annotation => annotation.guardId === rule.id));
+
+	return touched.map((task) => {
+		const annotation = task.annotations.find(candidate => candidate.guardId === rule.id);
+		const deferred = task.deferrals.some(deferral => deferral.guardId === rule.id);
+		const verdict: GuardVerdict = deferred || (annotation !== undefined && annotation.text !== FORECAST_UNAVAILABLE_TEXT)
+			? 'met'
+			: annotation === undefined ? 'unmet' : 'unavailable';
+
+		return { title: task.title, verdict };
+	});
+}
+
 function listOf(items: string[]): string {
 	return items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
@@ -137,7 +193,7 @@ function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
 	return min === max ? `${min} days` : `${min}–${max} days`;
 }
 
-export function standingFor(rule: Rule, plan: Plan): RuleStanding {
+export function standingFor(rule: Rule, plan: Plan, rules: Rule[] = seedRules, plants: Plant[] = seedPlants): RuleStanding {
 	const tasks = plan.tasks.filter(task => task.ruleId === rule.id);
 	const fired = tasks.some(task => task.status === 'fired' || task.status === 'deferred');
 	const approaching = tasks.some(task => task.status === 'approaching');
@@ -147,38 +203,37 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		// and cannot be ranked beside Rules that do. It gets its own band, and what
 		// it reports instead is whether it reached a Task on this Plan: a Guard that
 		// deferred or annotated something acted, even though it authored nothing.
-		const touched = plan.tasks.filter(task =>
-			task.deferrals.some(deferral => deferral.guardId === rule.id)
-			|| task.annotations.some(annotation => annotation.guardId === rule.id));
-
-		// ADR 0002's two effects get two verbs. An annotating Guard holds nothing
-		// back, and saying it does would be the page inventing a Deferral. The
-		// Tasks go by the Planner's own titles, so a reader can find each one on
-		// This Week.
-		const verb = rule.effect === 'defer' ? 'Holding' : 'Marking';
+		const checks = guardChecks(rule, plan, rules, plants);
+		const done = checks.filter(check => check.verdict === 'met').map(check => check.title);
 
 		return {
 			rule,
 			band: 'guard',
-			inCurrentPlan: touched.length > 0,
-			waitingOn: touched.length === 0 ? `${verb} nothing this week` : `${verb} ${listOf(touched.map(task => task.title))}`,
-			touched: touched.map(task => task.title),
+			inCurrentPlan: done.length > 0,
+			waitingOn: checks.length === 0
+				? 'Reaches no Task this week'
+				: CHECK_ORDER
+						.map(verdict => [verdict, checks.filter(check => check.verdict === verdict).map(check => check.title)] as const)
+						.filter(([, titles]) => titles.length > 0)
+						.map(([verdict, titles]) => `${checkLabel(rule, verdict)} ${listOf(titles)}`)
+						.join('; '),
+			checks,
 			daysAway: null,
 		};
 	}
 
 	if (fired) {
-		return { rule, band: 'fired', inCurrentPlan: true, waitingOn: firedLine(rule), touched: [], daysAway: 0 };
+		return { rule, band: 'fired', inCurrentPlan: true, waitingOn: firedLine(rule), checks: [], daysAway: 0 };
 	}
 
 	if (approaching) {
-		return { rule, band: 'approaching', inCurrentPlan: true, waitingOn: 'Forecast to be satisfied', touched: [], daysAway: 0 };
+		return { rule, band: 'approaching', inCurrentPlan: true, waitingOn: 'Forecast to be satisfied', checks: [], daysAway: 0 };
 	}
 
 	if (rule.kind === 'window') {
 		const { waitingOn, daysAway } = windowStanding(rule, plan.asOf);
 
-		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn, touched: [], daysAway };
+		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn, checks: [], daysAway };
 	}
 
 	// Out of season a Rule can't fire whatever it reads, so its opening day is
@@ -186,7 +241,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 	// missed firing to anyone checking the Planner's work.
 	const away = rule.season === null ? 0 : daysUntilOpen(plan.asOf, rule.season.start, rule.season.end);
 	if (rule.season !== null && away > 0) {
-		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn: `Opens ${formatMonthDay(rule.season.start)}`, touched: [], daysAway: away };
+		return { rule, band: 'waiting', inCurrentPlan: false, waitingOn: `Opens ${formatMonthDay(rule.season.start)}`, checks: [], daysAway: away };
 	}
 
 	if (rule.kind === 'threshold') {
@@ -209,7 +264,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 				// this page was not given rather than against nothing at all.
 				? `No reading in the Artifact's window; needs ${wants}`
 				: `Last read ${formatReading(observed.value, rule.unit)}; needs ${wants}`,
-			touched: [],
+			checks: [],
 			daysAway: null,
 		};
 	}
@@ -222,7 +277,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		band: 'waiting',
 		inCurrentPlan: false,
 		waitingOn: `Every ${intervalText(rule)}; not due this week`,
-		touched: [],
+		checks: [],
 		daysAway: null,
 	};
 }
@@ -231,7 +286,7 @@ const BAND_ORDER: Record<Band, number> = { fired: 0, approaching: 1, waiting: 2,
 
 export function rankRules(rules: Rule[], plan: Plan): RuleStanding[] {
 	return rules
-		.map(rule => standingFor(rule, plan))
+		.map(rule => standingFor(rule, plan, rules))
 		.sort((left, right) => {
 			if (BAND_ORDER[left.band] !== BAND_ORDER[right.band]) {
 				return BAND_ORDER[left.band] - BAND_ORDER[right.band];

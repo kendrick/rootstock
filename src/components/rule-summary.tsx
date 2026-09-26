@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { GuardCondition, Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
 import { ExternalLink } from 'lucide-react';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
@@ -7,7 +7,7 @@ import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { MONTHS } from '@/planner/dates';
 import { isDelegable } from '@/planner/delegation';
-import { seedTagPolicy } from '@/seed';
+import { seedPlants, seedTagPolicy } from '@/seed';
 
 const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
 	gte: 'at or above',
@@ -148,6 +148,30 @@ const GUARD_EFFECT_TEXT: Record<Extract<Rule, { kind: 'guard' }>['effect'], stri
 };
 
 /** The Rule a follow-up is measured from, resolved by the caller. */
+function conditionText(condition: GuardCondition): string {
+	switch (condition.kind) {
+		case 'always':
+			return 'Always';
+		case 'no-rain-within':
+			return `A day in the next ${condition.days === 1 ? 'day' : `${condition.days} days`} carries a ${condition.probabilityAtLeast}% or greater chance of rain`;
+		case 'within-window':
+			return `${condition.negate ? 'Outside ' : ''}${formatMonthDay(condition.start)} through ${formatMonthDay(condition.end)}`;
+	}
+}
+
+function reachText(appliesTo: Rule['appliesTo']): string {
+	const plants = appliesTo.plantIds === null
+		? null
+		: appliesTo.plantIds.map(id => seedPlants.find(plant => plant.id === id)?.name ?? id).join(', ');
+	const parts = [
+		appliesTo.ruleTags === null ? 'Work' : `Work tagged ${appliesTo.ruleTags.join(' or ')}`,
+		plants === null ? null : `for ${plants}`,
+		appliesTo.plantTags === null ? null : `on Plants tagged ${appliesTo.plantTags.join(' or ')}`,
+	];
+
+	return parts.filter(part => part !== null).join(' ');
+}
+
 export interface AfterLink {
 	name: string;
 	href: string;
@@ -170,6 +194,8 @@ export interface RuleSummaryProps {
 	hideRegion?: boolean;
 	/** Prints the Rule's kind in words among its marks. The Rules route passes it. */
 	showKind?: boolean;
+	/** Set under the name, ahead of the record. The Rules route puts the Rule's standing here. */
+	status?: ReactNode;
 	/**
 	 * The named Rule a chained Cadence Rule is measured from. Omitted and the
 	 * "Measured from" row prints the raw id.
@@ -208,6 +234,7 @@ export function RuleSummary({
 	hideRegion = false,
 	after = null,
 	showKind = false,
+	status = null,
 	asHeading = false,
 }: RuleSummaryProps): ReactElement {
 	const NameTag = asHeading ? 'h3' : 'span';
@@ -244,6 +271,8 @@ export function RuleSummary({
 				<SourceBadge source={rule.source} />
 			</div>
 
+			{status}
+
 			<dl className="space-y-1">
 				{!hideRegion && (
 					<Row term="Region">
@@ -254,7 +283,16 @@ export function RuleSummary({
 				{rule.kind === 'window' && <WindowRows rule={rule} />}
 				{rule.kind === 'threshold' && <ThresholdRows rule={rule} />}
 				{rule.kind === 'cadence' && <CadenceRows rule={rule} after={after} />}
-				{rule.kind === 'guard' && <Row term="Effect">{GUARD_EFFECT_TEXT[rule.effect]}</Row>}
+				{rule.kind === 'guard' && (
+					<>
+						<Row term="Effect">{GUARD_EFFECT_TEXT[rule.effect]}</Row>
+						{/* What the Guard looks at and which work it looks at. Without these a
+						    reader can't tell a Guard that checked and let work through from
+						    one that never reached any. */}
+						<Row term="Applies when">{conditionText(rule.condition)}</Row>
+						<Row term="Reaches">{reachText(rule.appliesTo)}</Row>
+					</>
+				)}
 
 				{/*
 				 * Reached through `productLabel` and never through the chemical tag.

@@ -4,7 +4,7 @@ import type { AfterLink } from '@/components/rule-summary';
 import type { Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
 import { RuleSummary } from '@/components/rule-summary';
-import { rankRules } from './waiting';
+import { CHECK_ORDER, checkLabel, rankRules } from './waiting';
 
 export interface RuleListProps {
 	rules: Rule[];
@@ -22,7 +22,7 @@ const BANDS: readonly { band: Band; label: string; note: string }[] = [
 	{ band: 'fired', label: 'Fired this week', note: 'These produced work on the current Plan.' },
 	{ band: 'approaching', label: 'Approaching', note: 'The Planner expects these to be satisfied. A forecast can be revised, so nothing here has fired.' },
 	{ band: 'waiting', label: 'Waiting', note: 'Out of season, waiting on a reading, or not yet due. Every one of them is still in the rule set.' },
-	{ band: 'guard', label: 'Guards', note: 'These create no work. They hold other work back and say what would release it.' },
+	{ band: 'guard', label: 'Guards', note: 'These create no work. Each one can defer or annotate work another Rule asked for, and names every Task it reached this week.' },
 ];
 
 /** The in-page id a Rule's row carries, so "Measured from" can link to it. */
@@ -45,48 +45,53 @@ function lowerFirst(text: string): string {
 }
 
 function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink | null }): ReactElement {
-	const { rule, waitingOn, touched } = standing;
+	const { rule, waitingOn, checks } = standing;
+
+	// The status is the one line the band changes, so it sits straight under the
+	// name, ahead of the record, where a reader scanning the page lands on it
+	// first. It's a reading, so it prints in ink; DESIGN.md keeps stamp red for
+	// recorded work.
+	const status = (
+		<div data-rule-status className="space-y-1 border-y border-rule-faint py-2 font-mono text-evidence text-foreground">
+			{rule.kind !== 'guard' || checks.length === 0
+				? (
+						<p className="text-pretty">
+							<span className="sr-only">Status: </span>
+							{waitingOn}
+						</p>
+					)
+				: CHECK_ORDER.map((verdict) => {
+						const titles = checks.filter(check => check.verdict === verdict).map(check => check.title);
+						// Each Task title on a line of its own, so a long one wraps at a
+						// space; run on after the label, it breaks at the hyphen in
+						// "pre-emergent".
+						return titles.length === 0
+							? null
+							: (
+									<div key={verdict}>
+										<p>
+											<span className="sr-only">Status: </span>
+											{checkLabel(rule, verdict)}
+										</p>
+										<ul>
+											{titles.map(title => <li key={title}>{title}</li>)}
+										</ul>
+									</div>
+								);
+					})}
+			{rule.kind === 'guard' && rule.effect === 'defer' && standing.inCurrentPlan && (
+				<p className="font-sans text-note text-pretty text-muted">{`Released ${lowerFirst(rule.release)}`}</p>
+			)}
+		</div>
+	);
 
 	return (
-		<li id={ruleAnchor(rule.id)} className="grid scroll-mt-4 border-t-2 border-rule first:border-t-0 lg:grid-cols-[minmax(0,1fr)_15rem]">
-
+		<li id={ruleAnchor(rule.id)} className="scroll-mt-4 border-t-2 border-rule px-3 py-3 first:border-t-0">
 			{/* RuleSummary carries the whole record: the window or the condition, the
 			    published range, the product label, the source and the delegability. The
 			    bands decide the order of the page and change nothing about what a Rule
 			    is allowed to say about itself. */}
-			<div className="min-w-0 px-3 py-3">
-				<RuleSummary rule={rule} hideRegion asHeading showKind after={after} />
-			</div>
-
-			{/* Below lg the status sits under the record, divided by a faint rule so
-			    the row's heavy outline still holds both. It's a reading, so it prints
-			    in ink; DESIGN.md keeps stamp red for recorded work. */}
-			<div className="space-y-1 border-t border-rule-faint px-3 py-3 text-foreground lg:border-t-0 lg:border-l-2 lg:border-rule">
-				{touched.length === 0
-					? (
-							<p className="font-mono text-evidence text-pretty">
-								<span className="sr-only">Status: </span>
-								{waitingOn}
-							</p>
-						)
-					: (
-							// A Task's title on a line of its own, so a long one wraps at a
-							// space; run on after the verb, it breaks at the hyphen in
-							// "pre-emergent".
-							<div className="font-mono text-evidence">
-								<p>
-									<span className="sr-only">Status: </span>
-									{`${rule.kind === 'guard' && rule.effect === 'defer' ? 'Holding' : 'Marking'}:`}
-								</p>
-								<ul>
-									{touched.map(title => <li key={title}>{title}</li>)}
-								</ul>
-							</div>
-						)}
-				{rule.kind === 'guard' && rule.effect === 'defer' && standing.inCurrentPlan && (
-					<p className="text-note text-pretty text-muted">{`Released ${lowerFirst(rule.release)}`}</p>
-				)}
-			</div>
+			<RuleSummary rule={rule} hideRegion asHeading showKind after={after} status={status} />
 		</li>
 	);
 }

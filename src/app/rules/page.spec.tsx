@@ -149,12 +149,17 @@ describe('rules page', () => {
 			'Fall pre-emergent, window rule',
 			'Last nitrogen of the year, window rule',
 		]);
-		// rain-expected deferred the fig watering; water-in-after-application
-		// annotated the pre-emergent Task. Neither owns a Task itself.
-		// Each names the Task it touched, by the Planner's title.
-		const guards = screen.getByRole('region', { name: 'Guards' });
-		expect(within(guards).getByText('Deep water the fig')).toBeDefined();
-		expect(within(guards).getByText('Apply fall pre-emergent to the front lawn')).toBeDefined();
+		// rain-expected deferred the fig watering and let the chemical work it
+		// reached through; water-in-after-application annotated the pre-emergent
+		// Task. Neither owns a Task itself. Each names its Tasks by the Planner's
+		// title, under the verdict it reached on each.
+		const statusOf = (name: string): string => screen.getByRole('heading', { level: 3, name: new RegExp(`^${name},`, 'u') })
+			.closest('li')
+			?.querySelector('[data-rule-status]')
+			?.textContent ?? '';
+		expect(statusOf('Rain expected')).toContain('Deferring:Deep water the fig');
+		expect(statusOf('Rain expected')).toContain('Let through:Apply fall pre-emergent to the front lawn');
+		expect(statusOf('Water in after application')).toContain('Annotating:Apply fall pre-emergent to the front lawn');
 	});
 
 	// `output: 'export'` prerenders this route in Node at build time. A timestamp

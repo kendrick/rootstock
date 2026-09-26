@@ -2,6 +2,7 @@ import type { DailyAggregate, Plan } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import { describe, expect, it } from 'vitest';
+import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
 import { taskId } from '@/planner/task';
 import { seedRules } from '@/seed';
 import { standingFor } from './waiting';
@@ -101,29 +102,50 @@ describe('standingFor, waiting', () => {
 	});
 });
 
-// ADR 0002 gives a Guard two effects. The line follows the effect, because an
-// annotating Guard holds nothing back and saying it does is a false claim.
+// ADR 0002 gives a Guard two effects, and CONTEXT.md's GuardVerdict three
+// outcomes. The status names each Task the Guard reached and which outcome it
+// had there, because "nothing held" looks the same whether the Guard checked a
+// Task and found it clear or never reached one.
 describe('standingFor, guards', () => {
 	const deferringGuard = seedRule('rain-expected');
 	const annotatingGuard = seedRule('water-in-after-application');
+	// Both seed Guards reach work tagged chemical, which Fall pre-emergent is.
+	const lawn = (overrides: Partial<Task> = {}): Task => firedTask('fall-pre-emergent', { title: 'Fall pre-emergent (Front lawn)', tags: ['chemical'], ...overrides });
 
-	it('says a deferring Guard is holding nothing when no Task names it', () => {
-		expect(standingFor(deferringGuard, plan('2026-09-26')).waitingOn).toBe('Holding nothing this week');
+	it('says a Guard reached nothing when no Task is in its reach', () => {
+		const standing = standingFor(deferringGuard, plan('2026-09-26', [firedTask('esperanza-feeding', { title: 'Feed the Esperanza' })]));
+
+		expect(standing.waitingOn).toBe('Reaches no Task this week');
+		expect(standing.checks).toEqual([]);
 	});
 
-	// A reader checking the Guard's claim needs the Task it touched, by the
-	// title the Planner gave it.
-	it('names the Task a deferring Guard is holding', () => {
-		const held = firedTask('fall-pre-emergent', { status: 'deferred', title: 'Fall pre-emergent (Front lawn)', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
+	it('says a Guard let a reached Task through when its condition came back unmet', () => {
+		const standing = standingFor(deferringGuard, plan('2026-09-26', [lawn()]));
 
-		expect(standingFor(deferringGuard, plan('2026-09-26', [held])).waitingOn).toBe('Holding Fall pre-emergent (Front lawn)');
+		expect(standing.waitingOn).toBe('Let through: Fall pre-emergent (Front lawn)');
+		expect(standing.inCurrentPlan).toBe(false);
 	});
 
-	it('names every Task an annotating Guard is marking, never holding', () => {
-		const lawn = firedTask('fall-pre-emergent', { title: 'Fall pre-emergent (Front lawn)', annotations: [{ guardId: annotatingGuard.id, text: 'Water it in' }] });
-		const fig = firedTask('last-nitrogen', { title: 'Last nitrogen (Fig)', annotations: [{ guardId: annotatingGuard.id, text: 'Water it in' }] });
+	it('names the Task a deferring Guard is deferring', () => {
+		const held = lawn({ status: 'deferred', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
 
-		expect(standingFor(annotatingGuard, plan('2026-09-26', [lawn, fig])).waitingOn).toBe('Marking Fall pre-emergent (Front lawn) and Last nitrogen (Fig)');
-		expect(standingFor(annotatingGuard, plan('2026-09-26')).waitingOn).toBe('Marking nothing this week');
+		expect(standingFor(deferringGuard, plan('2026-09-26', [held])).waitingOn).toBe('Deferring: Fall pre-emergent (Front lawn)');
+	});
+
+	// `unavailable` isn't a clear sky: the Planner couldn't look.
+	it('says a Guard let work through unchecked when its evidence was unavailable', () => {
+		const unchecked = lawn({ annotations: [{ guardId: deferringGuard.id, text: FORECAST_UNAVAILABLE_TEXT }] });
+
+		expect(standingFor(deferringGuard, plan('2026-09-26', [unchecked])).waitingOn).toBe('Let through unchecked: Fall pre-emergent (Front lawn)');
+	});
+
+	it('names every Task an annotating Guard is annotating', () => {
+		const note = { guardId: annotatingGuard.id, text: 'Water it in' };
+		const standing = standingFor(annotatingGuard, plan('2026-09-26', [
+			lawn({ annotations: [note] }),
+			firedTask('last-nitrogen', { title: 'Last nitrogen (Front lawn)', tags: ['chemical'], annotations: [note] }),
+		]));
+
+		expect(standing.waitingOn).toBe('Annotating: Fall pre-emergent (Front lawn) and Last nitrogen (Front lawn)');
 	});
 });

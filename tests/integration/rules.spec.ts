@@ -37,21 +37,26 @@ test('names each Rule heading with its kind, with no stray space', async ({ page
 	await expect(page.getByRole('heading', { level: 3, name: 'Fall pre-emergent, window rule', exact: true })).toBeVisible();
 });
 
-// #84: below lg the 40px kind column stacks the status a word per line, so the
-// status spans the row instead.
-test('runs each Rule\'s status across the whole row on a phone', async ({ page }) => {
-	await page.setViewportSize({ width: 390, height: 844 });
-	await page.goto('rules');
+// The status is the one line the band changes, so it sits under the name and
+// ahead of the record at every width.
+for (const width of [390, 1440]) {
+	test(`puts each Rule's status under its name at ${width}px`, async ({ page }) => {
+		await page.setViewportSize({ width, height: 900 });
+		await page.goto('rules');
 
-	const rows = page.locator('main li[id^="rule-"]');
-	const count = await rows.count();
-	expect(count).toBeGreaterThan(0);
-	for (let index = 0; index < count; index++) {
-		const row = await rows.nth(index).boundingBox();
-		const status = await rows.nth(index).locator('> div:last-child').boundingBox();
-		expect(status?.width).toBeCloseTo(row?.width ?? 0, 0);
-	}
-});
+		const rows = page.locator('main li[id^="rule-"]');
+		const count = await rows.count();
+		expect(count).toBeGreaterThan(0);
+		for (let index = 0; index < count; index++) {
+			const row = rows.nth(index);
+			const name = await row.locator('h3').boundingBox();
+			const status = await row.locator('[data-rule-status]').boundingBox();
+			const record = await row.locator('dl').boundingBox();
+			expect(status!.y).toBeGreaterThanOrEqual(name!.y + name!.height - 1);
+			expect(status!.y + status!.height).toBeLessThanOrEqual(record!.y + 1);
+		}
+	});
+}
 
 // WCAG 1.4.10: 390 CSS px at 200% zoom is a 195px viewport. An unrounded
 // reading in a Threshold status once scrolled it sideways by 18px (#84).

@@ -333,6 +333,24 @@ describe('ruleSummary', () => {
 		expect(screen.queryByText('spring-pre-emergent')).toBeNull();
 	});
 
+	// A Guard says what it looks at and which work it looks at, so "let
+	// through" can be checked against something.
+	it('gives a Guard its condition and its reach in words', () => {
+		render(<RuleSummary rule={seedRule('rain-expected')} />);
+
+		expect(screen.getByText('Applies when').nextElementSibling?.textContent).toBe('A day in the next 2 days carries a 50% or greater chance of rain');
+		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical');
+	});
+
+	it('puts a status it is handed under the name, ahead of the record', () => {
+		const { container } = render(<RuleSummary rule={seedRule('fall-pre-emergent')} status={<p data-testid="status">Window closes September 30</p>} />);
+
+		const status = screen.getByTestId('status');
+		const record = container.querySelector('dl');
+		expect(record).not.toBeNull();
+		expect(status.compareDocumentPosition(record!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
 	// #64: the Rules route needs a heading landmark per Rule. asHeading swaps
 	// the name's own element rather than adding a second one beside it, so the
 	// visible name and the heading are the same node.
