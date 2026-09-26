@@ -21,11 +21,12 @@ import { KIND_TEXT } from './kind-text';
  * keyboard would put it back a second time, and everything it says is already in
  * the row the number points at.
  */
-export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect, dimmed = false }: {
+export function PlantPin({ plant, position: positionOverride, ordinal, hovered, onHoverChange, onSelect, onTicket = false }: {
 	plant: Plant;
 	/**
-	 * Where to draw the pin, if it differs from `plant.position`. `pin-layout.ts`
-	 * uses this to spread a crowded cluster apart for rendering without touching
+	 * Where to draw the pin, as a fraction of the plate, when that differs from
+	 * `plant.position`. `yard-photo.tsx` passes pin-layout's placement, which
+	 * can move a crowded callout into a band outside the photo, without touching
 	 * the Plant record, so onSelect still hands its caller the Plant exactly as
 	 * the inventory carries it.
 	 */
@@ -34,8 +35,8 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 	ordinal: number;
 	/** True while this Plant is under the pointer here or on its row below. */
 	hovered: boolean;
-	/** Quieted in the week view when this week's ticket has nothing for this Plant. */
-	dimmed?: boolean;
+	/** Printed in reverse in the week view, because this week's ticket names this Plant. */
+	onTicket?: boolean;
 	onHoverChange: (plantId: string | null) => void;
 	onSelect: (plant: Plant, trigger: HTMLElement) => void;
 }): ReactElement | null {
@@ -85,22 +86,22 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 						'before:absolute before:-inset-2.5 before:rounded-full before:content-[\'\']',
 						'border-2 font-display text-callout leading-none font-extrabold tabular-nums',
 						'transition-transform',
-						// Fill for what is in the ground, an outline for what is not. Shape
-						// rather than colour, because this is read on a phone in daylight
-						// over a photograph whose own colours cannot be relied on.
-						// Plate colours, not the theme's. The photograph does not invert in
-						// dark mode, so a callout on the dark ground would be a near-black
-						// outline on grass and roof.
-						planned
-							? 'border-plate-paper bg-transparent text-plate-paper'
-							: 'border-plate-paper bg-plate-paper text-plate-ink',
+						// Every callout is a paper chip with an ink numeral, 16:1 whatever
+						// the photograph does underneath. A solid border for what is in the
+						// ground, dashed for what is only planned. Line style carries it
+						// rather than colour, because this is read on a phone in daylight.
+						// Plate colours, not the theme's, because the photograph doesn't
+						// invert in dark mode.
+						planned ? 'border-dashed' : 'border-solid',
+						// Printed in reverse when the week's ticket names the Plant, the
+						// same mark a pressed cell takes, so the week's work stands out
+						// without the rest fading. Its border is paper, so a reversed chip
+						// in the band still has an edge on the dark scheme's ground.
+						onTicket ? 'border-plate-paper bg-plate-ink text-plate-paper' : 'border-plate-ink bg-plate-paper text-plate-ink',
 						// The hovered callout grows rather than changing colour. It sits on
 						// a photograph, so any colour it took would compete with whatever
 						// pixel happens to be beneath it; scale reads on every ground.
 						hovered && 'scale-150',
-						// The callout is aria-hidden and its row carries the same fact in
-						// words, so opacity here makes no contrast claim anybody reads.
-						dimmed && !hovered && 'opacity-40',
 					)}
 				>
 					{ordinal}
@@ -109,7 +110,7 @@ export function PlantPin({ plant, position: positionOverride, ordinal, hovered, 
 
 			<TooltipContent side="top">
 				<p className="font-display text-body font-extrabold tracking-wide uppercase">{plant.name}</p>
-				<p className="font-mono text-evidence text-muted">
+				<p className="text-note text-muted">
 					{plant.site === null ? KIND_TEXT[plant.kind] : `${KIND_TEXT[plant.kind]} · ${plant.site}`}
 				</p>
 				{planned && (

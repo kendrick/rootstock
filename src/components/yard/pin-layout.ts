@@ -24,80 +24,125 @@ const PIN_SIZE_PX = 24;
  */
 export const MIN_CENTER_DISTANCE_PX = 28;
 
-const RELAXATION_PASSES = 30;
+/**
+ * How deep the callout bands above and below the photo run, as a fraction of
+ * the photo's height: about 29px at the phone reference width, enough for a
+ * 24px callout. A fraction rather than pixels, so the plate keeps one aspect
+ * ratio and every position stays a percentage.
+ */
+export const BAND_FRACTION = 0.14;
+
+/**
+ * Where a callout draws, as fractions of the photo. `y` below 0 or above 1 is
+ * the band above or below it. `anchor` is the Plant's true spot when the
+ * callout had to leave it, for the leader line to run back to.
+ */
+export interface Placement extends Position {
+	anchor: Position | null;
+}
 
 interface Point {
 	id: string;
+	/** The owner's fraction, returned as the anchor exactly as given. */
+	home: Position;
+	/** The owner's own spot, in px at the reference width. */
+	trueX: number;
+	trueY: number;
 	x: number;
 	y: number;
+	band: 'top' | 'bottom' | null;
 }
 
 /**
- * Nudges sited Plants' rendered positions apart when the seed's real-world
- * fractions place two pins closer than they can be told apart on a phone.
- * `Plant.position` itself never changes here: this returns a parallel map
- * the photo renders from, so the fraction a future photo swap re-sites from
- * stays the owner's own measurement rather than this layout's guess.
+ * Where each sited Plant's callout draws. `Plant.position` never changes here:
+ * this is a rendering answer, so the fraction a future photo swap re-sites
+ * from stays the owner's own measurement.
  *
- * Pairwise relaxation rather than a fixed grid: the seed sites six pins and
- * only four of them ever cluster, so most pins should end up exactly where
- * the owner put them, moved only enough to stop failing their own hit-test.
+ * A callout stays on its Plant unless another sits within
+ * MIN_CENTER_DISTANCE_PX of it. A crowded callout moves out of the photo into
+ * a band on the side its Plant is nearer, spaced along the band, with a
+ * leader back to the true spot, the way a parts plate handles a crowd. Nudging
+ * crowded pins apart inside the photo would put the patio's callouts on the
+ * roof, naming a spot that isn't the Plant's.
  */
-export function declutteredPositions(plants: Plant[], boxAspect: number): Map<string, Position> {
+export function declutteredPositions(plants: Plant[], boxAspect: number): Map<string, Placement> {
 	const boxWidth = MOBILE_BOX_WIDTH_PX;
 	const boxHeight = boxWidth * boxAspect;
+	const half = PIN_SIZE_PX / 2;
+	const bandCentre = { top: -(BAND_FRACTION / 2) * boxHeight, bottom: (1 + BAND_FRACTION / 2) * boxHeight };
 
 	const points: Point[] = plants
 		.filter((plant): plant is Plant & { position: Position } => plant.position !== null)
-		.map(plant => ({
-			id: plant.id,
-			x: plant.position.x * boxWidth,
-			y: plant.position.y * boxHeight,
-		}));
+		.map((plant) => {
+			const trueX = plant.position.x * boxWidth;
+			const trueY = plant.position.y * boxHeight;
+			// Held half a pin in from every edge. The photo clips nothing now,
+			// but a callout hanging off its frame reads as off the plate.
+			return {
+				id: plant.id,
+				home: plant.position,
+				trueX,
+				trueY,
+				x: clampBetween(trueX, half, boxWidth - half),
+				y: clampBetween(trueY, half, boxHeight - half),
+				band: null,
+			};
+		});
 
-	// Held half a pin in from every edge, inside each pass. The photo clips its
-	// overflow, so a pin clamped to 0 shows only part of itself. Clamping once
-	// after the last pass would undo the spacing, pulling two top-edge pins
-	// back within 28px of each other, close enough for one pin's hit area to
-	// cover the other's centre.
-	const half = PIN_SIZE_PX / 2;
-
-	for (let pass = 0; pass < RELAXATION_PASSES; pass++) {
-		for (let i = 0; i < points.length; i++) {
-			for (let j = i + 1; j < points.length; j++) {
-				separate(points[i]!, points[j]!);
+	// Moving a callout into a band can crowd one left near that edge, so this
+	// repeats until nothing is crowded. Each pass moves at least one callout
+	// out for good, so it ends.
+	for (;;) {
+		const crowded = points.filter(point => point.band === null && points.some(other => other !== point && tooClose(point, other)));
+		if (crowded.length === 0) {
+			break;
+		}
+		for (const point of crowded) {
+			point.band = point.trueY < boxHeight / 2 ? 'top' : 'bottom';
+		}
+		for (const band of ['top', 'bottom'] as const) {
+			spread(points.filter(point => point.band === band), boxWidth, half);
+			for (const point of points) {
+				if (point.band === band) {
+					point.y = bandCentre[band];
+				}
 			}
 		}
-		for (const point of points) {
-			point.x = clampBetween(point.x, half, boxWidth - half);
-			point.y = clampBetween(point.y, half, boxHeight - half);
+		if (points.every(point => point.band !== null)) {
+			break;
 		}
 	}
 
 	return new Map(points.map(point => [
 		point.id,
-		{ x: point.x / boxWidth, y: point.y / boxHeight },
+		{
+			x: point.x / boxWidth,
+			y: point.y / boxHeight,
+			anchor: point.band === null ? null : point.home,
+		},
 	]));
 }
 
-function separate(a: Point, b: Point): void {
-	const dx = b.x - a.x;
-	const dy = b.y - a.y;
-	const distance = Math.hypot(dx, dy);
+function tooClose(a: Point, b: Point): boolean {
+	return Math.hypot(a.x - b.x, a.y - b.y) < MIN_CENTER_DISTANCE_PX;
+}
 
-	if (distance >= MIN_CENTER_DISTANCE_PX) {
-		return;
+/**
+ * Callouts in one band, in the order their Plants run across the photo, each
+ * at least MIN_CENTER_DISTANCE_PX from the last and all inside the frame's
+ * width. Each starts over its own Plant, so a leader runs as near to straight
+ * as the crowd allows.
+ */
+function spread(band: Point[], width: number, half: number): void {
+	band.sort((a, b) => a.trueX - b.trueX);
+	band.forEach((point, index) => {
+		const previous = band[index - 1];
+		point.x = Math.max(clampBetween(point.trueX, half, width - half), previous === undefined ? half : previous.x + MIN_CENTER_DISTANCE_PX);
+	});
+	for (let index = band.length - 1; index >= 0; index--) {
+		const next = band[index + 1];
+		band[index]!.x = Math.min(band[index]!.x, next === undefined ? width - half : next.x - MIN_CENTER_DISTANCE_PX);
 	}
-
-	// Two pins sharing the exact same point have no direction to push apart
-	// along, so a fixed nudge along the x axis breaks the tie deterministically.
-	const [ux, uy] = distance === 0 ? [1, 0] : [dx / distance, dy / distance];
-	const overlap = (MIN_CENTER_DISTANCE_PX - distance) / 2;
-
-	a.x -= ux * overlap;
-	a.y -= uy * overlap;
-	b.x += ux * overlap;
-	b.y += uy * overlap;
 }
 
 function clampBetween(value: number, low: number, high: number): number {

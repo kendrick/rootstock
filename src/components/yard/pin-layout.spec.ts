@@ -1,7 +1,7 @@
 import type { Plant } from '@/yard/plant';
 import { describe, expect, it } from 'vitest';
 import { seedPlants, seedYard } from '@/seed';
-import { declutteredPositions, MIN_CENTER_DISTANCE_PX, MOBILE_BOX_WIDTH_PX } from './pin-layout';
+import { BAND_FRACTION, declutteredPositions, MIN_CENTER_DISTANCE_PX, MOBILE_BOX_WIDTH_PX } from './pin-layout';
 
 /** The photo's own aspect ratio (2400 / 1800), which every call below assumes. */
 const BOX_ASPECT = 1800 / 2400;
@@ -72,7 +72,7 @@ describe('declutteredPositions', () => {
 
 		const positions = declutteredPositions(plants, BOX_ASPECT);
 
-		expect(positions.get('lone')).toEqual({ x: 0.5, y: 0.5 });
+		expect(positions.get('lone')).toEqual({ x: 0.5, y: 0.5, anchor: null });
 	});
 
 	it('drops a Plant with no position from the result, rather than inventing one', () => {
@@ -110,7 +110,9 @@ describe('declutteredPositions', () => {
 		}
 	});
 
-	it('keeps every resolved position inside the photo, even after nudging a crowded cluster apart', () => {
+	// A crowded callout leaves the photo for the band on its own side, like a
+	// parts plate's margin callout, so it never lands on another Plant's spot.
+	it('keeps every callout across the photo\'s width and within one band of it', () => {
 		const plants = [
 			sitedPlant('a', 0.01, 0.01),
 			sitedPlant('b', 0.02, 0.01),
@@ -122,9 +124,45 @@ describe('declutteredPositions', () => {
 		for (const position of positions.values()) {
 			expect(position.x).toBeGreaterThanOrEqual(0);
 			expect(position.x).toBeLessThanOrEqual(1);
-			expect(position.y).toBeGreaterThanOrEqual(0);
-			expect(position.y).toBeLessThanOrEqual(1);
+			expect(position.y).toBeGreaterThanOrEqual(-BAND_FRACTION);
+			expect(position.y).toBeLessThanOrEqual(1 + BAND_FRACTION);
 		}
+	});
+
+	it('moves a crowded pair into the band on its own side, each anchored to its true spot', () => {
+		const plants = [
+			sitedPlant('high-a', 0.44, 0.2),
+			sitedPlant('high-b', 0.46, 0.2),
+			sitedPlant('low-a', 0.44, 0.8),
+			sitedPlant('low-b', 0.46, 0.8),
+		];
+
+		const positions = declutteredPositions(plants, BOX_ASPECT);
+
+		for (const id of ['high-a', 'high-b']) {
+			expect(positions.get(id)?.y).toBeCloseTo(-BAND_FRACTION / 2, 5);
+		}
+		for (const id of ['low-a', 'low-b']) {
+			expect(positions.get(id)?.y).toBeCloseTo(1 + BAND_FRACTION / 2, 5);
+		}
+		expect(positions.get('high-a')?.anchor).toEqual({ x: 0.44, y: 0.2 });
+		expect(positions.get('low-b')?.anchor).toEqual({ x: 0.46, y: 0.8 });
+	});
+
+	// The seed's patio: six Plants within about 30px. Every one of them has to
+	// leave the photo, and the lawn, alone on its side, has to stay put.
+	it('takes the seed\'s patio cluster out of the photo and leaves the lawn on its spot', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const positions = declutteredPositions(seedPlants, photo.height / photo.width);
+
+		for (const id of ['esperanza-1', 'hibiscus-watermelon-ruffles', 'hibiscus-starry-night', 'hibiscus-luna-white', 'crossvine-1', 'crossvine-2']) {
+			expect(positions.get(id)?.y).toBeLessThan(0);
+			expect(positions.get(id)?.anchor).not.toBeNull();
+		}
+		expect(positions.get('front-lawn')).toEqual({ x: 0.13, y: 0.52, anchor: null });
 	});
 
 	// The regression this exists for: the seed's own crowded four, read

@@ -90,8 +90,8 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 		window.history.replaceState(null, '', url);
 	}
 
-	const dimmed = useMemo(
-		() => view === 'week' ? new Set(plants.filter(plant => !lines.has(plant.id)).map(plant => plant.id)) : new Set<string>(),
+	const onTicket = useMemo(
+		() => view === 'week' ? new Set(plants.filter(plant => lines.has(plant.id)).map(plant => plant.id)) : new Set<string>(),
 		[view, plants, lines],
 	);
 
@@ -112,7 +112,7 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 		<TooltipProvider delayDuration={120}>
 			<div className="space-y-6">
 				<p className="max-w-prose text-body text-muted">
-					The numbers on the photo match the list below. Filled callouts are planted, outlined ones are planned. Open one for its site, the Rules that reach it, and the work recorded against it.
+					The numbers on the photo match the Plant list. Solid callouts are planted and dashed ones are planned. In the week view, a callout printed in reverse is on this week's ticket. Open a Plant for its work, its Rules, and what has been recorded against it.
 				</p>
 
 				{/* Two ruled cells, not a pill: a pressed cell prints in reverse. */}
@@ -135,26 +135,35 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 					))}
 				</div>
 
-				<YardPhoto
-					yard={yard}
-					plants={plants}
-					ordinals={ordinals}
-					hovered={hovered}
-					dimmed={dimmed}
-					onHoverChange={setHovered}
-					onSelect={handleSelect}
-				/>
-				<PlantList
-					plants={plants}
-					ordinals={ordinals}
-					hovered={hovered}
-					onHoverChange={setHovered}
-					onSelect={handleSelect}
-					lines={lines}
-					ruleNames={ruleNames}
-					standings={standings}
-					view={view}
-				/>
+				{/*
+					Side by side from lg, with the plate held in view while the list
+					scrolls, so a row and the callout it lights are on screen together.
+					Stacked, the list starts below a 900px fold on a desktop.
+				*/}
+				<div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
+					<div className="lg:sticky lg:top-4">
+						<YardPhoto
+							yard={yard}
+							plants={plants}
+							ordinals={ordinals}
+							hovered={hovered}
+							onTicket={onTicket}
+							onHoverChange={setHovered}
+							onSelect={handleSelect}
+						/>
+					</div>
+					<PlantList
+						plants={plants}
+						ordinals={ordinals}
+						hovered={hovered}
+						onHoverChange={setHovered}
+						onSelect={handleSelect}
+						lines={lines}
+						ruleNames={ruleNames}
+						standings={standings}
+						view={view}
+					/>
+				</div>
 				<PlantSheet
 					plant={selected}
 					rules={rules}

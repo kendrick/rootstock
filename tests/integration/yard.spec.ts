@@ -125,8 +125,9 @@ test('no pin fails its own centre hit-test at 390px', async ({ page }) => {
 
 // pin-layout.ts spaces pins against the photo's width on a phone. Measured
 // here, so a change to the sheet's gutters fails by name instead of quietly
-// crowding the pins again. And every pin sits wholly on the photo: the frame
-// clips its overflow, and a pin at the edge once showed 14 of its 24px.
+// crowding the pins again. Every pin sits wholly on the plate, the photo plus
+// the callout bands a crowd moves into, and a pin at the edge once showed 14
+// of its 24px.
 test('lays pins out against the photo width a phone renders, with none clipped', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('yard');
@@ -135,19 +136,18 @@ test('lays pins out against the photo width a phone renders, with none clipped',
 	const frame = await photo.evaluate(node => node.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
 	expect(Math.round(frame.width)).toBe(346);
 
+	const plate = await photo.evaluate(node => node.parentElement?.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
 	const pins = page.locator('button[data-plant]');
 	for (let i = 0; i < await pins.count(); i++) {
 		const box = await pins.nth(i).boundingBox();
 		expect(box).not.toBeNull();
-		expect(box!.y).toBeGreaterThanOrEqual(frame.top - 0.5);
-		expect(box!.x).toBeGreaterThanOrEqual(frame.left - 0.5);
-		expect(box!.x + box!.width).toBeLessThanOrEqual(frame.right + 0.5);
-		expect(box!.y + box!.height).toBeLessThanOrEqual(frame.bottom + 0.5);
+		expect(box!.y).toBeGreaterThanOrEqual(plate.top - 0.5);
+		expect(box!.x).toBeGreaterThanOrEqual(plate.left - 0.5);
+		expect(box!.x + box!.width).toBeLessThanOrEqual(plate.right + 0.5);
+		expect(box!.y + box!.height).toBeLessThanOrEqual(plate.bottom + 0.5);
 	}
 });
 
-// This route has never had committed end-to-end coverage, so nothing here is a
-// regression check: it is the first run that anybody can repeat.
 test('yard route has no accessibility violations', async ({ page }) => {
 	await page.goto('yard');
 	const results = await new AxeBuilder({ page }).analyze();
