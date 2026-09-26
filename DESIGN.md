@@ -122,6 +122,14 @@ One band above the plan, bordered in ink. It explains the evidence line and what
 
 The Rules the yard holds that no evidence lit, kept in the margin. This is the one part of the page that argues ADR 0001 without saying anything: the rule set is fixed, the Planner invents nothing, and evidence alone decides which Rules speak today. Guards are excluded, because a Guard creates no work and so has nothing to be silent about.
 
+### The Rule Register
+
+The Rules page lists every Rule under four bands in the order a reader asks: Fired this week, Approaching, Waiting, Guards. A band with nothing in it isn't drawn. Each Rule is a ruled row with its kind lettered in the first cell, its record in the second, and a status in the third. The kind's full name is in the heading for a screen reader, and a key of the four letters sits under the page head, two by two on a phone.
+
+The status says only what the band doesn't. A fired Rule gives the day its window or season closes. A waiting Rule gives the day it opens, and in season it gives the reading it's waiting on in the Rule's own terms: a directed Rule needs a Crossing, so the line says "needs a rise through 55°F". Readings round to one decimal. A Guard says whether it's holding or marking work this week, following its effect, and a deferring Guard adds what releases it. Below `lg` the status runs across the row as a strip of its own, because the 40px kind column can't hold it.
+
+Nothing on this page is stamp red. It records nothing, so the fired band and its status lines print in ink. The page doesn't repeat the Region either, since the ticket head already carries it.
+
 ## Motion
 
 Two moments, and the distinction between them is the rule.

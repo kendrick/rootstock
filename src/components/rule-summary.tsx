@@ -3,6 +3,7 @@ import type { Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
 import { ExternalLink } from 'lucide-react';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { MONTHS } from '@/planner/dates';
 import { isDelegable } from '@/planner/delegation';
@@ -103,7 +104,7 @@ function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
 	);
 }
 
-function CadenceRows({ rule }: { rule: Extract<Rule, { kind: 'cadence' }> }): ReactElement {
+function CadenceRows({ rule, after }: { rule: Extract<Rule, { kind: 'cadence' }>; after: AfterLink | null }): ReactElement {
 	const interval = rule.everyDays.min === rule.everyDays.max
 		? `${rule.everyDays.min} days`
 		: `${rule.everyDays.min} to ${rule.everyDays.max} days`;
@@ -118,14 +119,15 @@ function CadenceRows({ rule }: { rule: Extract<Rule, { kind: 'cadence' }> }): Re
 			)}
 			{/*
 			 * CONTEXT.md's Anchor: a follow-up measures its interval from the Rule it
-			 * follows, not from itself. The ID is rendered raw because this component
-			 * is handed one Rule and has no rule set to resolve a name against—and
-			 * accepting one just to prettify a string would put a second source of
-			 * Rules into a view that only describes the one it was given.
+			 * follows, not from itself. This component is handed one Rule and no rule
+			 * set, so the caller resolves the name; the Rules route passes it with a
+			 * link to that Rule's row. Without one the id prints raw.
 			 */}
 			{rule.after !== null && (
 				<Row term="Measured from">
-					<code className="font-mono">{rule.after.ruleId}</code>
+					{after === null
+						? <code className="font-mono">{rule.after.ruleId}</code>
+						: <a href={after.href} className={cn('underline underline-offset-4', FOCUS_RING)}>{after.name}</a>}
 				</Row>
 			)}
 		</>
@@ -145,6 +147,12 @@ const GUARD_EFFECT_TEXT: Record<Extract<Rule, { kind: 'guard' }>['effect'], stri
 	annotate: 'Annotates the Task, and holds no work back',
 };
 
+/** The Rule a follow-up is measured from, resolved by the caller. */
+export interface AfterLink {
+	name: string;
+	href: string;
+}
+
 export interface RuleSummaryProps {
 	rule: Rule;
 	/**
@@ -155,23 +163,23 @@ export interface RuleSummaryProps {
 	tagPolicy?: TagPolicy;
 	/**
 	 * Omits the Region row. Every Rule in this yard shares one Region, so the
-	 * Rules route—the only caller passing this—renders it once for the page
-	 * and hides the per-Rule copy rather than repeating it once per Rule.
+	 * Rules route—the only caller passing this—leaves it to the ticket head
+	 * rather than repeating it once per Rule.
 	 * Defaults to false, which keeps every other caller's rendered shape as it was.
 	 */
 	hideRegion?: boolean;
 	/**
-	 * Whether the committed Artifact's Plan already used this Rule: it produced
-	 * a Task, or—for a Guard—it placed a Deferral or Annotation on one. Omitted
-	 * renders nothing extra, which is what keeps this additive for the callers
-	 * that render a Rule with no Plan in hand.
+	 * The named Rule a chained Cadence Rule is measured from. Omitted and the
+	 * "Measured from" row prints the raw id.
 	 */
-	inCurrentPlan?: boolean;
+	after?: AfterLink | null;
 	/**
 	 * Renders the Rule's name as an `<h3>` instead of a `<span>`, so a screen
 	 * reader gets a heading landmark for the name that is actually on screen,
 	 * rather than a second, invisible element carrying the same text next to
-	 * it. Defaults to false, which keeps every other caller's rendered shape—
+	 * it. The heading also carries the Rule's kind for a screen reader, since
+	 * the Rules route's kind mark is a letter it can't read. Defaults to false,
+	 * which keeps every other caller's rendered shape—
 	 * This Week's `<details>` and the Yard plant sheet compose this at depths
 	 * an `<h3>` here would not suit.
 	 */
@@ -196,7 +204,7 @@ export function RuleSummary({
 	delegable = null,
 	tagPolicy = seedTagPolicy,
 	hideRegion = false,
-	inCurrentPlan = false,
+	after = null,
 	asHeading = false,
 }: RuleSummaryProps): ReactElement {
 	const NameTag = asHeading ? 'h3' : 'span';
@@ -218,7 +226,17 @@ export function RuleSummary({
 						? 'font-display text-title leading-[1.1] font-extrabold tracking-wide text-foreground uppercase'
 						: 'font-semibold text-foreground'}
 				>
-					{rule.name}
+					{/* One sr-only text node for the whole spoken name. Chrome puts a space
+					    before an out-of-flow suffix span, so a split name is spoken as
+					    "Fall pre-emergent , window rule". */}
+					{asHeading
+						? (
+								<>
+									<span aria-hidden="true">{rule.name}</span>
+									<span className="sr-only">{`${rule.name}, ${rule.kind} rule`}</span>
+								</>
+							)
+						: rule.name}
 				</NameTag>
 				<SourceBadge source={rule.source} />
 			</div>
@@ -232,7 +250,7 @@ export function RuleSummary({
 
 				{rule.kind === 'window' && <WindowRows rule={rule} />}
 				{rule.kind === 'threshold' && <ThresholdRows rule={rule} />}
-				{rule.kind === 'cadence' && <CadenceRows rule={rule} />}
+				{rule.kind === 'cadence' && <CadenceRows rule={rule} after={after} />}
 				{rule.kind === 'guard' && <Row term="Effect">{GUARD_EFFECT_TEXT[rule.effect]}</Row>}
 
 				{/*
@@ -288,19 +306,6 @@ export function RuleSummary({
 				<span className={canDelegate ? 'text-muted' : 'font-bold text-foreground'}>
 					{canDelegate ? 'Delegable' : 'Not delegable'}
 				</span>
-
-				{/*
-				 * The join the Rules route would otherwise be missing: the Artifact names
-				 * every Rule that fired, and without this nothing here said which of those
-				 * Rules it was. A Guard never produces a Task itself, so it answers a
-				 * different question—whether it reached one through a Deferral or an
-				 * Annotation—rather than restating the Task's own evidence.
-				 */}
-				{inCurrentPlan && (
-					<span className="font-bold text-foreground">
-						{rule.kind === 'guard' ? 'Acted on a Task this week' : 'Produced a Task this week'}
-					</span>
-				)}
 			</div>
 		</div>
 	);

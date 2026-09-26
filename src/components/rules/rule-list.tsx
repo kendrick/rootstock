@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import type { Band, RuleStanding } from './waiting';
+import type { AfterLink } from '@/components/rule-summary';
 import type { Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
 import { RuleSummary } from '@/components/rule-summary';
@@ -19,9 +20,9 @@ export interface RuleListProps {
  * season.
  */
 const BANDS: readonly { band: Band; label: string; note: string }[] = [
-	{ band: 'fired', label: 'Firing now', note: 'These produced work on the current Plan.' },
+	{ band: 'fired', label: 'Fired this week', note: 'These produced work on the current Plan.' },
 	{ band: 'approaching', label: 'Approaching', note: 'The Planner expects these to be satisfied. A forecast can be revised, so nothing here has fired.' },
-	{ band: 'waiting', label: 'Waiting', note: 'Out of season, under their threshold, or not yet due. Every one of them is still in the rule set.' },
+	{ band: 'waiting', label: 'Waiting', note: 'Out of season, waiting on a reading, or not yet due. Every one of them is still in the rule set.' },
 	{ band: 'guard', label: 'Guards', note: 'These create no work. They hold other work back and say what would release it.' },
 ];
 
@@ -40,6 +41,25 @@ const KINDS: readonly { kind: Rule['kind']; mark: string; label: string }[] = [
 	{ kind: 'guard', mark: 'G', label: 'Guard' },
 ];
 
+/** The in-page id a Rule's row carries, so "Measured from" can link to it. */
+function ruleAnchor(ruleId: string): string {
+	return `rule-${ruleId}`;
+}
+
+/** The Rule a follow-up is measured from, by name and as a link to its row. Null where the id names no Rule on the page. */
+function afterLink(rule: Rule, names: Map<string, string>): AfterLink | null {
+	if (rule.kind !== 'cadence' || rule.after === null) {
+		return null;
+	}
+	const name = names.get(rule.after.ruleId);
+
+	return name === undefined ? null : { name, href: `#${ruleAnchor(rule.after.ruleId)}` };
+}
+
+function lowerFirst(text: string): string {
+	return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 const KIND_MARK: Record<Rule['kind'], string> = {
 	window: 'W',
 	threshold: 'T',
@@ -55,12 +75,14 @@ const KIND_MARK: Record<Rule['kind'], string> = {
  */
 function KindLegend(): ReactElement {
 	return (
+		// A grid rather than a wrapping row, which at phone widths leaves the
+		// fourth key alone on its own line with a stub of border beside it.
 		<dl
 			aria-hidden="true"
-			className="flex flex-wrap border-2 border-rule font-display font-semibold text-label tracking-widest uppercase"
+			className="grid w-fit grid-cols-2 border-t-2 border-l-2 border-rule font-display font-semibold text-label tracking-widest uppercase sm:grid-cols-4"
 		>
 			{KINDS.map(({ kind, mark, label }) => (
-				<div key={kind} className="flex items-center gap-2 border-r-2 border-rule px-3 py-1.5 last:border-r-0">
+				<div key={kind} className="flex items-center gap-2 border-r-2 border-b-2 border-rule px-3 py-1.5">
 					<dt className="font-extrabold text-foreground">{mark}</dt>
 					<dd className="text-muted">{label}</dd>
 				</div>
@@ -69,19 +91,19 @@ function KindLegend(): ReactElement {
 	);
 }
 
-function RuleRow({ standing }: { standing: RuleStanding }): ReactElement {
-	const { rule, band, waitingOn, inCurrentPlan } = standing;
+function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink | null }): ReactElement {
+	const { rule, band, waitingOn } = standing;
 
 	return (
-		<li className="grid grid-cols-[2.5rem_minmax(0,1fr)] border-t-2 border-rule first:border-t-0 lg:grid-cols-[2.5rem_minmax(0,1fr)_15rem]">
+		<li id={ruleAnchor(rule.id)} className="grid scroll-mt-4 grid-cols-[2.5rem_minmax(0,1fr)] border-t-2 border-rule first:border-t-0 lg:grid-cols-[2.5rem_minmax(0,1fr)_15rem]">
+			{/* The kind's full name rides in the h3 (RuleSummary's `asHeading`), so a
+			    reader jumping by heading hears it. Read here, it would come before the
+			    heading, where heading navigation skips it. */}
 			<span
-				// The kind is a printed mark on the row rather than the heading the page
-				// is built from. Its full name rides in the accessible text beside it,
-				// because a lone "W" tells a screen reader nothing.
+				aria-hidden="true"
 				className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold"
 			>
-				<span aria-hidden="true">{KIND_MARK[rule.kind]}</span>
-				<span className="sr-only">{`${rule.kind} rule`}</span>
+				{KIND_MARK[rule.kind]}
 			</span>
 
 			{/* RuleSummary carries the whole record: the window or the condition, the
@@ -89,16 +111,25 @@ function RuleRow({ standing }: { standing: RuleStanding }): ReactElement {
 			    bands decide the order of the page and change nothing about what a Rule
 			    is allowed to say about itself. */}
 			<div className="min-w-0 px-3 py-3">
-				<RuleSummary rule={rule} hideRegion asHeading inCurrentPlan={inCurrentPlan} />
+				<RuleSummary rule={rule} hideRegion asHeading after={after} />
 			</div>
 
+			{/* Below lg the status spans the row as a ruled strip, since the 40px kind
+			    column would stack it a word per line (#84). It prints in ink, because
+			    DESIGN.md keeps stamp red for recorded work. */}
 			<div
 				className={cn(
-					'border-t-2 border-rule px-3 py-3 font-mono text-evidence lg:border-t-0 lg:border-l-2',
-					band === 'fired' ? 'text-accent' : 'text-muted',
+					'col-span-2 space-y-1 border-t-2 border-rule px-3 py-3 lg:col-span-1 lg:border-t-0 lg:border-l-2',
+					band === 'fired' ? 'text-foreground' : 'text-muted',
 				)}
 			>
-				{waitingOn}
+				<p className="font-mono text-evidence text-balance">
+					<span className="sr-only">Status: </span>
+					{waitingOn}
+				</p>
+				{rule.kind === 'guard' && rule.effect === 'defer' && (
+					<p className="text-note text-pretty text-muted">{`Released ${lowerFirst(rule.release)}`}</p>
+				)}
 			</div>
 		</li>
 	);
@@ -121,19 +152,12 @@ function RuleRow({ standing }: { standing: RuleStanding }): ReactElement {
  */
 export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 	const ranked = rankRules(rules, plan);
+	const names = new Map(rules.map(rule => [rule.id, rule.name]));
 
-	const [firstRule] = rules;
-
+	// Every Rule shares the yard's one Region, which the ticket head already
+	// prints, so `hideRegion` keeps it off each row and the page adds no third copy.
 	return (
 		<div className="space-y-8">
-			{/* Every Rule in this yard shares one Region, so it is stated once for the
-			    page and `hideRegion` keeps it off each row. */}
-			{firstRule !== undefined && (
-				<p className="text-note text-muted">
-					{`${firstRule.region.name} · Zone ${firstRule.region.hardinessZone}`}
-				</p>
-			)}
-
 			<KindLegend />
 
 			{BANDS.map(({ band, label, note }) => {
@@ -150,20 +174,26 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 						<div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t-2 border-rule pt-3">
 							<h2
 								id={`band-${band}`}
-								className={cn(
-									'font-display text-heading font-extrabold tracking-wider uppercase',
-									band === 'fired' ? 'text-accent' : 'text-foreground',
-								)}
+								className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase"
 							>
 								{label}
 							</h2>
-							<span className="font-mono text-evidence text-muted">{inBand.length}</span>
+							<span className="font-mono text-evidence text-muted">
+								{inBand.length}
+								<span className="sr-only">{inBand.length === 1 ? ' Rule' : ' Rules'}</span>
+							</span>
 						</div>
 
-						<p className="max-w-prose text-note text-muted">{note}</p>
+						<p className="max-w-prose text-note text-pretty text-muted">{note}</p>
 
 						<ul className="border-2 border-rule">
-							{inBand.map(standing => <RuleRow key={standing.rule.id} standing={standing} />)}
+							{inBand.map(standing => (
+								<RuleRow
+									key={standing.rule.id}
+									standing={standing}
+									after={afterLink(standing.rule, names)}
+								/>
+							))}
 						</ul>
 					</section>
 				);

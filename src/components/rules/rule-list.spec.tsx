@@ -60,10 +60,9 @@ describe('ruleList', () => {
 
 		// Each fixture carries a unique name; one query per rule confirms all four
 		// reached RuleSummary rather than one or two being silently dropped.
-		expect(screen.getByText(windowRule.name)).toBeDefined();
-		expect(screen.getByText(thresholdRule.name)).toBeDefined();
-		expect(screen.getByText(cadenceRule.name)).toBeDefined();
-		expect(screen.getByText(guardRule.name)).toBeDefined();
+		for (const rule of [windowRule, thresholdRule, cadenceRule, guardRule]) {
+			expect(screen.getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') })).toBeDefined();
+		}
 	});
 
 	it('renders a Guards section when guards are present', () => {
@@ -136,11 +135,11 @@ describe('ruleList', () => {
 	// happened to render. The kinds no longer organise the page, because a reader
 	// asks what is next rather than what taxonomy a Rule belongs to, so every row
 	// names its own kind instead. The requirement survives; the sections do not.
-	it('names every rule\'s kind on its own row', () => {
+	it('names every rule\'s kind in its heading', () => {
 		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
 		for (const rule of allFixtureRules) {
-			expect(screen.getAllByText(`${rule.kind} rule`).length).toBeGreaterThan(0);
+			expect(screen.getByRole('heading', { level: 3, name: `${rule.name}, ${rule.kind} rule` })).toBeDefined();
 		}
 	});
 
@@ -150,7 +149,7 @@ describe('ruleList', () => {
 		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
 
 		expect(screen.queryByRole('region', { name: 'Guards' })).toBeNull();
-		expect(screen.queryByRole('region', { name: 'Firing now' })).toBeNull();
+		expect(screen.queryByRole('region', { name: 'Fired this week' })).toBeNull();
 		expect(screen.getByRole('region', { name: 'Waiting' })).toBeDefined();
 	});
 
@@ -178,31 +177,35 @@ describe('ruleList', () => {
 		expect(rows).toHaveLength(allFixtureRules.length);
 	});
 
-	// The cross-link criterion: the Artifact names every Rule that fired, and
-	// this marks which of these Rules that Plan actually used.
-	it('marks a rule that produced a Task in the Plan', () => {
+	// The band says whether a Rule fired, so neither a mark on the row nor its
+	// status line says it a second time.
+	it('states a fired Rule\'s standing once, through its band', () => {
 		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
 
-		expect(screen.getByText('Produced a Task this week')).toBeDefined();
+		const fired = screen.getByRole('region', { name: 'Fired this week' });
+		expect(within(fired).getByText(windowRule.name)).toBeDefined();
+		expect(within(fired).queryByText(/Produced/u)).toBeNull();
+		expect(within(fired).getByText('Window closes September 30')).toBeDefined();
 	});
 
-	it('leaves a rule unmarked when the Plan holds no Task for it', () => {
-		render(<RuleList rules={[thresholdRule, cadenceRule]} plan={planWithTasks} />);
+	// A screen reader otherwise runs the status into the marks before it.
+	it('labels each row\'s status', () => {
+		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
 
-		expect(screen.queryByText('Produced a Task this week')).toBeNull();
+		expect(screen.getByText('Status:', { exact: false }).closest('p')?.textContent).toMatch(/^Status: /u);
 	});
 
-	// A Guard produces no Task of its own (CONTEXT.md's Guard entry), so its
-	// mark comes from a Deferral or Annotation naming it, not from `ruleId`.
-	it('marks a guard that acted on a Task through a Deferral', () => {
-		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
+	it('gives a deferring Guard its release condition', () => {
+		render(<RuleList rules={[guardRule]} plan={emptyPlan} />);
 
-		expect(screen.getByText('Acted on a Task this week')).toBeDefined();
+		expect(screen.getByText(/^Released once no day in the next two days/u)).toBeDefined();
 	});
 
-	it('leaves a guard unmarked when no Task in the Plan names it', () => {
-		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+	it('links a follow-up to the row of the Rule it is measured from', () => {
+		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		expect(screen.queryByText('Acted on a Task this week')).toBeNull();
+		const link = screen.getByRole('link', { name: thresholdRule.name });
+		const target = container.querySelector(link.getAttribute('href') ?? '');
+		expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
 	});
 });

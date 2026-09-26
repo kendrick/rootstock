@@ -8,10 +8,10 @@ import { StalenessBanner } from '@/components/staleness-banner';
 import { seedRules } from '@/seed';
 
 /**
- * Every Rule the planner uses, grouped by kind with Guards last. The route
- * owns the only h1; RuleList owns a section h2 per kind, plus an h3 naming
- * each Rule (RuleSummary's `asHeading`); RuleSummary renders no heading of
- * its own otherwise.
+ * Every Rule the planner uses, banded by how close it is to producing work,
+ * with Guards last. The route owns the only h1; RuleList owns a section h2 per
+ * band, plus an h3 naming each Rule (RuleSummary's `asHeading`); RuleSummary
+ * renders no heading of its own otherwise.
  *
  * The route itself is the client boundary because `ArtifactGate` takes a render
  * prop, and a function cannot be handed from a server component to a client one.

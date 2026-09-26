@@ -46,9 +46,9 @@ describe('rules page', () => {
 
 		render(<RulesPage />);
 
-		// One name element per rule; if any rule is silently dropped, this count fails.
+		// One heading per rule; if any rule is silently dropped, this fails.
 		for (const rule of seedRules) {
-			expect(screen.getByText(rule.name)).toBeDefined();
+			expect(screen.getByRole('heading', { level: 3, name: `${rule.name}, ${rule.kind} rule` })).toBeDefined();
 		}
 	});
 
@@ -64,13 +64,13 @@ describe('rules page', () => {
 
 			const guardsInSection = seedRules.filter(rule => rule.kind === 'guard');
 			for (const rule of guardsInSection) {
-				expect(within(section).getByText(rule.name)).toBeDefined();
+				expect(within(section).getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') })).toBeDefined();
 			}
 
 			// Non-guards must not bleed into the Guards section.
 			const nonGuardsInSeed = seedRules.filter(rule => rule.kind !== 'guard');
 			for (const rule of nonGuardsInSeed) {
-				expect(within(section).queryByText(rule.name)).toBeNull();
+				expect(within(section).queryByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') })).toBeNull();
 			}
 		}
 	});
@@ -125,29 +125,34 @@ describe('rules page', () => {
 		}
 	});
 
-	// #64: every Rule in this yard shares one Region, so it belongs on the page
-	// once rather than once per Rule.
-	it('renders the shared region once for the whole page', () => {
+	// #64: every Rule in this yard shares one Region. The ticket head in the
+	// shell prints it, so the page body adds neither a per-Rule nor a page copy.
+	it('leaves the shared region to the ticket head', () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
 
 		render(<RulesPage />);
 
-		expect(screen.getAllByText(/Zone 8b/)).toHaveLength(1);
+		expect(screen.queryAllByText(/Zone 8b/)).toHaveLength(0);
 	});
 
 	// #64's cross-link criterion: the committed Plan already names every Rule
 	// it used, and this proves the page actually reads that Plan rather than
 	// rendering the seed Rules with no reference to it.
-	it('marks exactly the rules the committed Plan\'s Tasks and Guards name', () => {
+	it('files exactly the rules the committed Plan\'s Tasks and Guards name', () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
 
 		render(<RulesPage />);
 
 		// fall-pre-emergent and last-nitrogen both own a Task in narratedArtifact.
-		expect(screen.getAllByText('Produced a Task this week')).toHaveLength(2);
+		const fired = screen.getByRole('region', { name: 'Fired this week' });
+		expect(within(fired).getAllByRole('heading', { level: 3 }).map(heading => heading.querySelector('.sr-only')?.textContent)).toEqual([
+			'Fall pre-emergent, window rule',
+			'Last nitrogen of the year, window rule',
+		]);
 		// rain-expected deferred the fig watering; water-in-after-application
 		// annotated the pre-emergent Task. Neither owns a Task itself.
-		expect(screen.getAllByText('Acted on a Task this week')).toHaveLength(2);
+		expect(screen.getByText('Holding work this week')).toBeDefined();
+		expect(screen.getByText('Marking work this week')).toBeDefined();
 	});
 
 	// `output: 'export'` prerenders this route in Node at build time. A timestamp
