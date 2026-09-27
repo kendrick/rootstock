@@ -3,6 +3,8 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
+import { seedPlannedFrom } from '@/artifact/planned-from';
+import { MONTHS } from '@/planner/dates';
 import { ArtifactError } from './artifact-error';
 
 interface Validated {
@@ -41,7 +43,33 @@ export function ArtifactGate({
 		return <ArtifactError message={result.error} />;
 	}
 
-	return <>{children(result.value)}</>;
+	return (
+		<>
+			{result.value.artifact.plannedFrom !== null && result.value.artifact.plannedFrom !== seedPlannedFrom && (
+				<PlannedFromOtherRecords generatedAt={result.value.artifact.generatedAt} />
+			)}
+			{children(result.value)}
+		</>
+	);
+}
+
+/**
+ * The site is rebuilt on every push, from whatever the seed holds then, but the
+ * Plan is only remade by the daily run (ADR 0007). Between the two, every page
+ * would draw today's Rules and Plants beside a Plan made from other ones, and
+ * each line that pairs them could say something the Plan never did. This says
+ * so once, above the page, where the alternative is guarding every such line.
+ */
+function PlannedFromOtherRecords({ generatedAt }: { generatedAt: string }): ReactElement {
+	return (
+		// role="status", like the staleness banner: this is news about the data,
+		// and nothing here is urgent enough to interrupt a screen reader.
+		<p role="status" className="mb-6 border-2 border-rule px-4 py-3 text-note text-foreground">
+			{'The Rules, the Plants or the recorded work changed after this plan was made on '}
+			<time dateTime={generatedAt}>{`${MONTHS[Number(generatedAt.slice(5, 7)) - 1]} ${Number(generatedAt.slice(8, 10))}`}</time>
+			. The next daily run makes a new plan. Until then, some of what this page says about the plan may not match it.
+		</p>
+	);
 }
 
 /**

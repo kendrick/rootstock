@@ -30,7 +30,7 @@ export const FORECAST_UNAVAILABLE_TEXT = 'Could not check the forecast, so this 
  * the ids all still match.
  */
 function copyTask(task: Task): Task {
-	return { ...task, deferrals: [...task.deferrals], annotations: [...task.annotations] };
+	return { ...task, deferrals: [...task.deferrals], annotations: [...task.annotations], guardChecks: [...(task.guardChecks ?? [])] };
 }
 
 /**
@@ -152,10 +152,16 @@ export function applyGuards(
 
 		for (const entry of pass) {
 			if (reached.has(entry.original)) {
-				entry.result = guarded(entry.result, rule, verdict);
+				const result = guarded(entry.result, rule, verdict);
+				entry.result = { ...result, guardChecks: [...(result.guardChecks ?? []), { guardId: rule.id, verdict }] };
 			}
 		}
 	}
 
-	return pass.map(entry => entry.result);
+	// Sorted by Guard id: the record is one verdict per Guard, and the Plan has
+	// to come out the same whatever order the Rules arrive in.
+	return pass.map(entry => ({
+		...entry.result,
+		guardChecks: [...(entry.result.guardChecks ?? [])].sort((left, right) => left.guardId.localeCompare(right.guardId)),
+	}));
 }

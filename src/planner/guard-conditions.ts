@@ -1,4 +1,6 @@
+import type { z } from 'zod';
 import type { DailyAggregate } from './plan';
+import type { guardVerdictSchema } from './task';
 import type { GuardCondition } from '@/rules/rule';
 import { daysBetween, isWithinMonthDayRange } from './dates';
 
@@ -20,7 +22,7 @@ import { daysBetween, isWithinMonthDayRange } from './dates';
  * a Task it may annotate and no path to let one through quietly. It cannot make
  * that choice unless this function hands it the difference.
  */
-export type GuardVerdict = 'met' | 'unmet' | 'unavailable';
+export type GuardVerdict = z.infer<typeof guardVerdictSchema>;
 
 type RainCondition = Extract<GuardCondition, { kind: 'no-rain-within' }>;
 

@@ -132,6 +132,16 @@ One band above the plan, bordered in ink. It explains the evidence line and what
 
 The Rules the yard holds that no evidence lit, kept in the margin. This is the one part of the page that argues ADR 0001 without saying anything: the rule set is fixed, the Planner invents nothing, and evidence alone decides which Rules speak today. Guards are excluded, because a Guard creates no work and so has nothing to be silent about.
 
+### The Rule Register
+
+The Rules page lists every Rule under four bands in the order a reader asks: Fired this week, Approaching, Waiting, Guards. A band with nothing in it isn't drawn. Each Rule is a ruled row. Its status sits straight under the name, between faint rules, and the record follows. The kind is printed in words among the record's marks ("WINDOW RULE") and read in the heading to a screen reader. The page has no key to the kinds, since each one is spelled out.
+
+The status says only what the band doesn't. A fired Rule gives the day its window or season closes. A waiting Rule gives the day it opens, and in season it gives the reading it's waiting on in the Rule's own terms: a directed Rule needs a Crossing, so the line says "needs a rise through 55°F". Readings round to one decimal.
+
+A Guard's status names every Task it reached this week, one to a line, under what its condition concluded there: "Deferring:" or "Annotating:" where it acted, "Let through unchecked:" where its evidence was unavailable, and "Let through:" where it looked and the work could go ahead. A deferring Guard that's deferring work adds what releases it. Its record says what it looks at ("Applies when") and which work it looks at ("Reaches"), so a reader can check "let through" against both. Without the verdicts, a Guard that checked a Task and found it clear would read the same as one that reached nothing. The page reads them from `Task.guardChecks`, which the Guard pass records. On a Plan written before that record existed, it shows only what left a mark, "Deferring:", "Annotating:" or "Let through unchecked:", and never calls a Task clear.
+
+Readings are ink, and nothing on this page is stamp red, since it records nothing. A Guard carries no delegability mark, because Delegable is a property of a Task and a Guard creates none. The page doesn't repeat the Region either, since the ticket head already carries it, and the margin drops its Not This Week list, since Waiting already names those Rules.
+
 ## Motion
 
 Two moments, and the distinction between them is the rule.

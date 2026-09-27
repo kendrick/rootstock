@@ -37,6 +37,7 @@ const planWithTasks: Plan = {
 			delegable: false,
 			tags: [],
 			title: 'A task the window Rule produced',
+			guardChecks: null,
 		},
 		{
 			id: taskId('deep-water-fig', null),
@@ -49,6 +50,7 @@ const planWithTasks: Plan = {
 			delegable: true,
 			tags: [],
 			title: 'A task the Guard held back',
+			guardChecks: null,
 		},
 	],
 	window: [],
@@ -60,10 +62,9 @@ describe('ruleList', () => {
 
 		// Each fixture carries a unique name; one query per rule confirms all four
 		// reached RuleSummary rather than one or two being silently dropped.
-		expect(screen.getByText(windowRule.name)).toBeDefined();
-		expect(screen.getByText(thresholdRule.name)).toBeDefined();
-		expect(screen.getByText(cadenceRule.name)).toBeDefined();
-		expect(screen.getByText(guardRule.name)).toBeDefined();
+		for (const rule of [windowRule, thresholdRule, cadenceRule, guardRule]) {
+			expect(screen.getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') })).toBeDefined();
+		}
 	});
 
 	it('renders a Guards section when guards are present', () => {
@@ -128,7 +129,8 @@ describe('ruleList', () => {
 		// the derivation rather than letting isDelegable run inside RuleSummary.
 		expect(delegable.length).toBeGreaterThan(0);
 		expect(notDelegable.length).toBeGreaterThan(0);
-		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.length);
+		// A Guard creates no Task, so it carries neither.
+		expect(delegable.length + notDelegable.length).toBe(allFixtureRules.filter(rule => rule.kind !== 'guard').length);
 	});
 
 	// #64: the four kinds are the spine of CONTEXT.md, and a reader had no way to
@@ -136,11 +138,11 @@ describe('ruleList', () => {
 	// happened to render. The kinds no longer organise the page, because a reader
 	// asks what is next rather than what taxonomy a Rule belongs to, so every row
 	// names its own kind instead. The requirement survives; the sections do not.
-	it('names every rule\'s kind on its own row', () => {
+	it('names every rule\'s kind in its heading', () => {
 		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
 		for (const rule of allFixtureRules) {
-			expect(screen.getAllByText(`${rule.kind} rule`).length).toBeGreaterThan(0);
+			expect(screen.getByRole('heading', { level: 3, name: `${rule.name}, ${rule.kind} rule` })).toBeDefined();
 		}
 	});
 
@@ -150,21 +152,19 @@ describe('ruleList', () => {
 		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
 
 		expect(screen.queryByRole('region', { name: 'Guards' })).toBeNull();
-		expect(screen.queryByRole('region', { name: 'Firing now' })).toBeNull();
+		expect(screen.queryByRole('region', { name: 'Fired this week' })).toBeNull();
 		expect(screen.getByRole('region', { name: 'Waiting' })).toBeDefined();
 	});
 
-	// The mark in the first column is a letter nobody can decode on sight, so the
-	// page carries its key. The rows already name their kind in accessible text,
-	// which is why the legend is hidden from it rather than repeated into it.
-	it('explains the kind marks with a legend', () => {
+	// The kind is printed in words among the row's marks, so no key is needed
+	// to read it. A Guard's own mark already says it is one.
+	it('prints each rule\'s kind in words, with no key to decode', () => {
 		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		const legend = container.querySelector('dl[aria-hidden="true"]');
-		expect(legend).not.toBeNull();
-
-		for (const label of ['Window', 'Threshold', 'Cadence', 'Guard']) {
-			expect(legend?.textContent).toContain(label);
+		expect(container.querySelector('dl[aria-hidden="true"]')).toBeNull();
+		for (const rule of allFixtureRules.filter(candidate => candidate.kind !== 'guard')) {
+			const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') }).closest('li');
+			expect(within(row as HTMLElement).getByText(`${rule.kind} rule`)).toBeDefined();
 		}
 	});
 
@@ -178,31 +178,48 @@ describe('ruleList', () => {
 		expect(rows).toHaveLength(allFixtureRules.length);
 	});
 
-	// The cross-link criterion: the Artifact names every Rule that fired, and
-	// this marks which of these Rules that Plan actually used.
-	it('marks a rule that produced a Task in the Plan', () => {
+	// The band says whether a Rule fired, so neither a mark on the row nor its
+	// status line says it a second time.
+	it('states a fired Rule\'s standing once, through its band', () => {
 		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
 
-		expect(screen.getByText('Produced a Task this week')).toBeDefined();
+		const fired = screen.getByRole('region', { name: 'Fired this week' });
+		expect(within(fired).getByText(windowRule.name)).toBeDefined();
+		expect(within(fired).queryByText(/Produced/u)).toBeNull();
+		expect(within(fired).getByText('Window closes September 30')).toBeDefined();
 	});
 
-	it('leaves a rule unmarked when the Plan holds no Task for it', () => {
-		render(<RuleList rules={[thresholdRule, cadenceRule]} plan={planWithTasks} />);
+	// A screen reader otherwise runs the status into the marks before it.
+	it('labels each row\'s status', () => {
+		render(<RuleList rules={[windowRule]} plan={emptyPlan} />);
 
-		expect(screen.queryByText('Produced a Task this week')).toBeNull();
+		expect(screen.getByText('Status:', { exact: false }).closest('p')?.textContent).toMatch(/^Status: /u);
 	});
 
-	// A Guard produces no Task of its own (CONTEXT.md's Guard entry), so its
-	// mark comes from a Deferral or Annotation naming it, not from `ruleId`.
-	it('marks a guard that acted on a Task through a Deferral', () => {
-		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
+	// The release condition says what would free held work, so it shows only
+	// while the Guard is holding some.
+	it('gives a deferring Guard its release condition only while it holds work', () => {
+		const { unmount } = render(<RuleList rules={[guardRule]} plan={emptyPlan} />);
+		expect(screen.queryByText(/^Released once no day/u)).toBeNull();
+		unmount();
 
-		expect(screen.getByText('Acted on a Task this week')).toBeDefined();
+		render(<RuleList rules={[guardRule]} plan={planWithTasks} />);
+		// The Deferral's own release condition, as the Planner copied it.
+		expect(screen.getByText('Released test release condition')).toBeDefined();
 	});
 
-	it('leaves a guard unmarked when no Task in the Plan names it', () => {
-		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+	// Delegable is a property of a Task (CONTEXT.md), and a Guard creates none.
+	it('prints no delegability mark on a Guard', () => {
+		render(<RuleList rules={[guardRule]} plan={emptyPlan} />);
 
-		expect(screen.queryByText('Acted on a Task this week')).toBeNull();
+		expect(screen.queryByText(/delegable/iu)).toBeNull();
+	});
+
+	it('links a follow-up to the row of the Rule it is measured from', () => {
+		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const link = screen.getByRole('link', { name: thresholdRule.name });
+		const target = container.querySelector(link.getAttribute('href') ?? '');
+		expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
 	});
 });

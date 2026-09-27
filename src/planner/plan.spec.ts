@@ -26,6 +26,7 @@ function taskFixture(ruleId: string, plantId: string | null) {
 		delegable: true,
 		tags: [],
 		title: 'Do the thing.',
+		guardChecks: null,
 	};
 }
 

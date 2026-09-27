@@ -58,6 +58,7 @@ function buildTask(citation: Citation, overrides: Partial<Task> = {}): Task {
 		delegable: true,
 		tags: ['lawn'],
 		title: 'Put down fall pre-emergent on the front lawn',
+		guardChecks: null,
 		...overrides,
 	};
 }

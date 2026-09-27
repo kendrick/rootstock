@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react';
 import Link from 'next/link';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
 import { OPEN_METEO_ATTRIBUTION } from '@/weather/open-meteo';
 
 /**
@@ -26,7 +28,7 @@ export function Footer(): ReactElement {
 					    owner's route list and they never need this. */}
 					<Link
 						href="/about"
-						className="font-display text-label font-extrabold tracking-widest text-muted uppercase underline underline-offset-4 print:hidden"
+						className={cn('font-display text-label font-extrabold tracking-widest text-muted uppercase underline underline-offset-4 print:hidden', FOCUS_RING)}
 					>
 						How this works
 					</Link>

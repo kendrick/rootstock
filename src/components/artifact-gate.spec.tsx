@@ -3,6 +3,7 @@ import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { narratedArtifact, okStatus } from '@/artifact/fixtures';
+import { seedPlannedFrom } from '@/artifact/planned-from';
 import { ArtifactGate } from './artifact-gate';
 
 // Both malformed values are a real fixture with one field broken, which is what
@@ -66,5 +67,33 @@ describe('artifactGate', () => {
 
 		expect(alert).toContain('artifact:');
 		expect(alert).toContain('"yesterday"');
+	});
+});
+
+// ADR 0007. The site is rebuilt on every push but the Plan only by the daily
+// run, so a page can hold today's Rules beside a Plan made from other ones.
+describe('artifactGate, a Plan made from other records', () => {
+	const shown = (plannedFrom: string | null): string | null => {
+		render(
+			<ArtifactGate artifact={{ ...narratedArtifact, plannedFrom }} status={okStatus}>
+				{() => <p>plan</p>}
+			</ArtifactGate>,
+		);
+		return screen.queryByText(/changed after this plan was made/u)?.textContent ?? null;
+	};
+
+	it('says so when the Plan was made from other records', () => {
+		expect(shown('0123456789abcdef')).toMatch(/The Rules, the Plants or the recorded work changed after this plan was made/u);
+		expect(screen.getByText('plan')).toBeDefined();
+	});
+
+	it('says nothing when the Plan was made from the records this page was built with', () => {
+		expect(shown(seedPlannedFrom)).toBeNull();
+	});
+
+	// An Artifact older than the field can't be compared, and it's replaced at
+	// the next daily run, so it gets no notice rather than a false one.
+	it('says nothing when the Artifact predates the fingerprint', () => {
+		expect(shown(null)).toBeNull();
 	});
 });

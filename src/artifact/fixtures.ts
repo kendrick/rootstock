@@ -2,6 +2,7 @@ import type { Artifact, StatusRecord } from './artifact';
 import type { DailyAggregate } from '@/planner/plan';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { taskId } from '@/planner/task';
+import { seedPlannedFrom } from './planned-from';
 
 /*
  * A day in the life of the real yard, shaped for tests that need an Artifact
@@ -144,6 +145,7 @@ export const narratedArtifact: Artifact = {
 				delegable: false,
 				tags: ['lawn', 'chemical'],
 				title: 'Apply fall pre-emergent to the front lawn',
+				guardChecks: null,
 			},
 			/*
 			 * Delegable, fired, and on the same Plant as the pre-emergent Task
@@ -177,6 +179,7 @@ export const narratedArtifact: Artifact = {
 				delegable: true,
 				tags: ['lawn', 'fertilizer', 'nitrogen'],
 				title: 'Put down the last nitrogen of the year on the front lawn',
+				guardChecks: null,
 			},
 			{
 				id: deferredTaskId,
@@ -191,6 +194,7 @@ export const narratedArtifact: Artifact = {
 				delegable: true,
 				tags: ['watering'],
 				title: 'Deep water the fig',
+				guardChecks: null,
 			},
 		],
 		window: windowFixture,
@@ -214,6 +218,8 @@ export const narratedArtifact: Artifact = {
 		],
 	},
 	narrated: true,
+	// The build's own seed, so a fixture reads as a Plan made from the Rules on screen.
+	plannedFrom: seedPlannedFrom,
 };
 
 /**
@@ -258,6 +264,7 @@ export const approachingArtifact: Artifact = {
 				delegable: false,
 				tags: ['lawn', 'herbicide', 'chemical'],
 				title: 'Apply spring pre-emergent to the front lawn',
+				guardChecks: null,
 			},
 		],
 		window: springWindowFixture,
@@ -270,6 +277,7 @@ export const approachingArtifact: Artifact = {
 	 */
 	narration: null,
 	narrated: false,
+	plannedFrom: seedPlannedFrom,
 };
 
 /** The record beside a run that published. `artifactGeneratedAt` is read off the Artifact rather than retyped, so the pair cannot drift apart when either timestamp is edited. */

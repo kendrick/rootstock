@@ -141,4 +141,40 @@ describe('todaysRun', () => {
 			artifactGeneratedAt: '2026-11-01T06:30:00.000Z',
 		});
 	});
+
+	// ADR 0007. A push can change the Rules, Plants or history after today's
+	// Plan was made, and the site says so until the Plan is remade. A later
+	// scheduled run the same day remakes it rather than leaving it until tomorrow.
+	it('reports no run when today\'s Plan was made from other records', () => {
+		const result = todaysRun({
+			status: published(),
+			now: new Date('2026-09-14T22:00:00.000Z'),
+			timeZone: TIME_ZONE,
+			planned: { published: '0123456789abcdef', current: 'fedcba9876543210' },
+		});
+
+		expect(result).toEqual({ ran: false });
+	});
+
+	it('reports no run when today\'s Plan predates the fingerprint', () => {
+		const result = todaysRun({
+			status: published(),
+			now: new Date('2026-09-14T22:00:00.000Z'),
+			timeZone: TIME_ZONE,
+			planned: { published: null, current: 'fedcba9876543210' },
+		});
+
+		expect(result).toEqual({ ran: false });
+	});
+
+	it('still reports the run when today\'s Plan was made from these records', () => {
+		const result = todaysRun({
+			status: published(),
+			now: new Date('2026-09-14T22:00:00.000Z'),
+			timeZone: TIME_ZONE,
+			planned: { published: 'fedcba9876543210', current: 'fedcba9876543210' },
+		});
+
+		expect(result.ran).toBe(true);
+	});
 });

@@ -31,9 +31,11 @@ export function Header(): ReactElement {
 	return (
 		// On a phone the wordmark and number share a row and the region runs full
 		// width under them. Stacked three deep, the head alone costs a phone a
-		// fifth of its first screen before any work appears.
-		<header className="grid grid-cols-[minmax(0,1fr)_auto] border-b-2 border-rule">
-			<div className="flex items-center border-r-2 border-rule px-3 py-3 sm:row-span-2 sm:px-5 sm:py-4">
+		// fifth of its first screen before any work appears. Below 300px, which is
+		// a 390 phone at 200% zoom, the two no longer fit side by side and drew
+		// over each other, so there the head does stack.
+		<header className="grid grid-cols-[minmax(0,1fr)_auto] border-b-2 border-rule max-[299px]:grid-cols-1">
+			<div className="flex items-center border-r-2 border-rule px-3 py-3 max-[299px]:border-r-0 max-[299px]:border-b-2 sm:row-span-2 sm:px-5 sm:py-4">
 				{/* print:text-black because the print block flattens the palette to ink,
 				    and this keeps the head honest if that override is ever scoped
 				    tighter. */}
@@ -49,7 +51,7 @@ export function Header(): ReactElement {
 			<span className="flex items-center px-3 py-2 font-mono text-body tracking-widest text-foreground sm:border-b-2 sm:border-rule sm:px-5">
 				{ticketNumber()}
 			</span>
-			<span className="col-span-2 border-t-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-muted uppercase sm:col-span-1 sm:col-start-2 sm:border-t-0 sm:px-5">
+			<span className="col-span-2 border-t-2 border-rule max-[299px]:col-span-1 px-3 py-2 font-display text-label font-extrabold tracking-widest text-muted uppercase sm:col-span-1 sm:col-start-2 sm:border-t-0 sm:px-5">
 				{`${seedYard.region.name} — Zone ${seedYard.region.hardinessZone}`}
 			</span>
 		</header>

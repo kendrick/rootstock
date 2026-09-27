@@ -323,28 +323,44 @@ describe('ruleSummary', () => {
 		expect(screen.getByText('Region')).toBeDefined();
 	});
 
-	// #64's cross-link criterion: whether this Rule's Task is in the committed
-	// Artifact's Plan.
-	it('marks a task-creating rule that produced a Task, when told it did', () => {
-		render(<RuleSummary rule={seedRule('last-nitrogen')} inCurrentPlan />);
+	// CONTEXT.md's Anchor, resolved: the Rules route hands over the named Rule
+	// a follow-up is measured from, and the row links to it rather than print an id.
+	it('links a follow-up to the Rule it is measured from, when given one', () => {
+		render(<RuleSummary rule={seedRule('spring-pre-emergent-follow-up')} after={{ name: 'Spring pre-emergent', href: '#rule-spring-pre-emergent' }} />);
 
-		expect(screen.getByText('Produced a Task this week')).toBeDefined();
+		const link = screen.getByRole('link', { name: 'Spring pre-emergent' });
+		expect(link.getAttribute('href')).toBe('#rule-spring-pre-emergent');
+		expect(screen.queryByText('spring-pre-emergent')).toBeNull();
 	});
 
-	// A Guard never produces a Task of its own (CONTEXT.md's Guard entry), so
-	// its mark reads differently from a Rule that created work.
-	it('marks a guard that acted on a Task, with wording distinct from a producing rule', () => {
-		render(<RuleSummary rule={seedRule('rain-expected')} inCurrentPlan />);
+	// A Guard says what it looks at and which work it looks at, so "let
+	// through" can be checked against something.
+	it('gives a Guard its condition and its reach in words', () => {
+		render(<RuleSummary rule={seedRule('rain-expected')} />);
 
-		expect(screen.getByText('Acted on a Task this week')).toBeDefined();
-		expect(screen.queryByText('Produced a Task this week')).toBeNull();
+		expect(screen.getByText('Applies when').nextElementSibling?.textContent).toBe('A day in the next 2 days carries a 50% or greater chance of rain');
+		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical');
 	});
 
-	it('renders no plan mark by default', () => {
-		render(<RuleSummary rule={seedRule('last-nitrogen')} />);
+	// `guardTargets` reaches a Plant named in `plantIds` or carrying one of the
+	// `plantTags`, so the two read as alternatives, never as both at once.
+	it('reads a Guard\'s Plant selectors as alternatives', () => {
+		const guard = seedRule('rain-expected');
+		if (guard.kind !== 'guard') {
+			throw new Error('rain-expected is not a Guard');
+		}
+		render(<RuleSummary rule={{ ...guard, appliesTo: { plantIds: ['esperanza-1'], plantTags: ['container'], ruleTags: ['chemical'] } }} />);
 
-		expect(screen.queryByText('Produced a Task this week')).toBeNull();
-		expect(screen.queryByText('Acted on a Task this week')).toBeNull();
+		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical, for Esperanza or on Plants tagged container');
+	});
+
+	it('puts a status it is handed under the name, ahead of the record', () => {
+		const { container } = render(<RuleSummary rule={seedRule('fall-pre-emergent')} status={<p data-testid="status">Window closes September 30</p>} />);
+
+		const status = screen.getByTestId('status');
+		const record = container.querySelector('dl');
+		expect(record).not.toBeNull();
+		expect(status.compareDocumentPosition(record!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 
 	// #64: the Rules route needs a heading landmark per Rule. asHeading swaps
@@ -353,7 +369,8 @@ describe('ruleSummary', () => {
 	it('renders the rule name as an h3 when asHeading is true', () => {
 		render(<RuleSummary rule={seedRule('fall-pre-emergent')} asHeading />);
 
-		const heading = screen.getByRole('heading', { level: 3, name: 'Fall pre-emergent' });
+		// The kind rides in the heading, so a reader jumping by heading hears it.
+		const heading = screen.getByRole('heading', { level: 3, name: 'Fall pre-emergent, window rule' });
 		expect(heading.tagName).toBe('H3');
 	});
 

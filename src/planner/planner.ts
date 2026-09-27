@@ -376,6 +376,7 @@ function createTasks(input: PlanInput, window: DailyAggregate[]): OrderableTask[
 				delegable: rule.delegable,
 				tags: rule.tags,
 				title: titleFor(rule, plant, verdict.titleSuffix),
+				guardChecks: null,
 			};
 
 			orderables.push({ task, specificity: scope.specificity, priority: rule.priority });
