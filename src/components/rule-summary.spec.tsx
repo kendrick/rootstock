@@ -342,6 +342,18 @@ describe('ruleSummary', () => {
 		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical');
 	});
 
+	// `guardTargets` reaches a Plant named in `plantIds` or carrying one of the
+	// `plantTags`, so the two read as alternatives, never as both at once.
+	it('reads a Guard\'s Plant selectors as alternatives', () => {
+		const guard = seedRule('rain-expected');
+		if (guard.kind !== 'guard') {
+			throw new Error('rain-expected is not a Guard');
+		}
+		render(<RuleSummary rule={{ ...guard, appliesTo: { plantIds: ['esperanza-1'], plantTags: ['container'], ruleTags: ['chemical'] } }} />);
+
+		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical, for Esperanza or on Plants tagged container');
+	});
+
 	it('puts a status it is handed under the name, ahead of the record', () => {
 		const { container } = render(<RuleSummary rule={seedRule('fall-pre-emergent')} status={<p data-testid="status">Window closes September 30</p>} />);
 

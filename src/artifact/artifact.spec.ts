@@ -199,3 +199,33 @@ describe('artifact json schema', () => {
 		}
 	});
 });
+
+// An Artifact written before the Guard pass recorded verdicts has no
+// `guardChecks` on its Tasks. The committed file stays that way until the next
+// daily run, and the site has to keep loading it in between.
+describe('an Artifact written before recorded Guard verdicts', () => {
+	const withoutGuardChecks = (): unknown => {
+		const copy = structuredClone(narratedArtifact) as { plan: { tasks: Record<string, unknown>[] } };
+		for (const task of copy.plan.tasks) {
+			delete task.guardChecks;
+		}
+		return copy;
+	};
+
+	it('parses, with every Task marked unrecorded', () => {
+		const parsed = safeParseArtifact(withoutGuardChecks());
+
+		expect(parsed.ok).toBe(true);
+		if (parsed.ok) {
+			expect(parsed.value.plan.tasks.every(task => task.guardChecks === null)).toBe(true);
+		}
+		expect(parseArtifact(withoutGuardChecks()).plan.tasks.length).toBe(narratedArtifact.plan.tasks.length);
+	});
+
+	it('still rejects a Task whose guardChecks is present and malformed', () => {
+		const copy = structuredClone(narratedArtifact) as { plan: { tasks: Record<string, unknown>[] } };
+		copy.plan.tasks[0]!.guardChecks = [{ guardId: 'rain-expected', verdict: 'clear' }];
+
+		expect(safeParseArtifact(copy).ok).toBe(false);
+	});
+});

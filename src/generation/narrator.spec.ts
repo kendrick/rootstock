@@ -20,6 +20,7 @@ function plannedTask(ruleId: string, plantId: string | null): Task {
 		delegable: true,
 		tags: [],
 		title: `Do ${ruleId}.`,
+		guardChecks: null,
 	};
 }
 

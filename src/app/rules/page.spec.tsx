@@ -149,16 +149,16 @@ describe('rules page', () => {
 			'Fall pre-emergent, window rule',
 			'Last nitrogen of the year, window rule',
 		]);
-		// rain-expected deferred the fig watering and let the chemical work it
-		// reached through; water-in-after-application annotated the pre-emergent
-		// Task. Neither owns a Task itself. Each names its Tasks by the Planner's
-		// title, under the verdict it reached on each.
+		// rain-expected deferred the fig watering; water-in-after-application
+		// annotated the pre-emergent Task. Neither owns a Task itself. The fixture
+		// Plan predates recorded verdicts, so only marked outcomes show and
+		// nothing is called clear.
 		const statusOf = (name: string): string => screen.getByRole('heading', { level: 3, name: new RegExp(`^${name},`, 'u') })
 			.closest('li')
 			?.querySelector('[data-rule-status]')
 			?.textContent ?? '';
 		expect(statusOf('Rain expected')).toContain('Deferring:Deep water the fig');
-		expect(statusOf('Rain expected')).toContain('Let through:Apply fall pre-emergent to the front lawn');
+		expect(statusOf('Rain expected')).not.toContain('Let through');
 		expect(statusOf('Water in after application')).toContain('Annotating:Apply fall pre-emergent to the front lawn');
 	});
 

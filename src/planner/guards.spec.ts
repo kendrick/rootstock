@@ -83,6 +83,7 @@ function taskFor(ruleId: string, plantId: string | null, fields: Partial<Task> =
 		delegable: rule.delegable,
 		tags: rule.tags,
 		title: rule.name,
+		guardChecks: null,
 		...fields,
 	});
 }
@@ -234,12 +235,12 @@ describe('applyGuards', () => {
 			}
 		});
 
-		it('changes nothing about a Task no Guard reaches', () => {
+		it('changes nothing about a Task no Guard reaches but to record that none did', () => {
 			// `fig-fertilizer-until-spring` names the fig and the `fertilizer`
 			// Rule tag, and the fig's pruning satisfies only the first half.
 			const guarded = applyGuards([figPrune], [highPriorityRule, figFertilizerRule, figFertilizerGuard], plants, [], asOf);
 
-			expect(guarded).toEqual([figPrune]);
+			expect(guarded).toEqual([{ ...figPrune, guardChecks: [] }]);
 			expect(only(guarded)).not.toBe(figPrune);
 		});
 	});
@@ -430,6 +431,39 @@ describe('applyGuards', () => {
 
 			expect(guarded.status).toBe('deferred');
 			expect(guarded.citation).toEqual(approaching.citation);
+		});
+	});
+
+	// CONTEXT.md's GuardVerdict. An `unmet` verdict changes nothing else on the
+	// Task, so without this record nothing downstream can tell a Guard that
+	// looked and let the work through from one that never reached it.
+	describe('recording each verdict', () => {
+		/** The fixture forecast with every rain chance at zero, so the rain Guard looks and finds it clear. */
+		const clearWindow = rainyWindow.map(day => day.variable === 'precipitation-probability' ? { ...day, value: 0 } : day);
+
+		it('records `met` where a Guard deferred the Task', () => {
+			const guarded = only(applyGuards([fallPreEmergent], rules, plants, rainyWindow, asOf));
+
+			expect(guarded.guardChecks).toContainEqual({ guardId: rainGuard.id, verdict: 'met' });
+		});
+
+		it('records `unmet` where a Guard reached the Task and let it through', () => {
+			const guarded = only(applyGuards([fallPreEmergent], [fixtureRule('fall-pre-emergent'), rainGuard], plants, clearWindow, asOf));
+
+			expect(guarded.deferrals).toEqual([]);
+			expect(guarded.guardChecks).toEqual([{ guardId: rainGuard.id, verdict: 'unmet' }]);
+		});
+
+		it('records `unavailable` where a Guard could not check', () => {
+			const guarded = only(applyGuards([fallPreEmergent], [fixtureRule('fall-pre-emergent'), rainGuard], plants, forecastlessWindow, asOf));
+
+			expect(guarded.guardChecks).toEqual([{ guardId: rainGuard.id, verdict: 'unavailable' }]);
+		});
+
+		it('records one entry per Guard that reached the Task, by Guard id', () => {
+			const guarded = only(applyGuards([fallPreEmergent], [fixtureRule('fall-pre-emergent'), rainGuard, waterInGuard], plants, clearWindow, asOf));
+
+			expect(guarded.guardChecks?.map(check => check.guardId)).toEqual([rainGuard.id, waterInGuard.id]);
 		});
 	});
 });

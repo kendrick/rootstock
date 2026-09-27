@@ -71,6 +71,7 @@ function task(ruleId: string, plantId: string | null, tags: string[] = []): Task
 		delegable: true,
 		tags,
 		title: ruleId,
+		guardChecks: null,
 	});
 }
 

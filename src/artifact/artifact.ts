@@ -66,11 +66,42 @@ export const statusRecordSchema = z.strictObject({
 
 export type StatusRecord = z.infer<typeof statusRecordSchema>;
 
+/**
+ * Gives each Task in an Artifact written before the Guard pass recorded
+ * verdicts an explicit `guardChecks: null`, which is what that absence means.
+ *
+ * The schema stays strict for anything writing an Artifact. This runs ahead of
+ * the parse because the committed `data/artifact.json` keeps the older shape
+ * until the next daily run replaces it, and a failed run keeps it longer. Only
+ * a missing key is filled; a present one is parsed as it is.
+ */
+function withGuardChecksKey(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null || !('plan' in value)) {
+		return value;
+	}
+	const { plan } = value as { plan: unknown };
+	if (typeof plan !== 'object' || plan === null || !('tasks' in plan) || !Array.isArray(plan.tasks)) {
+		return value;
+	}
+
+	return {
+		...value,
+		plan: {
+			...plan,
+			tasks: plan.tasks.map((task: unknown) =>
+				typeof task === 'object' && task !== null && !('guardChecks' in task) ? { ...task, guardChecks: null } : task),
+		},
+	};
+}
+
+const parseCurrentArtifact = parseWith(artifactSchema, 'artifact');
+const safeParseCurrentArtifact = safeParseWith(artifactSchema, 'artifact');
+
 /** Parses an Artifact, throwing a sentence naming the failing path. Used where a bad file should stop the run. */
-export const parseArtifact = parseWith(artifactSchema, 'artifact');
+export const parseArtifact = (value: unknown): Artifact => parseCurrentArtifact(withGuardChecksKey(value));
 
 /** The same parse returned as a value, for the browser: it has to render an error state, not crash the page. */
-export const safeParseArtifact = safeParseWith(artifactSchema, 'artifact');
+export const safeParseArtifact = (value: unknown): ReturnType<typeof safeParseCurrentArtifact> => safeParseCurrentArtifact(withGuardChecksKey(value));
 
 /** Parses a status record, throwing on a bad one. */
 export const parseStatusRecord = parseWith(statusRecordSchema, 'status record');

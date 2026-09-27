@@ -27,6 +27,7 @@ function firedTask(ruleId: string, overrides: Partial<Task> = {}): Task {
 		delegable: false,
 		tags: [],
 		title: 'A fired Task',
+		guardChecks: null,
 		...overrides,
 	};
 }
@@ -63,6 +64,20 @@ describe('standingFor, fired', () => {
 		const standing = standingFor(seedRule('esperanza-feeding'), plan('2026-09-26', [firedTask('esperanza-feeding')]));
 
 		expect(standing.waitingOn).toBe('Season closes October 7');
+	});
+});
+
+// A Threshold Rule fires on the earliest qualifying run in the window, which
+// needn't include the latest reading, so the line names the run the Task cites.
+describe('standingFor, a fired Threshold Rule with no season', () => {
+	it('names the run its Task cites', () => {
+		const threshold = seedRule('spring-pre-emergent');
+		const unseasoned = { ...threshold, season: null } as Rule;
+		const task = firedTask('spring-pre-emergent', {
+			citation: { kind: 'threshold', variable: 'soil-temperature', depthCm: 6, aggregate: 'mean', from: '2026-03-02', to: '2026-03-04' },
+		});
+
+		expect(standingFor(unseasoned, plan('2026-03-10', [task])).waitingOn).toBe('Fired on the run from March 2 to March 4');
 	});
 });
 
@@ -109,43 +124,62 @@ describe('standingFor, waiting', () => {
 describe('standingFor, guards', () => {
 	const deferringGuard = seedRule('rain-expected');
 	const annotatingGuard = seedRule('water-in-after-application');
-	// Both seed Guards reach work tagged chemical, which Fall pre-emergent is.
 	const lawn = (overrides: Partial<Task> = {}): Task => firedTask('fall-pre-emergent', { title: 'Fall pre-emergent (Front lawn)', tags: ['chemical'], ...overrides });
 
-	it('says a Guard reached nothing when no Task is in its reach', () => {
-		const standing = standingFor(deferringGuard, plan('2026-09-26', [firedTask('esperanza-feeding', { title: 'Feed the Esperanza' })]));
+	it('says a Guard reached nothing when the recorded Plan shows no verdict from it', () => {
+		const standing = standingFor(deferringGuard, plan('2026-09-26', [firedTask('esperanza-feeding', { title: 'Feed the Esperanza', guardChecks: [] })]));
 
 		expect(standing.waitingOn).toBe('Reaches no Task this week');
 		expect(standing.checks).toEqual([]);
 	});
 
-	it('says a Guard let a reached Task through when its condition came back unmet', () => {
-		const standing = standingFor(deferringGuard, plan('2026-09-26', [lawn()]));
+	it('says a Guard let a Task through where the Plan records `unmet`', () => {
+		const standing = standingFor(deferringGuard, plan('2026-09-26', [lawn({ guardChecks: [{ guardId: deferringGuard.id, verdict: 'unmet' }] })]));
 
 		expect(standing.waitingOn).toBe('Let through: Fall pre-emergent (Front lawn)');
 		expect(standing.inCurrentPlan).toBe(false);
 	});
 
 	it('names the Task a deferring Guard is deferring', () => {
-		const held = lawn({ status: 'deferred', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
+		const held = lawn({ status: 'deferred', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }], guardChecks: [{ guardId: deferringGuard.id, verdict: 'met' }] });
 
 		expect(standingFor(deferringGuard, plan('2026-09-26', [held])).waitingOn).toBe('Deferring: Fall pre-emergent (Front lawn)');
 	});
 
-	// `unavailable` isn't a clear sky: the Planner couldn't look.
-	it('says a Guard let work through unchecked when its evidence was unavailable', () => {
-		const unchecked = lawn({ annotations: [{ guardId: deferringGuard.id, text: FORECAST_UNAVAILABLE_TEXT }] });
+	it('says a Guard let work through unchecked where its evidence was unavailable', () => {
+		const unchecked = lawn({ annotations: [{ guardId: deferringGuard.id, text: FORECAST_UNAVAILABLE_TEXT }], guardChecks: [{ guardId: deferringGuard.id, verdict: 'unavailable' }] });
 
 		expect(standingFor(deferringGuard, plan('2026-09-26', [unchecked])).waitingOn).toBe('Let through unchecked: Fall pre-emergent (Front lawn)');
 	});
 
 	it('names every Task an annotating Guard is annotating', () => {
 		const note = { guardId: annotatingGuard.id, text: 'Water it in' };
+		const met = [{ guardId: annotatingGuard.id, verdict: 'met' as const }];
 		const standing = standingFor(annotatingGuard, plan('2026-09-26', [
-			lawn({ annotations: [note] }),
-			firedTask('last-nitrogen', { title: 'Last nitrogen (Front lawn)', tags: ['chemical'], annotations: [note] }),
+			lawn({ annotations: [note], guardChecks: met }),
+			firedTask('last-nitrogen', { title: 'Last nitrogen (Front lawn)', annotations: [note], guardChecks: met }),
 		]));
 
 		expect(standing.waitingOn).toBe('Annotating: Fall pre-emergent (Front lawn) and Last nitrogen (Front lawn)');
+	});
+
+	// An Artifact written before the Guard pass recorded verdicts. `unmet`
+	// leaves nothing on a Task, so there's no telling it from never reached,
+	// and the page claims neither.
+	describe('on a Plan with no recorded verdicts', () => {
+		it('reads Deferrals and Annotations, and calls nothing clear', () => {
+			const held = lawn({ status: 'deferred', deferrals: [{ guardId: deferringGuard.id, releaseWhen: 'Later' }] });
+			const unmarked = firedTask('last-nitrogen', { title: 'Last nitrogen (Front lawn)', tags: ['chemical'] });
+
+			const standing = standingFor(deferringGuard, plan('2026-09-26', [held, unmarked]));
+
+			expect(standing.waitingOn).toBe('Deferring: Fall pre-emergent (Front lawn)');
+		});
+
+		it('says only that nothing was deferred when nothing carries a mark', () => {
+			const standing = standingFor(deferringGuard, plan('2026-09-26', [lawn()]));
+
+			expect(standing.waitingOn).toBe('Deferring nothing this week');
+		});
 	});
 });

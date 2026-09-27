@@ -112,6 +112,7 @@ export const awayArtifact: Artifact = {
 				delegable: mustBeDelegable(lastNitrogenRule, seedTagPolicy),
 				tags: ['lawn', 'fertilizer', 'nitrogen'],
 				title: 'Put down the last nitrogen of the year on the front lawn',
+				guardChecks: null,
 			},
 			{
 				id: delegableUnnarratedTaskId,
@@ -129,6 +130,7 @@ export const awayArtifact: Artifact = {
 				delegable: true,
 				tags: ['watering'],
 				title: 'Deep water the fig',
+				guardChecks: null,
 			},
 			{
 				id: deferredDelegableTaskId,
@@ -143,6 +145,7 @@ export const awayArtifact: Artifact = {
 				delegable: mustBeDelegable(esperanzaFeedingRule, seedTagPolicy),
 				tags: ['container', 'fertilizer'],
 				title: 'Feed the Esperanza',
+				guardChecks: null,
 			},
 			{
 				id: chemicalTaskId,
@@ -155,6 +158,7 @@ export const awayArtifact: Artifact = {
 				delegable: mustStayUndelegable(fallPreEmergentRule, seedTagPolicy),
 				tags: ['lawn', 'herbicide', 'chemical'],
 				title: 'Apply fall pre-emergent to the front lawn',
+				guardChecks: null,
 			},
 			{
 				id: undelegableNoTagTaskId,
@@ -171,6 +175,7 @@ export const awayArtifact: Artifact = {
 				delegable: false,
 				tags: ['mulch', 'tree'],
 				title: 'Spread mulch around the fig',
+				guardChecks: null,
 			},
 		],
 	},

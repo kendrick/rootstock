@@ -144,6 +144,7 @@ export const narratedArtifact: Artifact = {
 				delegable: false,
 				tags: ['lawn', 'chemical'],
 				title: 'Apply fall pre-emergent to the front lawn',
+				guardChecks: null,
 			},
 			/*
 			 * Delegable, fired, and on the same Plant as the pre-emergent Task
@@ -177,6 +178,7 @@ export const narratedArtifact: Artifact = {
 				delegable: true,
 				tags: ['lawn', 'fertilizer', 'nitrogen'],
 				title: 'Put down the last nitrogen of the year on the front lawn',
+				guardChecks: null,
 			},
 			{
 				id: deferredTaskId,
@@ -191,6 +193,7 @@ export const narratedArtifact: Artifact = {
 				delegable: true,
 				tags: ['watering'],
 				title: 'Deep water the fig',
+				guardChecks: null,
 			},
 		],
 		window: windowFixture,
@@ -258,6 +261,7 @@ export const approachingArtifact: Artifact = {
 				delegable: false,
 				tags: ['lawn', 'herbicide', 'chemical'],
 				title: 'Apply spring pre-emergent to the front lawn',
+				guardChecks: null,
 			},
 		],
 		window: springWindowFixture,

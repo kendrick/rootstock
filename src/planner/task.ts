@@ -89,6 +89,24 @@ export const annotationSchema = z.strictObject({
 });
 export type Annotation = z.infer<typeof annotationSchema>;
 
+/** CONTEXT.md's GuardVerdict: what one Guard's condition concluded on the planned date. */
+export const guardVerdictSchema = z.enum(['met', 'unmet', 'unavailable']);
+
+/**
+ * One Guard's verdict on one Task it reached, recorded by the Guard pass.
+ *
+ * `met` and `unavailable` also leave a Deferral or Annotation, but `unmet`
+ * leaves nothing else on the Task. Without this record a reader can't tell a
+ * Guard that looked and let the work through from one that never reached it,
+ * and re-deriving the reach later reads today's Rules against a Plan they may
+ * not have produced.
+ */
+export const guardCheckSchema = z.strictObject({
+	guardId: kebabIdSchema,
+	verdict: guardVerdictSchema,
+});
+export type GuardCheck = z.infer<typeof guardCheckSchema>;
+
 /**
  * One piece of work the Planner derived from exactly one Rule. `ruleId` and
  * `plantId` are the same pair an Occurrence is keyed by, but they are
@@ -117,6 +135,10 @@ export const taskSchema = z.strictObject({
 	delegable: z.boolean(),
 	tags: z.array(z.string()),
 	title: z.string(),
+	// Null until the Guard pass runs, and on an Artifact written before it
+	// recorded verdicts (`loadArtifact` fills the missing key). An empty list
+	// means the pass ran and no Guard reached the Task.
+	guardChecks: z.array(guardCheckSchema).nullable(),
 }).refine(
 	task => task.id === taskId(task.ruleId, task.plantId),
 	{ message: 'id must equal taskId(ruleId, plantId)', path: ['id'] },

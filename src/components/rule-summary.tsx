@@ -163,13 +163,15 @@ function reachText(appliesTo: Rule['appliesTo']): string {
 	const plants = appliesTo.plantIds === null
 		? null
 		: appliesTo.plantIds.map(id => seedPlants.find(plant => plant.id === id)?.name ?? id).join(', ');
-	const parts = [
-		appliesTo.ruleTags === null ? 'Work' : `Work tagged ${appliesTo.ruleTags.join(' or ')}`,
+	const work = appliesTo.ruleTags === null ? 'Work' : `Work tagged ${appliesTo.ruleTags.join(' or ')}`;
+	// `guardTargets` takes a named Plant or a tagged one, so the two Plant
+	// selectors join with "or".
+	const plantGroup = [
 		plants === null ? null : `for ${plants}`,
 		appliesTo.plantTags === null ? null : `on Plants tagged ${appliesTo.plantTags.join(' or ')}`,
-	];
+	].filter(part => part !== null).join(' or ');
 
-	return parts.filter(part => part !== null).join(' ');
+	return plantGroup === '' ? work : `${work}, ${plantGroup}`;
 }
 
 export interface AfterLink {

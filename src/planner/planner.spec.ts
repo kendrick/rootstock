@@ -537,6 +537,10 @@ describe('plan under guards', () => {
 			delegable: true,
 			tags: ['fertilizer'],
 			title: 'Feed the fig (Celeste fig), never recorded',
+			guardChecks: [
+				{ guardId: 'fig-fertilizer-until-spring', verdict: 'met' },
+				{ guardId: 'rain-expected', verdict: 'met' },
+			],
 		});
 	});
 

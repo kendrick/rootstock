@@ -37,6 +37,7 @@ const planWithTasks: Plan = {
 			delegable: false,
 			tags: [],
 			title: 'A task the window Rule produced',
+			guardChecks: null,
 		},
 		{
 			id: taskId('deep-water-fig', null),
@@ -49,6 +50,7 @@ const planWithTasks: Plan = {
 			delegable: true,
 			tags: [],
 			title: 'A task the Guard held back',
+			guardChecks: null,
 		},
 	],
 	window: [],

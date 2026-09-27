@@ -15,6 +15,7 @@ function fixture(overrides: Partial<Record<string, unknown>> = {}) {
 		delegable: true,
 		tags: ['lawn'],
 		title: 'Apply fall pre-emergent to the front bed.',
+		guardChecks: null,
 		...overrides,
 	};
 }
