@@ -9,6 +9,7 @@ import { permanenceNote } from './permanence';
 import { Section } from './section';
 import { TaskTable } from './task-group';
 import { TaskItem } from './task-item';
+import { ticketAnchor } from './ticket-anchor';
 
 export interface DeferredSectionProps extends SignOffProps {
 	/** Already filtered to status 'deferred'. */
@@ -113,6 +114,7 @@ export function DeferredSection({
 							key={task.id}
 							task={task}
 							ordinal={index + 1}
+							anchorId={ticketAnchor('Held back', index + 1)}
 							rulesById={rulesById}
 							plantsById={plantsById}
 							narrationText={narrationById?.get(task.id) ?? null}
