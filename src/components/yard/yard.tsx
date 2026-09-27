@@ -174,21 +174,25 @@ export function Yard({ yard, plants, rules, artifact, store }: YardProps): React
 				{/*
 					Side by side from lg, with the plate held in view while the list
 					scrolls, so a row and the callout it lights are on screen together.
-					Stacked, the list starts below a 900px fold on a desktop.
+					Stacked, the list starts below a 900px fold on a desktop. With no
+					photo there is no plate to key or sit beside, so the list takes the
+					full width instead of half of it beside an empty column.
 				*/}
-				<div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
-					<div className="lg:sticky lg:top-4">
-						<YardPhoto
-							yard={yard}
-							plants={plants}
-							ordinals={ordinals}
-							hovered={hovered}
-							onTicket={onTicket}
-							onHoverChange={setHovered}
-							onSelect={handleSelect}
-						/>
-						<PlateKey showTicket={view === 'week'} />
-					</div>
+				<div className={cn(yard.photo !== null && 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0')}>
+					{yard.photo !== null && (
+						<div className="lg:sticky lg:top-4">
+							<YardPhoto
+								yard={yard}
+								plants={plants}
+								ordinals={ordinals}
+								hovered={hovered}
+								onTicket={onTicket}
+								onHoverChange={setHovered}
+								onSelect={handleSelect}
+							/>
+							<PlateKey showTicket={view === 'week'} />
+						</div>
+					)}
 					<PlantList
 						plants={plants}
 						ordinals={ordinals}

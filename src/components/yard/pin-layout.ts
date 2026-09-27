@@ -32,6 +32,38 @@ export const MIN_CENTER_DISTANCE_PX = 28;
 export const BAND_FRACTION = 0.14;
 
 /**
+ * How far apart a band's rows sit, in px at the reference width: a band's
+ * depth, or MIN_CENTER_DISTANCE_PX where a wide photo makes the band shallower
+ * than that, so a second row never crowds the first.
+ */
+function rowPitchPx(boxAspect: number): number {
+	return Math.max(BAND_FRACTION * MOBILE_BOX_WIDTH_PX * boxAspect, MIN_CENTER_DISTANCE_PX);
+}
+
+/**
+ * How much plate the callouts need above and below the photo, as fractions of
+ * the photo's height: one row's pitch for each row a band uses, and nothing on
+ * a side with no callouts. `yard-photo.tsx` reserves exactly this, so a second
+ * row gets room only when a crowd needs one.
+ */
+export function bandDepths(placements: Iterable<Position>, boxAspect: number): { top: number; bottom: number } {
+	const pitch = rowPitchPx(boxAspect) / (MOBILE_BOX_WIDTH_PX * boxAspect);
+	let top = 0;
+	let bottom = 0;
+	for (const { y } of placements) {
+		// A row's centre sits half a pitch into it, so rounding up counts the
+		// rows. The epsilon absorbs float noise on a centre worked out in px.
+		if (y < 0) {
+			top = Math.max(top, Math.ceil(-y / pitch - 1e-9));
+		}
+		else if (y > 1) {
+			bottom = Math.max(bottom, Math.ceil((y - 1) / pitch - 1e-9));
+		}
+	}
+	return { top: top * pitch, bottom: bottom * pitch };
+}
+
+/**
  * Where a callout draws, as fractions of the photo. `y` below 0 or above 1 is
  * the band above or below it. `anchor` is the Plant's true spot when the
  * callout had to leave it, for the leader line to run back to.
@@ -60,7 +92,8 @@ interface Point {
  * A callout stays on its Plant unless another sits within
  * MIN_CENTER_DISTANCE_PX of it. A crowded callout moves out of the photo into
  * a band on the side its Plant is nearer, spaced along the band, with a
- * leader back to the true spot, the way a parts plate handles a crowd. Nudging
+ * leader back to the true spot, the way a parts plate handles a crowd. A band
+ * with more callouts than one row holds stacks a second row farther out. Nudging
  * crowded pins apart inside the photo would put the patio's callouts on the
  * roof, naming a spot that isn't the Plant's.
  */
@@ -68,7 +101,12 @@ export function declutteredPositions(plants: Plant[], boxAspect: number): Map<st
 	const boxWidth = MOBILE_BOX_WIDTH_PX;
 	const boxHeight = boxWidth * boxAspect;
 	const half = PIN_SIZE_PX / 2;
-	const bandCentre = { top: -(BAND_FRACTION / 2) * boxHeight, bottom: (1 + BAND_FRACTION / 2) * boxHeight };
+	const pitch = rowPitchPx(boxAspect);
+	// Row 0 hugs the photo and each further row sits one pitch farther out.
+	const rowCentre = { top: (row: number) => -(row + 0.5) * pitch, bottom: (row: number) => boxHeight + (row + 0.5) * pitch };
+	// Centres run from half a pin in at one edge to half a pin in at the other,
+	// MIN_CENTER_DISTANCE_PX apart: 11 at the reference width.
+	const perRow = Math.floor((boxWidth - 2 * half) / MIN_CENTER_DISTANCE_PX) + 1;
 
 	const points: Point[] = plants
 		.filter((plant): plant is Plant & { position: Position } => plant.position !== null)
@@ -100,12 +138,19 @@ export function declutteredPositions(plants: Plant[], boxAspect: number): Map<st
 			point.band = point.trueY < boxHeight / 2 ? 'top' : 'bottom';
 		}
 		for (const band of ['top', 'bottom'] as const) {
-			for (const point of points) {
-				if (point.band === band) {
-					point.y = bandCentre[band];
+			// Past one row's capacity the band stacks. Dealing the crowd across the
+			// rows in turn, in the order the Plants run across the photo, keeps each
+			// row spread over the width its anchors span, so no row's leaders have
+			// to run the plate's width to reach their slots.
+			const members = points.filter(point => point.band === band).sort((a, b) => a.trueX - b.trueX);
+			const rows = Math.max(1, Math.ceil(members.length / perRow));
+			for (let row = 0; row < rows; row++) {
+				const inRow = members.filter((_, index) => index % rows === row);
+				for (const point of inRow) {
+					point.y = rowCentre[band](row);
 				}
+				spread(inRow, boxWidth, half);
 			}
-			spread(points.filter(point => point.band === band), boxWidth, half);
 		}
 		if (points.every(point => point.band !== null)) {
 			break;
@@ -127,9 +172,10 @@ function tooClose(a: Point, b: Point): boolean {
 }
 
 /**
- * Callouts in one band, in the order their Plants run across the photo, each
- * at least MIN_CENTER_DISTANCE_PX from the last and all inside the frame's
- * width. Each starts over its own Plant, so a leader runs as near to straight
+ * Callouts in one band row, in the order their Plants run across the photo,
+ * each at least MIN_CENTER_DISTANCE_PX from the last and all inside the
+ * frame's width. The caller keeps a row within its capacity, which is what
+ * lets both hold at once. Each starts over its own Plant, so a leader runs as near to straight
  * as the crowd allows.
  */
 function spread(band: Point[], width: number, half: number): void {
@@ -168,7 +214,7 @@ function crossingPair(band: Point[]): [Point, Point] | null {
 	return null;
 }
 
-/** Whether two leaders, anchor to callout, cross. Both callouts share the band's y. */
+/** Whether two leaders, anchor to callout, cross. Both callouts share the row's y. */
 function leadersCross(a: Point, b: Point): boolean {
 	const side = (px: number, py: number, qx: number, qy: number, rx: number, ry: number) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
 	const y = a.y;

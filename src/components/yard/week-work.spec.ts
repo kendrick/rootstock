@@ -1,7 +1,7 @@
 import type { Task } from '@/planner/task';
 import { describe, expect, it } from 'vitest';
 import { narratedArtifact } from '@/artifact/fixtures';
-import { ticketLabel, ticketLines, weekLine } from './week-work';
+import { linesReaching, ticketLabel, ticketLines, weekLine } from './week-work';
 
 const template = narratedArtifact.plan.tasks[0];
 if (template === undefined) {
@@ -32,6 +32,22 @@ describe('ticketLines', () => {
 		expect(lines.get('esperanza-1')?.map(ticketLabel)).toEqual(['Ready now 03']);
 		expect(lines.get('fig-1')?.map(ticketLabel)).toEqual(['Held back 01']);
 		expect(lines.size).toBe(3);
+	});
+});
+
+// A Plant's sheet lists its own lines and every yard-wide one, each with the
+// number the ticket prints, in Plan order.
+describe('linesReaching', () => {
+	it('carries a Plant\'s own lines and the yard-wide ones, numbered as the ticket numbers them', () => {
+		const lines = linesReaching([
+			task('a', 'fired', 'fall-pre-emergent', 'front-lawn'),
+			task('b', 'fired', 'yard-cleanup', null),
+			task('c', 'fired', 'esperanza-feeding', 'esperanza-1'),
+			task('d', 'deferred', 'yard-spray', null),
+		], 'esperanza-1');
+
+		expect(lines.map(ticketLabel)).toEqual(['Ready now 02', 'Ready now 03', 'Held back 01']);
+		expect(lines.map(line => line.ruleId)).toEqual(['yard-cleanup', 'esperanza-feeding', 'yard-spray']);
 	});
 });
 

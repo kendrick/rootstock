@@ -193,6 +193,20 @@ test('lays pins out against the photo width a phone renders, with none clipped',
 	}
 });
 
+// From lg the plate and the list share a row. The list's column only exists
+// beside a photo, so this measures the two boxes the browser laid out rather
+// than the classes that ask for them.
+test('sets the plate beside the list on a desktop', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await page.goto('yard?view=all');
+
+	const plate = await page.getByRole('img', { name: /Aerial photo of the yard/ }).evaluate(node => node.parentElement?.parentElement?.getBoundingClientRect().toJSON() as DOMRect);
+	const list = await page.getByRole('list', { name: 'Plants' }).boundingBox();
+	expect(list).not.toBeNull();
+	expect(list!.x).toBeGreaterThanOrEqual(plate.right);
+	expect(Math.abs(list!.y - plate.top)).toBeLessThan(plate.height);
+});
+
 test('yard route has no accessibility violations', async ({ page }) => {
 	await page.goto('yard');
 	const results = await new AxeBuilder({ page }).analyze();

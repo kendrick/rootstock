@@ -631,3 +631,114 @@ describe('plantSheet sources', () => {
 		expect(new Set(names).size).toBe(names.length);
 	});
 });
+
+// A Rule with no plant selector reaches every Plant (`rulesFor`), and the
+// Planner writes its one Task with a null plantId. That Task is this Plant's
+// work too, so the sheet's standing and its ticket lines have to count it.
+describe('plantSheet, whole-yard work', () => {
+	const lastNitrogen = ruleFixtures.find(rule => rule.id === 'last-nitrogen');
+	if (lastNitrogen === undefined || lastNitrogen.kind !== 'window') {
+		throw new Error('the rule fixtures carry no \'last-nitrogen\' window Rule to spread a whole-yard Rule from');
+	}
+	// Tagged `chemical`, so `rain-expected` reaches it and has something to hold.
+	const wholeYard: Rule = {
+		...lastNitrogen,
+		id: 'whole-yard-sweep',
+		name: 'Whole-yard sweep',
+		tags: ['chemical'],
+		appliesTo: { plantIds: null, plantTags: null, ruleTags: null },
+	};
+	const rules = [...ruleFixtures, wholeYard];
+	const [template] = yardArtifact.plan.tasks;
+	if (template === undefined) {
+		throw new Error('the yard artifact carries no Task to spread a whole-yard Task from');
+	}
+	const held: Artifact = {
+		...yardArtifact,
+		plan: {
+			...yardArtifact.plan,
+			tasks: [{
+				...template,
+				id: wholeYard.id,
+				ruleId: wholeYard.id,
+				plantId: null,
+				status: 'deferred',
+				citation: { kind: 'window', date: yardArtifact.plan.asOf },
+				deferrals: [{ guardId: 'rain-expected', releaseWhen: 'After the rain passes.' }],
+				annotations: [],
+				delegable: false,
+				tags: wholeYard.tags,
+			}],
+		},
+	};
+
+	it('says a Guard is acting when it holds a whole-yard Task', async () => {
+		renderSheet(figPlant, { rules, artifact: held });
+		await settled();
+
+		const guard = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem').find(row => row.textContent?.includes(ruleFixtures.find(rule => rule.id === 'rain-expected')?.name ?? 'rain-expected'));
+		expect(guard?.textContent).toContain('Acting on this week\'s ticket');
+	});
+
+	it('gives a whole-yard Rule on the ticket no waiting line', async () => {
+		renderSheet(figPlant, { rules, artifact: held });
+		await settled();
+
+		const row = within(section('Rules that ask for work here')).getAllByRole('listitem').find(candidate => candidate.textContent?.includes(wholeYard.name));
+		expect(row?.textContent).not.toMatch(/Opens [A-Z][a-z]+ \d{1,2}|Open through [A-Z][a-z]+ \d{1,2}/u);
+	});
+
+	// This Week numbers every Task in Plan order, a whole-yard one included, so
+	// the line here carries the number the ticket prints for it.
+	it('lists a whole-yard Task among this Plant\'s ticket lines, with what holds it', async () => {
+		renderSheet(figPlant, { rules, artifact: held });
+		await settled();
+
+		const week = section('This week');
+		const link = within(week).getByRole('link', { name: /Held back 01/u });
+		expect(link.textContent).toContain(wholeYard.name);
+		expect(week.textContent).toContain('After the rain passes.');
+	});
+});
+
+// The mark reads the Task's stamped `delegable` where this Plant has a Task,
+// and otherwise the Planner's own `isDelegable`, never the Rule's raw field:
+// tag policy can narrow a Rule the field calls delegable.
+describe('plantSheet, delegability', () => {
+	function notDelegableMarked(ruleName: string): boolean {
+		const row = within(section('Rules that ask for work here')).getAllByRole('listitem').find(candidate => candidate.textContent?.includes(ruleName));
+		if (row === undefined) {
+			throw new Error(`no row for '${ruleName}' on the sheet`);
+		}
+		return within(row).queryByText('Not delegable') !== null;
+	}
+
+	it('marks a Rule the tag policy narrows, though its own field says delegable', async () => {
+		const narrowed = ruleFixtures.map(rule => rule.id === 'last-nitrogen' ? { ...rule, tags: [...rule.tags, 'chemical'] } : rule);
+		renderSheet(lawnPlant, { rules: narrowed });
+		await settled();
+
+		expect(narrowed.find(rule => rule.id === 'last-nitrogen')?.delegable).toBe(true);
+		expect(notDelegableMarked(narrowed.find(rule => rule.id === 'last-nitrogen')?.name ?? '')).toBe(true);
+	});
+
+	it('reads the stamp on this Plant\'s Task over the Rule', async () => {
+		const [template] = yardArtifact.plan.tasks;
+		if (template === undefined) {
+			throw new Error('the yard artifact carries no Task to stamp');
+		}
+		const lastNitrogen = ruleFixtures.find(rule => rule.id === 'last-nitrogen');
+		const stamped: Artifact = {
+			...yardArtifact,
+			plan: {
+				...yardArtifact.plan,
+				tasks: [{ ...template, id: 'last-nitrogen@front-lawn', ruleId: 'last-nitrogen', plantId: lawnPlant.id, status: 'fired', citation: { kind: 'window', date: yardArtifact.plan.asOf }, delegable: false }],
+			},
+		};
+		renderSheet(lawnPlant, { artifact: stamped });
+		await settled();
+
+		expect(lastNitrogen?.delegable).toBe(true);
+		expect(notDelegableMarked(lastNitrogen?.name ?? '')).toBe(true);
+	});
+});

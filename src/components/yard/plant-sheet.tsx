@@ -25,14 +25,15 @@ import {
 import { withBasePath } from '@/lib/base-path';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
-import { seedYard } from '@/seed';
+import { isDelegable } from '@/planner/delegation';
+import { seedTagPolicy, seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { rulesFor } from './applicable-rules';
 import { calloutFace } from './callout-style';
 import { KIND_TEXT } from './kind-text';
 import { outOfSeasonUntil } from './season';
 import { SoilSparkline } from './soil-sparkline';
-import { ticketLabel, ticketLines } from './week-work';
+import { linesReaching, ticketLabel } from './week-work';
 
 /**
  * `irrigationSchema` keeps `source` so an owner's stated claim stays separable
@@ -175,14 +176,15 @@ function SiteConditions({ plant }: { plant: Plant }): ReactElement {
  * its own presentation instead of importing or duplicating a sibling's file.
  *
  * The needs here are also genuinely narrower than the full summary—no
- * threshold value with its published range, no product label link, no delegable
- * flag—because this sheet answers one question, "which Rules reach this
- * Plant", and those three belong to the question of what the work is. Staying
+ * threshold value with its published range, no product label link—because
+ * this sheet answers one question, "which Rules reach this Plant", and those
+ * two belong to the question of what the work is. The delegable mark is the
+ * exception, carried for the household reader This Week's row serves. Staying
  * separate may well be the right end state. Consolidating is a candidate to
  * weigh once #12 and #14 have both landed and all three presentations can be
  * read side by side, not a commitment made here.
  */
-function RuleRow({ rule, children }: { rule: Rule; children?: ReactNode }): ReactElement {
+function RuleRow({ rule, delegable, children }: { rule: Rule; delegable: boolean; children?: ReactNode }): ReactElement {
 	return (
 		<li className="space-y-2 border-b-2 border-rule px-3 py-3 last:border-b-0">
 			<p className="font-display text-body font-extrabold tracking-wide text-foreground uppercase">{rule.name}</p>
@@ -196,7 +198,7 @@ function RuleRow({ rule, children }: { rule: Rule; children?: ReactNode }): Reac
 				)}
 				{/* The same mark This Week's row carries, for the same household
 				    reader. A Guard makes no work, so it has nothing to delegate. */}
-				{rule.kind !== 'guard' && !rule.delegable && (
+				{rule.kind !== 'guard' && !delegable && (
 					<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
 						Not delegable
 					</span>
@@ -212,11 +214,22 @@ function RuleRow({ rule, children }: { rule: Rule; children?: ReactNode }): Reac
 	);
 }
 
-function RuleList({ rules, renderExtra }: { rules: Rule[]; renderExtra?: (rule: Rule) => ReactNode }): ReactElement {
+/**
+ * Whether a Rule's work here may go on the Away Card, answered the way
+ * `rule-summary.tsx` answers it. The Planner's stamp on a Task reaching this
+ * Plant wins, since tag policy has already narrowed it and asking again is a
+ * second chance to disagree. A Rule with no Task here falls back to
+ * `isDelegable`, never the raw field, which a `chemical` tag overrides.
+ */
+function delegableHere(rule: Rule, tasks: readonly Task[]): boolean {
+	return tasks.find(task => task.ruleId === rule.id)?.delegable ?? isDelegable(rule, seedTagPolicy);
+}
+
+function RuleList({ rules, tasks, renderExtra }: { rules: Rule[]; tasks: readonly Task[]; renderExtra?: (rule: Rule) => ReactNode }): ReactElement {
 	return (
 		<ul className="flex flex-col border-2 border-rule">
 			{rules.map(rule => (
-				<RuleRow key={rule.id} rule={rule}>{renderExtra?.(rule)}</RuleRow>
+				<RuleRow key={rule.id} rule={rule} delegable={delegableHere(rule, tasks)}>{renderExtra?.(rule)}</RuleRow>
 			))}
 		</ul>
 	);
@@ -474,11 +487,14 @@ export function PlantSheet({
 	const thresholdRule: ThresholdRule | null
 		= applicable.find((rule): rule is ThresholdRule => rule.kind === 'threshold') ?? null;
 	const workRules = applicable.filter(rule => rule.kind !== 'guard');
-	const onTicket = plant === null ? [] : (ticketLines(artifact.plan.tasks).get(plant.id) ?? []);
-	const plantTasks = plant === null ? [] : artifact.plan.tasks.filter(task => task.plantId === plant.id);
+	const onTicket = plant === null ? [] : linesReaching(artifact.plan.tasks, plant.id);
+	// A null plantId is a whole-yard Task, which reaches this Plant as its Rule
+	// does in `rulesFor`. Left out, a Guard holding the yard's herbicide would
+	// read as holding nothing here.
+	const plantTasks = plant === null ? [] : artifact.plan.tasks.filter(task => task.plantId === plant.id || task.plantId === null);
 	// A Rule or Guard can reach several Plants. Its standing on this sheet comes
-	// from this Plant's Tasks alone, or a Guard acting on the lawn would claim to
-	// be acting on the fig too.
+	// from the Tasks that reach this Plant alone, or a Guard acting on the lawn
+	// would claim to be acting on the fig too.
 	const plantPlan: Plan = { ...artifact.plan, tasks: plantTasks };
 	const seasonOpensOn = thresholdRule === null ? null : outOfSeasonUntil(artifact.plan.asOf, thresholdRule);
 	const guards = applicable.filter(rule => rule.kind === 'guard');
@@ -568,6 +584,7 @@ export function PlantSheet({
 								<SectionHead>Rules that ask for work here</SectionHead>
 								<RuleList
 									rules={workRules}
+									tasks={plantTasks}
 									// The chart sits in its own Rule's row, so it is read as that
 									// Rule's evidence and not as the Plant's. Out of season it folds
 									// behind the day it opens, because September soil above a
@@ -597,7 +614,7 @@ export function PlantSheet({
 								<p className="text-note text-muted">
 									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
 								</p>
-								<RuleList rules={guards} renderExtra={rule => <GuardToday rule={rule} plan={plantPlan} />} />
+								<RuleList rules={guards} tasks={plantTasks} renderExtra={rule => <GuardToday rule={rule} plan={plantPlan} />} />
 							</section>
 						)}
 

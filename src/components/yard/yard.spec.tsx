@@ -178,6 +178,21 @@ describe('yard', () => {
 		expect(document.activeElement).toBe(row);
 	});
 
+	// With no photo there is no plate to key or to sit beside, so the key goes
+	// and the list takes the field's full width rather than half of it.
+	it('drops the plate\'s key and its column when the yard has no photo', () => {
+		const keys = (): number => [...document.querySelectorAll('ul[aria-hidden="true"]')].filter(list => list.textContent?.includes('Planted')).length;
+		const withPhoto = renderYard();
+		expect(keys()).toBe(1);
+		withPhoto.unmount();
+
+		render(<Yard yard={{ ...yardFixture, photo: null }} plants={plantFixtures} rules={ruleFixtures} artifact={yardArtifact} store={createYardStore()} />);
+
+		expect(screen.queryByRole('img', { name: /Aerial photo of the yard/ })).toBeNull();
+		expect(keys()).toBe(0);
+		expect(screen.getByRole('list', { name: 'Plants' }).closest('.lg\\:grid-cols-2')).toBeNull();
+	});
+
 	/*
 	 * The fixture's Plan carries one Task, approaching, on the front lawn. So
 	 * the week view leads with the lawn, names its ticket line the way This Week

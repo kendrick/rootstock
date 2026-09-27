@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { withBasePath } from '@/lib/base-path';
 import { cn } from '@/lib/utils';
-import { BAND_FRACTION, declutteredPositions } from './pin-layout';
+import { bandDepths, declutteredPositions } from './pin-layout';
 import { PlantPin } from './plant-pin';
 
 export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSelect, onTicket = new Set() }: {
@@ -53,13 +53,12 @@ export function YardPhoto({ yard, plants, ordinals, hovered, onHoverChange, onSe
 
 	/*
 	 * The plate is the photo plus a callout band above or below it where a
-	 * crowd needs one. Every position below is a fraction of the plate, so a
-	 * leader lands on the same spot at every width. `toPlate` turns the
-	 * layout's photo fractions into plate fractions.
+	 * crowd needs one, two rows deep where one row can't hold it. Every
+	 * position below is a fraction of the plate, so a leader lands on the same
+	 * spot at every width. `toPlate` turns the layout's photo fractions into
+	 * plate fractions.
 	 */
-	const placed = [...positions.values()];
-	const top = placed.some(position => position.y < 0) ? BAND_FRACTION : 0;
-	const bottom = placed.some(position => position.y > 1) ? BAND_FRACTION : 0;
+	const { top, bottom } = bandDepths(positions.values(), photo.height / photo.width);
 	const span = 1 + top + bottom;
 	const toPlate = (x: number, y: number) => ({ x, y: (y + top) / span });
 	const leaders = [...positions.entries()].flatMap(([id, position]) => position.anchor === null

@@ -214,4 +214,60 @@ describe('declutteredPositions', () => {
 			}
 		}
 	});
+
+	/*
+	 * A 316px band holds 11 callouts: centres from 12px to 304px, 28px apart.
+	 * The capacity is worked from those numbers, not from the layout, and the
+	 * twelfth has to go somewhere that is still on the plate.
+	 */
+	describe('a band past its capacity', () => {
+		const crowd = (count: number): Plant[] => Array.from({ length: count }, (_, index) => sitedPlant(`p${index}`, 0.3 + index * 0.004, 0.2));
+		const height = MOBILE_BOX_WIDTH_PX * BOX_ASPECT;
+		const px = (count: number) => [...declutteredPositions(crowd(count), BOX_ASPECT).values()].map(placement => ({
+			x: placement.x * MOBILE_BOX_WIDTH_PX,
+			y: placement.y * height,
+			anchorX: placement.anchor!.x * MOBILE_BOX_WIDTH_PX,
+			anchorY: placement.anchor!.y * height,
+		}));
+
+		it('keeps eleven callouts in one row', () => {
+			expect(new Set(px(11).map(point => point.y.toFixed(3))).size).toBe(1);
+		});
+
+		it('keeps every callout of an over-full band wholly across the plate\'s width', () => {
+			for (const point of px(12)) {
+				expect(point.x).toBeGreaterThanOrEqual(12 - 0.01);
+				expect(point.x).toBeLessThanOrEqual(MOBILE_BOX_WIDTH_PX - 12 + 0.01);
+			}
+		});
+
+		it('stacks the overflow into a second row farther from the photo, 28px clear of every other callout', () => {
+			const points = px(12);
+			const rows = [...new Set(points.map(point => point.y.toFixed(3)))].map(Number).sort((a, b) => b - a);
+			expect(rows).toHaveLength(2);
+			expect(rows[0]! - rows[1]!).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX);
+			expect(rows.every(row => row < 0)).toBe(true);
+			for (let i = 0; i < points.length; i++) {
+				for (let j = i + 1; j < points.length; j++) {
+					expect(Math.hypot(points[i]!.x - points[j]!.x, points[i]!.y - points[j]!.y)).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.01);
+				}
+			}
+		});
+
+		it('crosses no two leaders within a row', () => {
+			const points = px(23);
+			const side = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+			for (let i = 0; i < points.length; i++) {
+				for (let j = i + 1; j < points.length; j++) {
+					const [p, q] = [points[i]!, points[j]!];
+					if (Math.abs(p.y - q.y) > 0.01) {
+						continue;
+					}
+					const crosses = side(p.anchorX, p.anchorY, p.x, p.y, q.anchorX, q.anchorY) * side(p.anchorX, p.anchorY, p.x, p.y, q.x, q.y) < 0
+						&& side(q.anchorX, q.anchorY, q.x, q.y, p.anchorX, p.anchorY) * side(q.anchorX, q.anchorY, q.x, q.y, p.x, p.y) < 0;
+					expect(crosses).toBe(false);
+				}
+			}
+		});
+	});
 });

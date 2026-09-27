@@ -212,4 +212,29 @@ describe('yardPhoto', () => {
 		expect(container.querySelector('[data-spot="hibiscus-starry-night"]')?.className).toContain('size-3');
 		expect(container.querySelector('[data-spot="hibiscus-luna-white"]')?.className).toContain('size-2');
 	});
+
+	/*
+	 * Twelve crowded callouts overflow one band row, so the plate has to grow a
+	 * second one. Measured the way the browser places them: the plate's height
+	 * from its aspect ratio at the phone width, each pin's centre from its
+	 * percentages, and its 24px box held inside the plate.
+	 */
+	it('reserves room for a second band row, so no callout of an over-full band leaves the plate', () => {
+		const crowd = Array.from({ length: 12 }, (_, index) => ({ ...figPlant, id: `crowd-${index}`, name: `crowd-${index}`, position: { x: 0.3 + index * 0.004, y: 0.2 } }));
+		const { container } = render(<YardPhoto yard={yardFixture} plants={crowd} ordinals={ordinalsFor(crowd)} hovered={null} onHoverChange={() => {}} onSelect={vi.fn()} />, withTooltip);
+
+		const width = 316;
+		const plate = container.firstElementChild as HTMLElement;
+		const [ratioWidth, ratioHeight] = plate.style.aspectRatio.split('/').map(Number);
+		const height = width * (ratioHeight ?? 0) / (ratioWidth ?? 1);
+		for (const plant of crowd) {
+			const pin = pinFor(plant.id);
+			const x = Number.parseFloat(pin.style.left) / 100 * width;
+			const y = Number.parseFloat(pin.style.top) / 100 * height;
+			expect(x - 12).toBeGreaterThanOrEqual(-0.5);
+			expect(x + 12).toBeLessThanOrEqual(width + 0.5);
+			expect(y - 12).toBeGreaterThanOrEqual(-0.5);
+			expect(y + 12).toBeLessThanOrEqual(height + 0.5);
+		}
+	});
 });
