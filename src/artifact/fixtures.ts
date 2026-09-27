@@ -2,6 +2,7 @@ import type { Artifact, StatusRecord } from './artifact';
 import type { DailyAggregate } from '@/planner/plan';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { taskId } from '@/planner/task';
+import { seedPlannedFrom } from './planned-from';
 
 /*
  * A day in the life of the real yard, shaped for tests that need an Artifact
@@ -217,6 +218,8 @@ export const narratedArtifact: Artifact = {
 		],
 	},
 	narrated: true,
+	// The build's own seed, so a fixture reads as a Plan made from the Rules on screen.
+	plannedFrom: seedPlannedFrom,
 };
 
 /**
@@ -274,6 +277,7 @@ export const approachingArtifact: Artifact = {
 	 */
 	narration: null,
 	narrated: false,
+	plannedFrom: seedPlannedFrom,
 };
 
 /** The record beside a run that published. `artifactGeneratedAt` is read off the Artifact rather than retyped, so the pair cannot drift apart when either timestamp is edited. */

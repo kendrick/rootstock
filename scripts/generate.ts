@@ -20,6 +20,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseStatusRecord } from '../src/artifact/artifact';
+import { seedPlannedFrom } from '../src/artifact/planned-from';
 import { run } from '../src/generation/run';
 import { seedOccurrences, seedPlants, seedRules, seedTagPolicy, seedYard } from '../src/seed';
 import { readLocationFromEnv } from '../src/weather/location';
@@ -161,6 +162,23 @@ function outputDirectory(dryRun: boolean): string {
  * is written on that path, which matters: a skip that left a status record behind would raise
  * `consecutiveFailures` and paint a failure banner on a site that is perfectly healthy.
  */
+/**
+ * The published Artifact's `plannedFrom`, or null where there's no file, it
+ * doesn't parse as JSON, or it predates the field. Null makes the skip check
+ * replan, which is the safe answer for all three.
+ */
+function readPlannedFrom(file: string): string | null {
+	try {
+		const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+		return typeof parsed === 'object' && parsed !== null && 'plannedFrom' in parsed && typeof parsed.plannedFrom === 'string'
+			? parsed.plannedFrom
+			: null;
+	}
+	catch {
+		return null;
+	}
+}
+
 async function main(argv: readonly string[]): Promise<number> {
 	const dryRun = argv.includes('--dry-run');
 	const force = argv.includes('--force');
@@ -175,7 +193,12 @@ async function main(argv: readonly string[]): Promise<number> {
 	// A dry run never skips. It answers one question—is the pipeline wired up—and a rehearsal that
 	// short-circuits on yesterday's bookkeeping answers nothing.
 	if (!dryRun && !force) {
-		const today = todaysRun({ status: previousStatus, now, timeZone: location.timeZone });
+		const today = todaysRun({
+			status: previousStatus,
+			now,
+			timeZone: location.timeZone,
+			planned: { published: readPlannedFrom(path.join(DATA_DIR, 'artifact.json')), current: seedPlannedFrom },
+		});
 		if (today.ran) {
 			// Both values, because a reader finding this line in a log needs to tell "today is
 			// genuinely done" from "ROOTSTOCK_TIME_ZONE is wrong and this box thinks it is yesterday".

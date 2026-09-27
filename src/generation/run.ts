@@ -8,6 +8,7 @@ import type { Location } from '@/weather/location';
 import type { Observation } from '@/weather/observation';
 import type { fetchObservations } from '@/weather/open-meteo';
 import { parseArtifact } from '@/artifact/artifact';
+import { plannedFrom } from '@/artifact/planned-from';
 import { localDate } from '@/planner/dates';
 import { plan } from '@/planner/planner';
 import { toGenerationFailure } from './failure';
@@ -255,6 +256,7 @@ export async function run(options: GenerationRunOptions): Promise<GenerationResu
 		plan: planned,
 		narration,
 		narrated: narration !== null,
+		plannedFrom: plannedFrom(options.seed),
 	};
 
 	try {

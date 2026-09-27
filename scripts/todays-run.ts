@@ -20,6 +20,12 @@ export interface TodaysRunOptions {
 	status: StatusRecord;
 	now: Date;
 	timeZone: string;
+	/**
+	 * The published Artifact's `plannedFrom` beside the seed's own (ADR 0007).
+	 * When they differ, today's Plan was made from other records and the day
+	 * counts as not yet run. A null published fingerprint counts as different.
+	 */
+	planned?: { published: string | null; current: string };
 }
 
 /**
@@ -51,7 +57,7 @@ export type TodaysRun
  * `attemptedAt` is deliberately not consulted. It moves on a failed run, so keying on it would let
  * a failure close the day, which is the opposite of what a second machine is for.
  */
-export function todaysRun({ status, now, timeZone }: TodaysRunOptions): TodaysRun {
+export function todaysRun({ status, now, timeZone, planned }: TodaysRunOptions): TodaysRun {
 	// A fresh checkout and an unreadable status file both arrive here as DEFAULT_STATUS, which is
 	// `ok: false` with a null stamp. Both mean the day is open, which is the answer that runs.
 	if (!status.ok || status.artifactGeneratedAt === null) {
@@ -63,6 +69,10 @@ export function todaysRun({ status, now, timeZone }: TodaysRunOptions): TodaysRu
 	// 15th, and a UTC comparison would call that a new day and pay for a second Plan.
 	const asOf = localDate(now.toISOString(), timeZone);
 	if (localDate(status.artifactGeneratedAt, timeZone) !== asOf) {
+		return { ran: false };
+	}
+
+	if (planned !== undefined && planned.published !== planned.current) {
 		return { ran: false };
 	}
 
