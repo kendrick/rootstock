@@ -204,7 +204,8 @@ describe('ruleList', () => {
 		unmount();
 
 		render(<RuleList rules={[guardRule]} plan={planWithTasks} />);
-		expect(screen.getByText(/^Released once no day in the next two days/u)).toBeDefined();
+		// The Deferral's own release condition, as the Planner copied it.
+		expect(screen.getByText('Released test release condition')).toBeDefined();
 	});
 
 	// Delegable is a property of a Task (CONTEXT.md), and a Guard creates none.

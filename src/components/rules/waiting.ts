@@ -136,25 +136,25 @@ function firedLine(rule: Exclude<Rule, { kind: 'guard' }>, task: Task | undefine
 		: 'Fired this week';
 }
 
-/** One Task a Guard reached, and its verdict there. */
+/** One Task a Guard reached, its verdict there, and what the Guard left on it. */
 export interface CheckedTask {
 	title: string;
 	verdict: GuardVerdict;
+	/** The group label, from what the Guard actually left on the Task. */
+	label: CheckLabel;
+	/** The Deferral's release condition, as the Planner copied it onto the Task. */
+	releaseWhen: string | null;
 }
 
 /** Deferred or annotated first, then work the Guard couldn't check, then work it let through. */
-export const CHECK_ORDER: readonly GuardVerdict[] = ['met', 'unavailable', 'unmet'];
+export const CHECK_LABELS = ['Deferring:', 'Annotating:', 'Let through unchecked:', 'Let through:'] as const;
+export type CheckLabel = typeof CHECK_LABELS[number];
 
-/**
- * The label over a Guard's Tasks for one verdict. `met` takes the Guard's own
- * effect, in the Effect row's verbs; CONTEXT.md keeps "hold" off a Deferral.
- */
-export function checkLabel(rule: Extract<Rule, { kind: 'guard' }>, verdict: GuardVerdict): string {
-	if (verdict === 'met') {
-		return rule.effect === 'defer' ? 'Deferring:' : 'Annotating:';
-	}
-
-	return verdict === 'unavailable' ? 'Let through unchecked:' : 'Let through:';
+/** A Guard's Tasks under each label it has any for, in `CHECK_LABELS` order. */
+export function groupChecks(checks: readonly CheckedTask[]): { label: CheckLabel; titles: string[] }[] {
+	return CHECK_LABELS
+		.map(label => ({ label, titles: checks.filter(check => check.label === label).map(check => check.title) }))
+		.filter(group => group.titles.length > 0);
 }
 
 /**
@@ -162,25 +162,37 @@ export function checkLabel(rule: Extract<Rule, { kind: 'guard' }>, verdict: Guar
  *
  * The Guard pass records every verdict in `Task.guardChecks`, so this reads
  * the record and never re-derives the reach: today's Rules and Plants may not
- * be the ones that produced the Plan. A Task from an Artifact written before
- * that record existed carries `guardChecks: null`, and there only the verdicts that
- * leave a mark can be read: a Deferral or the Guard's own Annotation is `met`,
- * and the unavailable Annotation is `unavailable`. An `unmet` verdict leaves
- * nothing, so such a Task is left out rather than called clear.
+ * be the ones that produced the Plan. For the same reason a `met` Task is
+ * labelled by the Deferral or Annotation it carries, never by the Guard's
+ * current `effect`, and the release condition comes off the Deferral.
+ *
+ * A Task from an Artifact written before that record existed carries
+ * `guardChecks: null`. There only the verdicts that leave a mark can be read,
+ * and an `unmet` verdict leaves nothing, so such a Task is left out rather
+ * than called clear.
  */
 function checksFor(rule: Extract<Rule, { kind: 'guard' }>, plan: Plan): CheckedTask[] {
 	return plan.tasks.flatMap((task): CheckedTask[] => {
-		if (task.guardChecks !== null) {
-			const check = task.guardChecks.find(candidate => candidate.guardId === rule.id);
-			return check === undefined ? [] : [{ title: task.title, verdict: check.verdict }];
-		}
-
+		const deferral = task.deferrals.find(candidate => candidate.guardId === rule.id);
 		const annotation = task.annotations.find(candidate => candidate.guardId === rule.id);
-		if (task.deferrals.some(deferral => deferral.guardId === rule.id) || (annotation !== undefined && annotation.text !== FORECAST_UNAVAILABLE_TEXT)) {
-			return [{ title: task.title, verdict: 'met' }];
+		const unchecked = annotation?.text === FORECAST_UNAVAILABLE_TEXT;
+		const marked = (label: CheckLabel, verdict: GuardVerdict): CheckedTask[] =>
+			[{ title: task.title, verdict, label, releaseWhen: deferral?.releaseWhen ?? null }];
+
+		const recorded = task.guardChecks === null
+			? undefined
+			: task.guardChecks.find(candidate => candidate.guardId === rule.id)?.verdict ?? null;
+		if (recorded === null) {
+			return [];
+		}
+		if (deferral !== undefined) {
+			return marked('Deferring:', 'met');
+		}
+		if (annotation !== undefined) {
+			return unchecked ? marked('Let through unchecked:', 'unavailable') : marked('Annotating:', 'met');
 		}
 
-		return annotation === undefined ? [] : [{ title: task.title, verdict: 'unavailable' }];
+		return recorded === 'unmet' ? marked('Let through:', 'unmet') : [];
 	});
 }
 
@@ -216,11 +228,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 				// Without a record, "reached nothing" can't be told from "let
 				// everything through", so the line claims only what the Plan shows.
 				? recorded ? 'Reaches no Task this week' : `${rule.effect === 'defer' ? 'Deferring' : 'Annotating'} nothing this week`
-				: CHECK_ORDER
-						.map(verdict => [verdict, checks.filter(check => check.verdict === verdict).map(check => check.title)] as const)
-						.filter(([, titles]) => titles.length > 0)
-						.map(([verdict, titles]) => `${checkLabel(rule, verdict)} ${listOf(titles)}`)
-						.join('; '),
+				: groupChecks(checks).map(({ label, titles }) => `${label} ${listOf(titles)}`).join('; '),
 			checks,
 			daysAway: null,
 		};
@@ -281,7 +289,9 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		rule,
 		band: 'waiting',
 		inCurrentPlan: false,
-		waitingOn: `Every ${intervalText(rule)}; not due this week`,
+		// The Plan is evaluated for one day, so a Rule with no Task is known not
+		// due on that day only. It may fire tomorrow.
+		waitingOn: `Every ${intervalText(rule)}; not due as of ${formatMonthDay(plan.asOf.slice(5))}`,
 		checks: [],
 		daysAway: null,
 	};

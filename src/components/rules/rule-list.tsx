@@ -4,7 +4,7 @@ import type { AfterLink } from '@/components/rule-summary';
 import type { Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
 import { RuleSummary } from '@/components/rule-summary';
-import { CHECK_ORDER, checkLabel, rankRules } from './waiting';
+import { groupChecks, rankRules } from './waiting';
 
 export interface RuleListProps {
 	rules: Rule[];
@@ -60,28 +60,25 @@ function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink
 							{waitingOn}
 						</p>
 					)
-				: CHECK_ORDER.map((verdict) => {
-						const titles = checks.filter(check => check.verdict === verdict).map(check => check.title);
+				: groupChecks(checks).map(({ label, titles }) => (
 						// Each Task title on a line of its own, so a long one wraps at a
 						// space; run on after the label, it breaks at the hyphen in
 						// "pre-emergent".
-						return titles.length === 0
-							? null
-							: (
-									<div key={verdict}>
-										<p>
-											<span className="sr-only">Status: </span>
-											{checkLabel(rule, verdict)}
-										</p>
-										<ul>
-											{titles.map(title => <li key={title}>{title}</li>)}
-										</ul>
-									</div>
-								);
-					})}
-			{rule.kind === 'guard' && rule.effect === 'defer' && standing.inCurrentPlan && (
-				<p className="font-sans text-note text-pretty text-muted">{`Released ${lowerFirst(rule.release)}`}</p>
-			)}
+						<div key={label}>
+							<p>
+								<span className="sr-only">Status: </span>
+								{label}
+							</p>
+							<ul>
+								{titles.map(title => <li key={title}>{title}</li>)}
+							</ul>
+						</div>
+					))}
+			{/* The release condition the Planner copied onto each Deferral, not the
+			    Guard's current text, which may have changed since. */}
+			{[...new Set(checks.map(check => check.releaseWhen).filter(release => release !== null))].map(release => (
+				<p key={release} className="font-sans text-note text-pretty text-muted">{`Released ${lowerFirst(release)}`}</p>
+			))}
 		</div>
 	);
 

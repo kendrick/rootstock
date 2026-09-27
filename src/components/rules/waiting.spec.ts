@@ -110,10 +110,11 @@ describe('standingFor, waiting', () => {
 		expect(standing.waitingOn).toBe('Opens March 1');
 	});
 
-	it('says an in-season Cadence Rule is not due, with its interval', () => {
+	// The Plan is evaluated for one day, so the line claims that day and no more.
+	it('says an in-season Cadence Rule is not due as of the planned date, with its interval', () => {
 		const standing = standingFor(seedRule('fig-spring-nitrogen'), plan('2026-04-10'));
 
-		expect(standing.waitingOn).toBe('Every 28–35 days; not due this week');
+		expect(standing.waitingOn).toBe('Every 28–35 days; not due as of April 10');
 	});
 });
 
@@ -161,6 +162,17 @@ describe('standingFor, guards', () => {
 		]));
 
 		expect(standing.waitingOn).toBe('Annotating: Fall pre-emergent (Front lawn) and Last nitrogen (Front lawn)');
+	});
+
+	// The label comes from what the Guard left on the Task, so a Guard whose
+	// effect has changed since the Plan was made still reads as what it did.
+	it('labels a met verdict by the mark on the Task, not the Guard\'s current effect', () => {
+		const held = lawn({ status: 'deferred', deferrals: [{ guardId: annotatingGuard.id, releaseWhen: 'Once the lawn dries' }], guardChecks: [{ guardId: annotatingGuard.id, verdict: 'met' }] });
+
+		const standing = standingFor(annotatingGuard, plan('2026-09-26', [held]));
+
+		expect(standing.waitingOn).toBe('Deferring: Fall pre-emergent (Front lawn)');
+		expect(standing.checks[0]?.releaseWhen).toBe('Once the lawn dries');
 	});
 
 	// An Artifact written before the Guard pass recorded verdicts. `unmet`
