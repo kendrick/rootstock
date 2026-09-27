@@ -1,14 +1,16 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
-import type { Artifact } from '@/artifact/artifact';
+import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import { ChevronRight, CirclePause, Info } from 'lucide-react';
 import Link from 'next/link';
-import { safeParseArtifact } from '@/artifact/artifact';
+import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
 import { WORDMARK } from '@/components/shell/name';
+import { StalenessBanner } from '@/components/staleness-banner';
 import { citationLine } from '@/components/this-week/citation-line';
+import { RECORD_DELAY_MS } from '@/components/this-week/permanence';
 import { mechanicalRemainder, taskText } from '@/components/this-week/task-text';
 import { NARRATOR_BRIEF } from '@/generation/narrator-brief';
 import { FOCUS_RING } from '@/lib/focus';
@@ -48,6 +50,20 @@ function committedArtifact(): Artifact | null {
 	return parsed.ok ? parsed.value : null;
 }
 
+/**
+ * Null on a record that won't parse. `parseStatusRecord` throws because the run is
+ * its other caller, and a run should stop on a bad one; this page should still
+ * explain itself, and simply shows no age warning it can't vouch for.
+ */
+function committedStatus(): StatusRecord | null {
+	try {
+		return parseStatusRecord(loadArtifact().status);
+	}
+	catch {
+		return null;
+	}
+}
+
 interface Rendered {
 	task: Task;
 	rule: Rule | null;
@@ -57,6 +73,8 @@ interface Rendered {
 	instruction: string | null;
 	/** The Narrator's sentence, or null when this run carries none for the Task. */
 	narrated: string | null;
+	/** What the row prints under the Rule's name with the Narrator off. */
+	mechanical: string | null;
 }
 
 function rendered(task: Task, artifact: Artifact): Rendered {
@@ -69,14 +87,16 @@ function rendered(task: Task, artifact: Artifact): Rendered {
 	// only the clause the Planner added survives.
 	const text = taskText(task.title, artifact.narration?.tasks.find(entry => entry.taskId === task.id)?.text ?? null);
 	const narrated = text === task.title ? null : text;
+	const mechanical = mechanicalRemainder(task.title, ruleName, plantName);
 
 	return {
 		task,
 		rule,
 		ruleName,
 		plantName,
-		instruction: narrated ?? mechanicalRemainder(task.title, ruleName, plantName),
+		instruction: narrated ?? mechanical,
 		narrated,
+		mechanical,
 	};
 }
 
@@ -114,7 +134,7 @@ function comparisonTask(tasks: readonly Task[], artifact: Artifact, specimen: Ta
 function evidenceNote(task: Task): string {
 	switch (task.citation.kind) {
 		case 'window':
-			return 'This Rule applies while the date is inside a set window, so the line gives the day the window opened and the day it closes.';
+			return 'This Rule applies while the date is inside a set window, so the line gives the day the window closes, then the day it opened.';
 		case 'threshold':
 			return 'The run of observed days the reading held past the Rule\'s value.';
 		case 'threshold-projection':
@@ -172,9 +192,15 @@ function Note({ n, part, children }: { n: number; part: string; children: ReactN
 	);
 }
 
-const H2 = 'scroll-mt-4 font-display text-heading font-extrabold tracking-wider text-foreground uppercase';
+// Section heads take the title size, one step above the step and Rule-kind
+// labels they sit over. At the heading size, a phone prints HOW A DAY RUNS
+// smaller than READ THE WEATHER beneath it.
+const H2 = 'scroll-mt-16 font-display text-title leading-[1.1] font-extrabold tracking-wide text-foreground uppercase';
 const H3 = 'font-display text-heading font-extrabold tracking-wider text-foreground uppercase';
 const LINK = `underline underline-offset-4 ${FOCUS_RING}`;
+// A route name in a ruled cell stands alone rather than inside a sentence, so
+// it takes the 44px target the rest of the sheet holds itself to.
+const CELL_LINK = `inline-flex min-h-11 items-center ${LINK}`;
 
 /**
  * The specimen, drawn in the Task table's own grammar: the same heads, the same
@@ -195,10 +221,13 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 	let n = 0;
 	const at = {
 		rule: ++n,
+		plant: row.plantName === null ? null : ++n,
+		delegable: task.delegable ? null : ++n,
 		instruction: row.instruction === null ? null : ++n,
 		evidence: ++n,
-		guard: firstGuard === undefined ? null : ++n,
 		signOff: ++n,
+		guard: firstGuard === undefined ? null : ++n,
+		drawer: ++n,
 	};
 
 	return (
@@ -225,11 +254,17 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 								<Marker n={at.rule} />
 							</span>
 							{row.plantName !== null && (
-								<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">{row.plantName}</span>
+								<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
+									{row.plantName}
+									{at.plant !== null && <Marker n={at.plant} />}
+								</span>
 							)}
 							{!task.delegable && (
-								<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
-									Not delegable
+								<span className="whitespace-nowrap">
+									<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+										Not delegable
+									</span>
+									{at.delegable !== null && <Marker n={at.delegable} />}
 								</span>
 							)}
 						</span>
@@ -286,6 +321,18 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 						))}
 					</div>
 				)}
+
+				{/* Inert, like the box. On This Week this is the `<details>` every row
+				    ends in, and it's the path a skeptic takes to check a Task, so the
+				    specimen draws it rather than leaving it for the reader to find. */}
+				<div className="flex min-h-11 items-center gap-2 border-t border-border px-3 py-2 text-note">
+					<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground" />
+					<span className="min-w-0 flex-1">
+						<span className="font-medium text-foreground">Rule and evidence</span>
+						<span className="text-muted-foreground">{` · ${row.ruleName}`}</span>
+						<Marker n={at.drawer} />
+					</span>
+				</div>
 			</div>
 
 			<ol aria-label="What each part of the row is" className="space-y-3">
@@ -294,6 +341,16 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 					<Link href="/rules" className={LINK}>Rules page</Link>
 					.
 				</Note>
+				{at.plant !== null && (
+					<Note n={at.plant} part="Plant">
+						The Plant this Task is for. A Rule can reach several Plants, and each one gets a Task of its own.
+					</Note>
+				)}
+				{at.delegable !== null && (
+					<Note n={at.delegable} part="Not delegable">
+						The rest of the household may not do this work, so it stays off the Away Card. The Rule decides that when it&apos;s written, and the yard&apos;s tag policy can only narrow it. A Rule tagged chemical is never delegable, whatever it says.
+					</Note>
+				)}
 				{at.instruction !== null && (
 					<Note n={at.instruction} part="Instruction">
 						{row.narrated === null
@@ -304,15 +361,18 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 				<Note n={at.evidence} part="Evidence">
 					{`${evidenceNote(task)} It prints on every row, and nothing on the page can fold it away.`}
 				</Note>
+				<Note n={at.signOff} part="Sign off">
+					{`Tap the box on This Week when the work is done. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels; after that the record stays. It's saved in this browser only, so it doesn't change the published ticket or tell anyone else. Tomorrow's plan can't see it either, because the Planner reads the record of work the owner keeps in the repository. A Task can come back until the owner records it there.`}
+				</Note>
 				{at.guard !== null && firstGuard !== undefined && (
 					<Note n={at.guard} part="Guard">
 						{firstGuard.holds
 							? `${guardName} is a Guard, and it's holding this Task back until the condition it names is met. The Task stays on the ticket while it waits.`
-							: `${guardName} is a Guard, and this is its note on the Task. A Guard creates no work of its own, and it can't remove a Task.`}
+							: `${guardName} is a Guard, and this is its note on the Task. A Guard creates no work of its own and can't remove a Task. The note prints from the Plan whether or not the Narrator's sentence repeats it.`}
 					</Note>
 				)}
-				<Note n={at.signOff} part="Sign off">
-					Tap the box on This Week when the work is done. A second tap within four seconds cancels; after that the record stays. It&apos;s saved in this browser only, so it doesn&apos;t change the published ticket or tell anyone else.
+				<Note n={at.drawer} part="Rule and evidence">
+					On This Week this strip is a drawer. Opening it shows the Rule&apos;s source and the values it checks, along with the dated readings behind this Task.
 				</Note>
 			</ol>
 
@@ -331,11 +391,11 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 const DAY: readonly { step: string; body: ReactNode }[] = [
 	{
 		step: 'Read the weather',
-		body: 'At 06:00 a scheduled job on the owner\'s computer fetches the yard\'s recent and forecast weather and soil readings from Open-Meteo. The yard\'s exact location stays on that computer and never enters the code or this site.',
+		body: 'At 06:00 a scheduled job on the owner\'s computer fetches the yard\'s recent and forecast weather and soil readings from Open-Meteo. The yard\'s exact location lives on that computer and goes out only in that request. It never enters the code or this site.',
 	},
 	{
 		step: 'Plan the week',
-		body: 'The Planner checks every Rule against those readings, the list of Plants, and the record of work already done, then writes a Task for each Rule that applies. It\'s ordinary code with no language model in it, and nothing else in the system can create a Task.',
+		body: 'The Planner checks every Rule against those readings, the list of Plants, and the record of work the owner keeps in the repository. For each Rule that applies, it writes one Task per Plant the Rule reaches, and it sets the order they appear in. It\'s ordinary code with no language model in it, and nothing else in the system can create a Task.',
 	},
 	{
 		step: 'Apply the Guards',
@@ -343,7 +403,7 @@ const DAY: readonly { step: string; body: ReactNode }[] = [
 	},
 	{
 		step: 'Write it up',
-		body: 'The Narrator, a language model, gets the finished Plan and writes a plain sentence for each Task. If it fails, or answers about a Task that isn\'t in the Plan, the ticket goes out in the Planner\'s own shorter wording instead.',
+		body: 'The Narrator, a language model, gets the finished Plan and writes a short summary of the week and a plain sentence for each Task. If it fails, or answers about a Task that isn\'t in the Plan, the ticket goes out in the Planner\'s own shorter wording instead.',
 	},
 	{
 		step: 'Publish',
@@ -351,7 +411,7 @@ const DAY: readonly { step: string; body: ReactNode }[] = [
 	},
 	{
 		step: 'Show its age',
-		body: 'Each page works out how old the Artifact is when you open it and warns you once it\'s more than 36 hours old. If a run fails, the last good ticket stays up and the page says the run failed.',
+		body: 'Every page that shows the ticket, this one included, works out how old the Artifact is when you open it. It warns you once the Artifact is more than 36 hours old. If a run fails, the last good ticket stays up and the page says the run failed.',
 	},
 ];
 
@@ -363,7 +423,7 @@ const KINDS: readonly { kind: string; fires: string }[] = [
 ];
 
 const DL_ROW = 'grid border-b-2 border-rule last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)]';
-const DT = 'border-b-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-foreground uppercase sm:border-r-2 sm:border-b-0';
+const DT = 'flex items-center border-b-2 border-rule px-3 py-2 font-display text-label font-extrabold tracking-widest text-foreground uppercase sm:border-r-2 sm:border-b-0';
 
 function Ruled({ rows }: { rows: readonly { key: string; term: ReactNode; detail: ReactNode }[] }): ReactElement {
 	return (
@@ -378,6 +438,17 @@ function Ruled({ rows }: { rows: readonly { key: string; term: ReactNode; detail
 	);
 }
 
+function ComparedHead({ row }: { row: Rendered }): ReactElement {
+	return (
+		<span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+			<span className="font-display text-heading font-extrabold tracking-wider uppercase">{row.ruleName}</span>
+			{row.plantName !== null && (
+				<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">{row.plantName}</span>
+			)}
+		</span>
+	);
+}
+
 const CONTENTS = [
 	{ href: '#day', label: 'How a day runs' },
 	{ href: '#specimen', label: 'Nothing here was invented' },
@@ -387,6 +458,7 @@ const CONTENTS = [
 
 export default function AboutPage(): ReactElement {
 	const artifact = committedArtifact();
+	const status = committedStatus();
 	const specimen = artifact === null ? undefined : specimenTask(artifact.plan.tasks);
 	const row = artifact === null || specimen === undefined ? null : rendered(specimen, artifact);
 	const compared = artifact === null || specimen === undefined ? null : comparisonTask(artifact.plan.tasks, artifact, specimen);
@@ -411,10 +483,12 @@ export default function AboutPage(): ReactElement {
 					It&apos;s built for the household that looks after this yard. The owner works from
 					{' '}
 					<Link href="/" className={LINK}>This Week</Link>
-					, and the rest of the household gets a printable Away Card. If someone sent you a link, the week&apos;s work is on This Week. There&apos;s no account to make and nothing to buy.
+					, and the rest of the household gets a printable Away Card listing only the work they may do. If the owner gave you an Away Card, that card is your list. There&apos;s no account to make and nothing to buy.
 				</p>
 
-				<nav aria-label="On this page" className="border-y-2 border-rule">
+				{/* Sticky from sm, where the four links fit one row. On a phone they wrap
+				    to two, and a bar that tall would sit over the work being read. */}
+				<nav aria-label="On this page" className="border-y-2 border-rule bg-background sm:sticky sm:top-0 sm:z-10">
 					<ul className="flex flex-wrap gap-x-6">
 						{CONTENTS.map(({ href, label }) => (
 							<li key={href}>
@@ -430,7 +504,19 @@ export default function AboutPage(): ReactElement {
 				</nav>
 			</section>
 
-			<section aria-labelledby="day" className="space-y-4">
+			<section aria-labelledby="words" className="space-y-4">
+				<h2 id="words" className={H2}>The words this page uses</h2>
+				<Ruled
+					rows={[
+						{ key: 'task', term: 'Task', detail: 'One piece of work, from exactly one Rule, carrying the evidence that set that Rule off. Only the Planner can create one.' },
+						{ key: 'rule', term: 'Rule', detail: 'Something the yard needs and the condition that calls for it, written down in advance with the source it came from.' },
+						{ key: 'plan', term: 'Plan', detail: 'Every Task the Planner produced for one date. The ticket is how the site prints the Plan.' },
+						{ key: 'artifact', term: 'Artifact', detail: 'The one file each morning\'s run publishes. It holds the Plan, the readings behind it, and whether the Narrator wrote the wording.' },
+					]}
+				/>
+			</section>
+
+			<section aria-labelledby="day" className="space-y-4 border-t-2 border-rule pt-6">
 				<h2 id="day" className={H2}>How a day runs</h2>
 
 				<ol className="border-2 border-rule">
@@ -443,7 +529,7 @@ export default function AboutPage(): ReactElement {
 								{String(index + 1).padStart(2, '0')}
 							</span>
 							<span className="flex min-w-0 flex-col gap-1 px-2 py-3 sm:px-3">
-								<span className="font-display text-title leading-[1.1] font-extrabold tracking-wide uppercase">{step}</span>
+								<span className="font-display text-heading font-extrabold tracking-wider uppercase">{step}</span>
 								<span className="max-w-prose text-note text-foreground">{body}</span>
 							</span>
 						</li>
@@ -452,7 +538,7 @@ export default function AboutPage(): ReactElement {
 
 				<h3 className={H3}>Four kinds of Rule</h3>
 				<p className="max-w-prose text-note text-foreground">
-					Rules are stored as data, each with the source it came from and whether the household may do its work. Three kinds ask for work, and the evidence line on a Task depends on which one did.
+					Rules are stored as data. Each carries the source it came from and whether the household may do its work, which the tag policy can narrow but never widen. Three kinds ask for work, and the evidence line on a Task depends on which one did.
 				</p>
 				<Ruled rows={KINDS.map(({ kind, fires }) => ({ key: kind, term: kind, detail: fires }))} />
 			</section>
@@ -463,6 +549,7 @@ export default function AboutPage(): ReactElement {
 				{artifact !== null && row !== null
 					? (
 							<>
+								{status !== null && <StalenessBanner generatedAt={artifact.generatedAt} status={status} />}
 								<p className="max-w-prose text-body text-foreground">
 									Here is one real Task from the current ticket, drawn the way This Week draws it, with each part numbered.
 								</p>
@@ -487,23 +574,23 @@ export default function AboutPage(): ReactElement {
 					rows={[
 						{
 							key: 'this-week',
-							term: <Link href="/" className={LINK}>This Week</Link>,
-							detail: 'The ticket itself. Work that\'s due now comes first, each Task with its Rule, its evidence, and a box to sign it off. Forecast work sits under Approaching, and weather worth knowing that no Rule produced sits apart under Also observed. The number in the sheet\'s head is today\'s date, written as the year and the day of the year.',
+							term: <Link href="/" className={CELL_LINK}>This Week</Link>,
+							detail: 'The ticket itself. Work that\'s due now comes first, each Task with its Rule, its evidence, and a box to sign it off. Forecast work sits under Approaching, and weather worth knowing that no Rule produced sits apart under Also observed. The margin counts the week\'s Tasks and how many are still open in this browser. The number in the sheet\'s head is the date you\'re reading it, as the year and the day of the year. It isn\'t the day the ticket was planned, which the ticket gives separately.',
 						},
 						{
 							key: 'yard',
-							term: <Link href="/yard" className={LINK}>Yard</Link>,
-							detail: 'A photo of the property with a numbered mark on each Plant, keyed to a list. Open a Plant to see which Rules reach it and what it has on this week\'s ticket.',
+							term: <Link href="/yard" className={CELL_LINK}>Yard</Link>,
+							detail: 'A photo of the property with a numbered mark on each Plant that has a place on it, keyed to a list of every Plant. Open a Plant to see which Rules reach it and what it has on this week\'s ticket.',
 						},
 						{
 							key: 'rules',
-							term: <Link href="/rules" className={LINK}>Rules</Link>,
+							term: <Link href="/rules" className={CELL_LINK}>Rules</Link>,
 							detail: 'Every Rule the yard holds, grouped by whether it asked for work this week, is approaching, is waiting, or is a Guard, with what each one is waiting for and where it came from.',
 						},
 						{
 							key: 'away-card',
 							term: 'Away Card',
-							detail: 'A printable list of only the Tasks the rest of the household may do. The owner hands out its link, so it isn\'t in the menu. It counts the Tasks it leaves off without naming them.',
+							detail: 'A printable list of only the Tasks the rest of the household may do. It counts the Tasks it leaves off without naming them. Its address isn\'t published anywhere on the site, so the owner hands out the link.',
 						},
 					]}
 				/>
@@ -523,10 +610,10 @@ export default function AboutPage(): ReactElement {
 					<div className="border-b-2 border-rule p-4 sm:border-r-2 sm:border-b-0">
 						<h3 className={H3}>May</h3>
 						<ul className="mt-2 space-y-1 text-note text-foreground">
-							<li>Choose which Tasks get a sentence. A Task it skips still shows, under the Planner&apos;s wording.</li>
-							<li>Put the Tasks it mentions in an order</li>
-							<li>Write each sentence</li>
-							<li>Add an Advisory: something it noticed that no Rule produced, shown apart and marked as citing nothing</li>
+							<li>Write a short summary of the week, shown on This Week above the Tasks</li>
+							<li>Write one sentence for each Task</li>
+							<li>Skip a Task. It still shows, in the Planner&apos;s wording.</li>
+							<li>Add an Advisory, something it noticed that no Rule produced. This Week shows it apart, under Also observed, marked as citing nothing.</li>
 						</ul>
 					</div>
 
@@ -537,6 +624,7 @@ export default function AboutPage(): ReactElement {
 							<li>Remove a Task</li>
 							<li>Change a date</li>
 							<li>Change a Task&apos;s Rule or its evidence</li>
+							<li>Change the order. The Planner sets it.</li>
 						</ul>
 					</div>
 				</div>
@@ -570,7 +658,7 @@ export default function AboutPage(): ReactElement {
 							{NARRATOR_BRIEF.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
 						</blockquote>
 						<p className="max-w-prose text-note text-muted">
-							Along with that instruction it gets the finished Plan as JSON and the shape its answer has to take. It gets nothing else. It runs once a day on a fixed model, in a sandbox that can read files but not change them, and keeps no memory between runs.
+							Its prompt is that instruction, the finished Plan as JSON, and the shape its answer has to take. The tool that runs the model adds its own standing instructions on top. It runs once a day on a fixed model, in a sandbox that can read files but not change them, and keeps no memory between runs.
 						</p>
 					</div>
 				</details>
@@ -584,18 +672,30 @@ export default function AboutPage(): ReactElement {
 					: (
 							<div className="space-y-3">
 								<h3 className={H3}>The same Task, written two ways</h3>
+								{/* Each side printed the way a row prints it: the Rule and Plant
+								    as the row's head, then the line under it. With the Narrator
+								    off that line is only what the Planner added to the Rule's
+								    name, and often there's nothing. */}
 								<dl className="border-2 border-rule">
 									<div className={DL_ROW}>
-										<dt className={DT}>Narrator</dt>
-										<dd className="px-3 py-2 text-body">{compared.narrated}</dd>
+										<dt className={DT}>Narrator on</dt>
+										<dd className="flex flex-col gap-1 px-3 py-2">
+											<ComparedHead row={compared} />
+											<span className="text-body">{compared.narrated}</span>
+										</dd>
 									</div>
 									<div className={DL_ROW}>
-										<dt className={DT}>Planner</dt>
-										<dd className="px-3 py-2 text-body">{compared.task.title}</dd>
+										<dt className={DT}>Narrator off</dt>
+										<dd className="flex flex-col gap-1 px-3 py-2">
+											<ComparedHead row={compared} />
+											{compared.mechanical === null
+												? <span className="text-note text-muted">The row has no line under the Rule&apos;s name, because the Planner added nothing to it.</span>
+												: <span className="text-body">{compared.mechanical}</span>}
+										</dd>
 									</div>
 								</dl>
 								<p className="max-w-prose text-note text-muted">
-									The Task, date, Rule and evidence are the same, and only the wording differs. With the Narrator off, the ticket prints the Planner&apos;s line, and the Artifact records which of the two it carries. The current ticket carries the Narrator&apos;s.
+									The Task, date, Rule and evidence are the same, and only the wording differs. The Artifact records which of the two the ticket carries, and the current one carries the Narrator&apos;s.
 								</p>
 							</div>
 						))}

@@ -24,7 +24,7 @@ Success is the owner acting on the week's work with the reasoning in hand, and t
 
 ## Positioning
 
-The Planner is the only thing in the system that may create a Task. A model may select, order, and write prose over a finished Plan; it may not add a Task, remove one, or change a date, and narration pointing at a Task ID the Plan does not hold is rejected in favor of mechanical prose. The check reads IDs, not wording, so the Rule and evidence print from the Plan beside every sentence. Turn the model off and the same Tasks appear on the same dates—only the wording changes, from written sentences back to the terse mechanical ones the Planner already put in each `Task.title`—and the Artifact records which of the two it carries.
+The Planner is the only thing in the system that may create a Task. A model may select from a finished Plan and write its prose, while the Planner keeps the order; it may not add a Task, remove one, or change a date, and narration pointing at a Task ID the Plan does not hold is rejected in favor of mechanical prose. The check reads IDs, not wording, so the Rule and evidence print from the Plan beside every sentence. Turn the model off and the same Tasks appear on the same dates—only the wording changes, from written sentences back to the terse mechanical ones the Planner already put in each `Task.title`—and the Artifact records which of the two it carries.
 
 A Guard holds work back and says what would release it. No Guard can delete a Task, because a Task that disappears is indistinguishable from one nobody thought of.
 
