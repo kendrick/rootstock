@@ -2,7 +2,7 @@ import type { AppliesTo, Rule } from '@/rules/rule';
 import { describe, expect, it } from 'vitest';
 import { ruleSchema } from '@/rules/rule';
 import { seedPlants, seedRules } from '@/seed';
-import { rulesFor } from './applicable-rules';
+import { coverage, rulesFor } from './applicable-rules';
 
 // Hand-authored rather than pulled from fixtures.ts: that file is owned by a
 // peer task landing alongside this one, so building against it here would be
@@ -151,5 +151,42 @@ describe('rulesFor', () => {
 			'guard-front-lawn',
 			'by-id',
 		]);
+	});
+});
+
+/*
+ * The Yard sorts Plants by this, so the answers are pinned to seed facts the
+ * owner can check: no Rule in the set mentions a hibiscus, the fig has its
+ * feeding and pruning Rules, and the crossvine isn't in the ground yet. A
+ * hibiscus filed as merely quiet is the silence #52 is about.
+ */
+describe('coverage', () => {
+	const plant = (id: string) => {
+		const found = seedPlants.find(candidate => candidate.id === id);
+		if (found === undefined) {
+			throw new Error(`the seed has no Plant ${id}`);
+		}
+		return found;
+	};
+
+	it('calls a planted Plant no work-creating Rule reaches unreached', () => {
+		expect(coverage(plant('hibiscus-starry-night'), seedRules, seedPlants)).toBe('unreached');
+	});
+
+	it('calls a planted Plant with Rules of its own reached', () => {
+		expect(coverage(plant('fig-1'), seedRules, seedPlants)).toBe('reached');
+	});
+
+	it('calls a planned Plant planned, whatever reaches it', () => {
+		expect(coverage(plant('crossvine-1'), seedRules, seedPlants)).toBe('planned');
+	});
+
+	// A Guard creates no work, so a Plant only Guards reach still never gets a
+	// Task and belongs with the unreached.
+	it('does not count a Guard as reaching a Plant', () => {
+		const target = plant('hibiscus-luna-white');
+		const onlyGuard = guardRule('guard-only', { plantIds: [target.id], plantTags: null, ruleTags: null });
+
+		expect(coverage(target, [onlyGuard], seedPlants)).toBe('unreached');
 	});
 });
