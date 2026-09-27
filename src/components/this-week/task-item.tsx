@@ -46,6 +46,8 @@ export interface SignOffProps {
 export interface TaskItemProps extends SignOffProps {
 	/** The Task's line number on the ticket. Omitted where a Task renders outside a numbered run. */
 	ordinal?: number;
+	/** The row's fragment, from `ticketAnchor`, so the Yard can link to this line. */
+	anchorId?: string;
 	task: Task;
 	/** Resolves the Task's own Rule and every Guard its Deferrals and Annotations name. */
 	rulesById: ReadonlyMap<string, Rule>;
@@ -127,6 +129,7 @@ function GuardNote({
 export function TaskItem({
 	task,
 	ordinal,
+	anchorId,
 	rulesById,
 	plantsById,
 	narrationText = null,
@@ -335,7 +338,10 @@ export function TaskItem({
 	const held = task.status === 'deferred' && !checked;
 
 	return (
-		<li className="border-t border-rule first:border-t-0">
+		// Scroll margin so a followed link doesn't park the row under the top
+		// edge, and an ink outline over a faint fill so the reader sees which line
+		// the link meant.
+		<li id={anchorId} className="scroll-mt-4 border-t border-rule first:border-t-0 target:bg-rule-faint/50 target:outline-2 target:-outline-offset-2 target:outline-foreground">
 			{approaching
 				? (
 						<div className="grid min-h-11 grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem] items-stretch text-body text-foreground">

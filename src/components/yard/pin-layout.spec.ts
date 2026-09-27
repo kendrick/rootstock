@@ -1,7 +1,7 @@
 import type { Plant } from '@/yard/plant';
 import { describe, expect, it } from 'vitest';
-import { seedPlants } from '@/seed';
-import { declutteredPositions, MIN_CENTER_DISTANCE_PX } from './pin-layout';
+import { seedPlants, seedYard } from '@/seed';
+import { BAND_FRACTION, declutteredPositions, MIN_CENTER_DISTANCE_PX, MOBILE_BOX_WIDTH_PX } from './pin-layout';
 
 /** The photo's own aspect ratio (2400 / 1800), which every call below assumes. */
 const BOX_ASPECT = 1800 / 2400;
@@ -32,12 +32,75 @@ function distancePx(
 }
 
 describe('declutteredPositions', () => {
+	// 316 is the photo's measured width on a 360px phone under the sheet
+	// frame, the narrowest phone the Yard is read on. Written as the number,
+	// not the arithmetic, so a gutter change fails here.
+	it('lays pins out against the photo width the narrowest phone renders', () => {
+		expect(MOBILE_BOX_WIDTH_PX).toBe(316);
+	});
+
+	// Leaders from anchors at one x, or close to it, crossed when the lower
+	// anchor took the nearer slot. Every pair of leaders is checked, on the
+	// seed's own patio.
+	it('never crosses two leaders', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const aspect = photo.height / photo.width;
+		const height = MOBILE_BOX_WIDTH_PX * aspect;
+		const leaders = [...declutteredPositions(seedPlants, aspect).values()]
+			.filter(placement => placement.anchor !== null)
+			.map(placement => [
+				[placement.anchor!.x * MOBILE_BOX_WIDTH_PX, placement.anchor!.y * height],
+				[placement.x * MOBILE_BOX_WIDTH_PX, placement.y * height],
+			] as const);
+		const side = (a: readonly number[], b: readonly number[], c: readonly number[]) => (b[0]! - a[0]!) * (c[1]! - a[1]!) - (b[1]! - a[1]!) * (c[0]! - a[0]!);
+
+		for (let i = 0; i < leaders.length; i++) {
+			for (let j = i + 1; j < leaders.length; j++) {
+				const [p, q] = leaders[i]!;
+				const [r, s] = leaders[j]!;
+				expect(side(p, q, r) * side(p, q, s) < 0 && side(r, s, p) * side(r, s, q) < 0).toBe(false);
+			}
+		}
+	});
+
+	// The seed's real positions, at the real phone width: every pair of pins
+	// ends at least MIN_CENTER_DISTANCE_PX apart, edges included. Clamping only
+	// after spacing once pulled two top-edge pins back within 28px.
+	it('keeps every seed pin pair apart once the edges are held', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const aspect = photo.height / photo.width;
+		const positions = declutteredPositions(seedPlants, aspect);
+		const ids = [...positions.keys()];
+		const height = MOBILE_BOX_WIDTH_PX * aspect;
+
+		for (let i = 0; i < ids.length; i++) {
+			for (let j = i + 1; j < ids.length; j++) {
+				expect(distancePx(positions, MOBILE_BOX_WIDTH_PX, height, ids[i]!, ids[j]!)).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.5);
+			}
+		}
+	});
+
+	// A pin at the edge of the photo is clipped by the frame, so no pin centre
+	// may sit closer to an edge than half a 24px pin.
+	it('keeps a pin at the edge fully on the photo', () => {
+		const positions = declutteredPositions([sitedPlant('edge', 0.5, 0)], BOX_ASPECT);
+		const y = positions.get('edge')?.y ?? 0;
+
+		expect(y * MOBILE_BOX_WIDTH_PX * BOX_ASPECT).toBeCloseTo(12, 5);
+	});
+
 	it('leaves a pin untouched when nothing else is nearby', () => {
 		const plants = [sitedPlant('lone', 0.5, 0.5)];
 
 		const positions = declutteredPositions(plants, BOX_ASPECT);
 
-		expect(positions.get('lone')).toEqual({ x: 0.5, y: 0.5 });
+		expect(positions.get('lone')).toEqual({ x: 0.5, y: 0.5, anchor: null });
 	});
 
 	it('drops a Plant with no position from the result, rather than inventing one', () => {
@@ -75,7 +138,9 @@ describe('declutteredPositions', () => {
 		}
 	});
 
-	it('keeps every resolved position inside the photo, even after nudging a crowded cluster apart', () => {
+	// A crowded callout leaves the photo for the band on its own side, like a
+	// parts plate's margin callout, so it never lands on another Plant's spot.
+	it('keeps every callout across the photo\'s width and within one band of it', () => {
 		const plants = [
 			sitedPlant('a', 0.01, 0.01),
 			sitedPlant('b', 0.02, 0.01),
@@ -87,9 +152,45 @@ describe('declutteredPositions', () => {
 		for (const position of positions.values()) {
 			expect(position.x).toBeGreaterThanOrEqual(0);
 			expect(position.x).toBeLessThanOrEqual(1);
-			expect(position.y).toBeGreaterThanOrEqual(0);
-			expect(position.y).toBeLessThanOrEqual(1);
+			expect(position.y).toBeGreaterThanOrEqual(-BAND_FRACTION);
+			expect(position.y).toBeLessThanOrEqual(1 + BAND_FRACTION);
 		}
+	});
+
+	it('moves a crowded pair into the band on its own side, each anchored to its true spot', () => {
+		const plants = [
+			sitedPlant('high-a', 0.44, 0.2),
+			sitedPlant('high-b', 0.46, 0.2),
+			sitedPlant('low-a', 0.44, 0.8),
+			sitedPlant('low-b', 0.46, 0.8),
+		];
+
+		const positions = declutteredPositions(plants, BOX_ASPECT);
+
+		for (const id of ['high-a', 'high-b']) {
+			expect(positions.get(id)?.y).toBeCloseTo(-BAND_FRACTION / 2, 5);
+		}
+		for (const id of ['low-a', 'low-b']) {
+			expect(positions.get(id)?.y).toBeCloseTo(1 + BAND_FRACTION / 2, 5);
+		}
+		expect(positions.get('high-a')?.anchor).toEqual({ x: 0.44, y: 0.2 });
+		expect(positions.get('low-b')?.anchor).toEqual({ x: 0.46, y: 0.8 });
+	});
+
+	// The seed's patio: six Plants within about 30px. Every one of them has to
+	// leave the photo, and the lawn, alone on its side, has to stay put.
+	it('takes the seed\'s patio cluster out of the photo and leaves the lawn on its spot', () => {
+		const photo = seedYard.photo;
+		if (photo === null) {
+			throw new Error('the seed yard carries no photo to lay pins out on');
+		}
+		const positions = declutteredPositions(seedPlants, photo.height / photo.width);
+
+		for (const id of ['esperanza-1', 'hibiscus-watermelon-ruffles', 'hibiscus-starry-night', 'hibiscus-luna-white', 'crossvine-1', 'crossvine-2']) {
+			expect(positions.get(id)?.y).toBeLessThan(0);
+			expect(positions.get(id)?.anchor).not.toBeNull();
+		}
+		expect(positions.get('front-lawn')).toEqual({ x: 0.13, y: 0.52, anchor: null });
 	});
 
 	// The regression this exists for: the seed's own crowded four, read
@@ -112,5 +213,61 @@ describe('declutteredPositions', () => {
 					.toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.01);
 			}
 		}
+	});
+
+	/*
+	 * A 316px band holds 11 callouts: centres from 12px to 304px, 28px apart.
+	 * The capacity is worked from those numbers, not from the layout, and the
+	 * twelfth has to go somewhere that is still on the plate.
+	 */
+	describe('a band past its capacity', () => {
+		const crowd = (count: number): Plant[] => Array.from({ length: count }, (_, index) => sitedPlant(`p${index}`, 0.3 + index * 0.004, 0.2));
+		const height = MOBILE_BOX_WIDTH_PX * BOX_ASPECT;
+		const px = (count: number) => [...declutteredPositions(crowd(count), BOX_ASPECT).values()].map(placement => ({
+			x: placement.x * MOBILE_BOX_WIDTH_PX,
+			y: placement.y * height,
+			anchorX: placement.anchor!.x * MOBILE_BOX_WIDTH_PX,
+			anchorY: placement.anchor!.y * height,
+		}));
+
+		it('keeps eleven callouts in one row', () => {
+			expect(new Set(px(11).map(point => point.y.toFixed(3))).size).toBe(1);
+		});
+
+		it('keeps every callout of an over-full band wholly across the plate\'s width', () => {
+			for (const point of px(12)) {
+				expect(point.x).toBeGreaterThanOrEqual(12 - 0.01);
+				expect(point.x).toBeLessThanOrEqual(MOBILE_BOX_WIDTH_PX - 12 + 0.01);
+			}
+		});
+
+		it('stacks the overflow into a second row farther from the photo, 28px clear of every other callout', () => {
+			const points = px(12);
+			const rows = [...new Set(points.map(point => point.y.toFixed(3)))].map(Number).sort((a, b) => b - a);
+			expect(rows).toHaveLength(2);
+			expect(rows[0]! - rows[1]!).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX);
+			expect(rows.every(row => row < 0)).toBe(true);
+			for (let i = 0; i < points.length; i++) {
+				for (let j = i + 1; j < points.length; j++) {
+					expect(Math.hypot(points[i]!.x - points[j]!.x, points[i]!.y - points[j]!.y)).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.01);
+				}
+			}
+		});
+
+		it('crosses no two leaders within a row', () => {
+			const points = px(23);
+			const side = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+			for (let i = 0; i < points.length; i++) {
+				for (let j = i + 1; j < points.length; j++) {
+					const [p, q] = [points[i]!, points[j]!];
+					if (Math.abs(p.y - q.y) > 0.01) {
+						continue;
+					}
+					const crosses = side(p.anchorX, p.anchorY, p.x, p.y, q.anchorX, q.anchorY) * side(p.anchorX, p.anchorY, p.x, p.y, q.x, q.y) < 0
+						&& side(q.anchorX, q.anchorY, q.x, q.y, p.anchorX, p.anchorY) * side(q.anchorX, q.anchorY, q.x, q.y, p.x, p.y) < 0;
+					expect(crosses).toBe(false);
+				}
+			}
+		});
 	});
 });
