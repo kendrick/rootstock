@@ -24,6 +24,7 @@ function task(options: { ruleId: string; plantId?: string | null; tags?: string[
 		delegable: true,
 		tags: options.tags ?? [],
 		title: `Task for ${options.ruleId}`,
+		guardChecks: null,
 	});
 }
 

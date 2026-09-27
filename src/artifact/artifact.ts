@@ -32,6 +32,9 @@ export const artifactSchema = z.strictObject({
 	plan: planSchema,
 	narration: narrationSchema.nullable(),
 	narrated: z.boolean(),
+	// A fingerprint of the Rules, Plants, Occurrences and tag policy the Plan
+	// was made from (ADR 0007). Null on an Artifact written before it existed.
+	plannedFrom: z.string().regex(/^[0-9a-f]{16}$/u).nullable(),
 }).refine(
 	artifact => artifact.narrated === (artifact.narration !== null),
 	{ message: 'narrated must be true if and only if narration is present', path: ['narrated'] },
@@ -66,11 +69,43 @@ export const statusRecordSchema = z.strictObject({
 
 export type StatusRecord = z.infer<typeof statusRecordSchema>;
 
+/**
+ * Fills the keys an older Artifact predates with the `null` that absence means:
+ * `plannedFrom` on the Artifact, and `guardChecks` on each Task.
+ *
+ * The schema stays strict for anything writing an Artifact. This runs ahead of
+ * the parse because the committed `data/artifact.json` keeps the older shape
+ * until the next daily run replaces it, and a failed run keeps it longer. Only
+ * a missing key is filled; a present one is parsed as it is.
+ */
+function withNewerKeys(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null || !('plan' in value)) {
+		return value;
+	}
+	const upgraded: Record<string, unknown> = 'plannedFrom' in value ? { ...value } : { ...value, plannedFrom: null };
+	const { plan } = value as { plan: unknown };
+	if (typeof plan !== 'object' || plan === null || !('tasks' in plan) || !Array.isArray(plan.tasks)) {
+		return upgraded;
+	}
+
+	return {
+		...upgraded,
+		plan: {
+			...plan,
+			tasks: plan.tasks.map((task: unknown) =>
+				typeof task === 'object' && task !== null && !('guardChecks' in task) ? { ...task, guardChecks: null } : task),
+		},
+	};
+}
+
+const parseCurrentArtifact = parseWith(artifactSchema, 'artifact');
+const safeParseCurrentArtifact = safeParseWith(artifactSchema, 'artifact');
+
 /** Parses an Artifact, throwing a sentence naming the failing path. Used where a bad file should stop the run. */
-export const parseArtifact = parseWith(artifactSchema, 'artifact');
+export const parseArtifact = (value: unknown): Artifact => parseCurrentArtifact(withNewerKeys(value));
 
 /** The same parse returned as a value, for the browser: it has to render an error state, not crash the page. */
-export const safeParseArtifact = safeParseWith(artifactSchema, 'artifact');
+export const safeParseArtifact = (value: unknown): ReturnType<typeof safeParseCurrentArtifact> => safeParseCurrentArtifact(withNewerKeys(value));
 
 /** Parses a status record, throwing on a bad one. */
 export const parseStatusRecord = parseWith(statusRecordSchema, 'status record');
