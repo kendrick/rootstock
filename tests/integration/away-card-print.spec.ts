@@ -35,7 +35,10 @@ test('prints its heading in ink, hides the nav, and carries a date and a box to 
 	await expect(page.locator('nav[aria-label="Main"]')).toBeHidden();
 	await expect(page.getByRole('button', { name: /print/i })).toBeHidden();
 
-	const time = page.locator('time');
+	// Scoped to the card's own Generated line. A bare `time` locator also matches
+	// the StalenessBanner's date and the planned-from notice's, and strict mode
+	// fails it on any day the Artifact is more than a day old.
+	const time = page.locator('p', { hasText: /^\s*Generated/u }).locator('time');
 	await expect(time).toBeVisible();
 	await expect(time).toHaveCSS('color', 'rgb(0, 0, 0)');
 
