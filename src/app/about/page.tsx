@@ -9,7 +9,7 @@ import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
 import { WORDMARK } from '@/components/shell/name';
 import { StalenessBanner } from '@/components/staleness-banner';
-import { citationLine } from '@/components/this-week/citation-line';
+import { citationLine, dayOfMonth } from '@/components/this-week/citation-line';
 import { RECORD_DELAY_MS } from '@/components/this-week/permanence';
 import { mechanicalRemainder, taskText } from '@/components/this-week/task-text';
 import { NARRATOR_BRIEF } from '@/generation/narrator-brief';
@@ -51,9 +51,11 @@ function committedArtifact(): Artifact | null {
 }
 
 /**
- * Null on a record that won't parse. `parseStatusRecord` throws because the run is
- * its other caller, and a run should stop on a bad one; this page should still
- * explain itself, and simply shows no age warning it can't vouch for.
+ * Null on a record that won't parse, which the page treats the way `ArtifactGate`
+ * does on every other route: no Task from the ticket shows. A specimen drawn
+ * beside a status nobody could read would hide a failed run behind a missing
+ * banner. `parseStatusRecord` throws because the run is its other caller, and a
+ * run should stop on a bad record.
  */
 function committedStatus(): StatusRecord | null {
 	try {
@@ -103,13 +105,15 @@ function rendered(task: Task, artifact: Artifact): Rendered {
 /**
  * The row to annotate: fired work first, and among it a Task a Guard reached,
  * since Guards are half of what the page has to explain and a row carrying a
- * Guard's note shows one at work. Still a real row either way; the preference
- * only picks which one.
+ * Guard's note shows one at work. Then held work, then approaching. Still a real
+ * row either way; the preference only picks which one, and `Specimen` draws the
+ * sign-off cell each status gets on This Week.
  */
 function specimenTask(tasks: readonly Task[]): Task | undefined {
 	const fired = tasks.filter(task => task.status === 'fired');
 	return fired.find(task => task.deferrals.length > 0 || task.annotations.length > 0)
 		?? fired[0]
+		?? tasks.find(task => task.status === 'deferred')
 		?? tasks[0];
 }
 
@@ -243,7 +247,7 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 				</div>
 
 				<div className="grid grid-cols-[2.5rem_minmax(0,1fr)_6.5rem] items-stretch text-body text-foreground sm:grid-cols-[3.25rem_minmax(0,1fr)_6.5rem]">
-					<span className="flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold">
+					<span className={`flex items-start justify-center border-r-2 border-rule px-2 py-3 font-display text-title leading-none font-extrabold ${task.status === 'approaching' ? 'text-muted' : ''}`}>
 						01
 					</span>
 
@@ -278,13 +282,32 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 						</span>
 					</span>
 
-					<span className="flex flex-col items-center justify-center gap-1.5 border-l-2 border-rule p-2">
-						<span aria-hidden="true" className="size-8 border-2 border-foreground" />
-						<span className="font-display font-semibold text-label tracking-widest text-foreground uppercase">
-							Sign off
-							<Marker n={at.signOff} />
-						</span>
-					</span>
+					{task.status === 'approaching'
+						? (
+								<span className="flex flex-col items-center justify-center gap-1 border-l-2 border-rule p-2 text-center font-display text-label font-extrabold tracking-widest text-muted uppercase">
+									<span>
+										Not yet
+										<Marker n={at.signOff} />
+									</span>
+									{task.citation.kind === 'threshold-projection' && (
+										<span className="font-mono text-evidence tracking-tight">{`About ${dayOfMonth(task.citation.projectedDate)}`}</span>
+									)}
+								</span>
+							)
+						: (
+								<span className="flex flex-col items-center justify-center gap-1.5 border-l-2 border-rule p-2">
+									{task.status === 'deferred' && (
+										<span className="border-2 border-foreground px-1.5 py-0.5 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+											Held
+										</span>
+									)}
+									<span aria-hidden="true" className="size-8 border-2 border-foreground" />
+									<span className="font-display font-semibold text-label tracking-widest text-foreground uppercase">
+										Sign off
+										<Marker n={at.signOff} />
+									</span>
+								</span>
+							)}
 				</div>
 
 				{guardNotes.length > 0 && (
@@ -361,9 +384,17 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 				<Note n={at.evidence} part="Evidence">
 					{`${evidenceNote(task)} It prints on every row, and nothing on the page can fold it away.`}
 				</Note>
-				<Note n={at.signOff} part="Sign off">
-					{`Tap the box on This Week when the work is done. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels; after that the record stays. It's saved in this browser only, so it doesn't change the published ticket or tell anyone else. Tomorrow's plan can't see it either, because the Planner reads the record of work the owner keeps in the repository. A Task can come back until the owner records it there.`}
-				</Note>
+				{task.status === 'approaching'
+					? (
+							<Note n={at.signOff} part="Not yet">
+								This is approaching work: the forecast says the reading will cross the Rule&apos;s value, and it hasn&apos;t yet. There&apos;s no box to sign off until it does, and the cell gives the day the forecast expects.
+							</Note>
+						)
+					: (
+							<Note n={at.signOff} part="Sign off">
+								{`${task.status === 'deferred' ? 'A Guard is holding this Task back, so the box sits under a HELD mark. The box still works, because a Guard\'s hold is advice. ' : ''}Tap the box on This Week when the work is done. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels; after that the record stays. It's saved in this browser only, so it doesn't change the published ticket or tell anyone else. Tomorrow's plan can't see it either, because the Planner reads the record of work the owner keeps in the repository. A Task can come back until the owner records it there.`}
+							</Note>
+						)}
 				{at.guard !== null && firstGuard !== undefined && (
 					<Note n={at.guard} part="Guard">
 						{firstGuard.holds
@@ -459,9 +490,10 @@ const CONTENTS = [
 export default function AboutPage(): ReactElement {
 	const artifact = committedArtifact();
 	const status = committedStatus();
-	const specimen = artifact === null ? undefined : specimenTask(artifact.plan.tasks);
-	const row = artifact === null || specimen === undefined ? null : rendered(specimen, artifact);
-	const compared = artifact === null || specimen === undefined ? null : comparisonTask(artifact.plan.tasks, artifact, specimen);
+	const readable = artifact !== null && status !== null ? artifact : null;
+	const specimen = readable === null ? undefined : specimenTask(readable.plan.tasks);
+	const row = readable === null || specimen === undefined ? null : rendered(specimen, readable);
+	const compared = readable === null || specimen === undefined ? null : comparisonTask(readable.plan.tasks, readable, specimen);
 
 	return (
 		<div className="space-y-10">
@@ -546,17 +578,8 @@ export default function AboutPage(): ReactElement {
 			<section aria-labelledby="specimen" className="space-y-4 border-t-2 border-rule pt-6">
 				<h2 id="specimen" className={H2}>Nothing here was invented</h2>
 
-				{artifact !== null && row !== null
+				{readable === null
 					? (
-							<>
-								{status !== null && <StalenessBanner generatedAt={artifact.generatedAt} status={status} />}
-								<p className="max-w-prose text-body text-foreground">
-									Here is one real Task from the current ticket, drawn the way This Week draws it, with each part numbered.
-								</p>
-								<Specimen row={row} artifact={artifact} />
-							</>
-						)
-					: (
 							<p className="max-w-prose text-body text-foreground">
 								The current ticket couldn&apos;t be read, so there&apos;s no Task to show here.
 								{' '}
@@ -564,6 +587,32 @@ export default function AboutPage(): ReactElement {
 								{' '}
 								says what went wrong.
 							</p>
+						)
+					: (
+							<>
+								{status !== null && <StalenessBanner generatedAt={readable.generatedAt} status={status} />}
+								{row === null
+									? (
+											// A Plan with no Tasks is a normal answer, a quiet week, and
+											// the unreadable-ticket sentence above would send the reader
+											// looking for an error that doesn't exist.
+											<p className="max-w-prose text-body text-foreground">
+												The current ticket has no Tasks, so there&apos;s no row to annotate. No Rule found anything for the yard to do this week, and the
+												{' '}
+												<Link href="/rules" className={LINK}>Rules page</Link>
+												{' '}
+												says what each one is waiting for.
+											</p>
+										)
+									: (
+											<>
+												<p className="max-w-prose text-body text-foreground">
+													Here is one real Task from the current ticket, drawn the way This Week draws it, with each part numbered.
+												</p>
+												<Specimen row={row} artifact={readable} />
+											</>
+										)}
+							</>
 						)}
 			</section>
 
@@ -663,10 +712,15 @@ export default function AboutPage(): ReactElement {
 					</div>
 				</details>
 
-				{artifact !== null && (compared === null
+				{/* Whether the Narrator ran comes from the Artifact's own record. A
+				    narrated ticket can still offer no Task to compare, when the
+				    Narrator skipped every Task or kept the Planner's wording. */}
+				{readable !== null && (compared === null
 					? (
 							<p className="max-w-prose text-note text-muted">
-								The current ticket went out without the Narrator, so every row shows the Planner&apos;s own wording.
+								{readable.narrated
+									? 'The current ticket carries the Narrator\'s wording, but none of its sentences differs from the Planner\'s, so there\'s no Task to show both ways.'
+									: 'The current ticket went out without the Narrator, so every row shows the Planner\'s own wording.'}
 							</p>
 						)
 					: (
