@@ -1,9 +1,11 @@
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import type { CheckLabel } from '@/components/rules/waiting';
 import type { DailyAggregate } from '@/planner/plan';
+import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
-import { groupChecks, standingFor } from '@/components/rules/waiting';
+import { CHECK_LABELS } from '@/components/rules/waiting';
 import { dayOfMonth } from '@/components/this-week/citation-line';
+import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
 
 /** One line per step of How a day runs, each read off the committed Artifact or its status record. */
 export interface RunReadout {
@@ -16,7 +18,7 @@ export interface RunReadout {
 }
 
 export interface ReadoutContext {
-	/** The build's Rules, for the count and the Guard names. */
+	/** The build's Rules, for the count and the Guard names. Used only when the fingerprint matches. */
 	rules: readonly Rule[];
 	/** The build's `seedPlannedFrom`, to tell whether those Rules are the ones the run read. */
 	seedFingerprint: string;
@@ -103,10 +105,31 @@ const DID: Record<CheckLabel, string> = {
 };
 
 /**
- * Goes through `standingFor`, the Rules page's own reading of `guardChecks`,
- * so the two pages can't disagree about what a Guard did. That includes the
- * older Artifact with no verdicts, where only a mark counts and nothing is
- * called clear.
+ * What one Guard left on one Task, under the labels the Rules page uses. A
+ * Task whose recorded checks omit the Guard wasn't reached. Where nothing was
+ * recorded (an older Artifact), only a mark counts, so nothing is called clear.
+ */
+function checkOn(task: Task, guardId: string): CheckLabel | null {
+	if (task.guardChecks !== null && !task.guardChecks.some(check => check.guardId === guardId)) {
+		return null;
+	}
+	if (task.deferrals.some(deferral => deferral.guardId === guardId)) {
+		return 'Deferring:';
+	}
+	const annotation = task.annotations.find(candidate => candidate.guardId === guardId);
+	if (annotation !== undefined) {
+		return annotation.text === FORECAST_UNAVAILABLE_TEXT ? 'Let through unchecked:' : 'Annotating:';
+	}
+
+	return task.guardChecks?.find(check => check.guardId === guardId)?.verdict === 'unmet' ? 'Let through:' : null;
+}
+
+/**
+ * Built from the Guard ids the Tasks stored, never from the build's Rules. A
+ * Guard renamed or dropped after the run would otherwise print under the wrong
+ * name, or vanish from a run it acted on. The seed supplies a Guard's name
+ * only when `plannedFrom` says the run read that seed. Otherwise the line
+ * prints the id the Task carries, which is still the run's own fact.
  */
 function guards(artifact: Artifact, context: ReadoutContext): string {
 	const { tasks } = artifact.plan;
@@ -114,12 +137,22 @@ function guards(artifact: Artifact, context: ReadoutContext): string {
 		return 'No Tasks for a Guard to check';
 	}
 
-	const lines = context.rules
-		.filter(rule => rule.kind === 'guard')
-		.flatMap((rule) => {
-			const groups = groupChecks(standingFor(rule, artifact.plan).checks);
-			return groups.length === 0 ? [] : [`${rule.name}: ${groups.map(({ label, titles }) => `${DID[label]} ${titles.length}`).join(', ')}`];
-		});
+	const trusted = artifact.plannedFrom === context.seedFingerprint;
+	const nameOf = (guardId: string): string =>
+		(trusted ? context.rules.find(rule => rule.id === guardId)?.name : undefined) ?? guardId;
+	const guardIds = [...new Set(tasks.flatMap(task => [
+		...(task.guardChecks ?? []).map(check => check.guardId),
+		...task.deferrals.map(deferral => deferral.guardId),
+		...task.annotations.map(annotation => annotation.guardId),
+	]))];
+
+	const lines = guardIds.flatMap((guardId) => {
+		const labels = tasks.map(task => checkOn(task, guardId));
+		const groups = CHECK_LABELS
+			.map(label => ({ label, count: labels.filter(candidate => candidate === label).length }))
+			.filter(group => group.count > 0);
+		return groups.length === 0 ? [] : [`${nameOf(guardId)}: ${groups.map(({ label, count }) => `${DID[label]} ${count}`).join(', ')}`];
+	});
 	if (lines.length > 0) {
 		return lines.join(' / ');
 	}
@@ -142,8 +175,10 @@ function narration(artifact: Artifact): string {
 		return `Narrator wrote the summary only / ${advisories}`;
 	}
 
+	// Distinct ids, because `validateNarration` checks membership and not
+	// repeats. A Task named twice would otherwise read as "2 of 1".
 	const planned = new Set(artifact.plan.tasks.map(task => task.id));
-	const worded = artifact.narration.tasks.filter(entry => planned.has(entry.taskId)).length;
+	const worded = new Set(artifact.narration.tasks.map(entry => entry.taskId).filter(id => planned.has(id))).size;
 
 	return `Narrator wrote ${worded} of ${total} Task sentences / ${advisories}`;
 }

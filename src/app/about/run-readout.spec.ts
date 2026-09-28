@@ -33,7 +33,9 @@ describe('runReadout', () => {
 		expect(runReadout(narratedArtifact, okStatus, context)).toEqual({
 			weather: '32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
 			plan: '9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
-			guards: 'Rain expected: deferred 1 / Water in after application: annotated 1',
+			// In the order the Plan's Tasks carry them: the pre-emergent Task's
+			// Annotation comes before the fig's Deferral.
+			guards: 'Water in after application: annotated 1 / Rain expected: deferred 1',
 			narration: 'Narrator wrote 2 of 3 Task sentences / 1 Advisory',
 			publish: 'Generated Fri Sep 11, 11:04 UTC',
 			age: 'Last run Fri Sep 11, 11:04 UTC: published / 0 failures in a row',
@@ -97,6 +99,32 @@ describe('runReadout', () => {
 			.toBe('No Guard reached a Task');
 		expect(runReadout(withTasks(unnarratedArtifact, [{ ...unmarked, guardChecks: null }]), okStatus, context).guards)
 			.toBe('No Guard left a mark');
+	});
+
+	it('names a Guard by the id the Task stored when the Plan came from other records', () => {
+		// The build's Rules may have renamed or dropped a Guard since the run, so
+		// its name is only trusted when the fingerprint says the run read it.
+		expect(runReadout({ ...narratedArtifact, plannedFrom: '0123456789abcdef' }, okStatus, context).guards)
+			.toBe('water-in-after-application: annotated 1 / rain-expected: deferred 1');
+	});
+
+	it('reports a Guard the build no longer holds from what the Task stored', () => {
+		const task = firstTask(unnarratedArtifact);
+		const retired = withTasks({ ...unnarratedArtifact, plannedFrom: null }, [
+			{ ...task, annotations: [{ guardId: 'frost-watch', text: 'Cover it tonight.' }], guardChecks: [{ guardId: 'frost-watch', verdict: 'met' }] },
+		]);
+
+		expect(runReadout(retired, okStatus, context).guards).toBe('frost-watch: annotated 1');
+	});
+
+	it('counts a Task the Narration names twice once', () => {
+		const task = firstTask(narratedArtifact);
+		const repeated: Artifact = {
+			...withTasks(narratedArtifact, [task]),
+			narration: { summary: 'A quiet week.', tasks: [{ taskId: task.id, text: 'Once.' }, { taskId: task.id, text: 'Twice.' }], advisories: [] },
+		};
+
+		expect(runReadout(repeated, okStatus, context).narration).toBe('Narrator wrote 1 of 1 Task sentences / 0 Advisories');
 	});
 
 	it('says the ticket carries the Planner\'s wording when the run had no Narration', () => {

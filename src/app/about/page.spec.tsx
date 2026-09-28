@@ -50,7 +50,7 @@ describe('about page', () => {
 		expect(steps.map(step => step.querySelector('.font-mono')?.textContent)).toEqual([
 			'32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
 			'9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
-			'Rain expected: deferred 1 / Water in after application: annotated 1',
+			'Water in after application: annotated 1 / Rain expected: deferred 1',
 			'Narrator wrote 2 of 3 Task sentences / 1 Advisory',
 			'Generated Fri Sep 11, 11:04 UTC',
 			'Last run Fri Sep 11, 11:04 UTC: published / 0 failures in a row',
