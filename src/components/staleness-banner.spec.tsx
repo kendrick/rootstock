@@ -162,7 +162,7 @@ describe('stalenessBanner, a failed run on the Away Card', () => {
 		);
 
 		const text = screen.getByRole('status').textContent ?? '';
-		expect(text).toBe(`The last ${failingStatus.consecutiveFailures} updates to this list didn't go through, so it may be out of date. Let whoever gave it to you know.`);
+		expect(text).toBe(`The last ${failingStatus.consecutiveFailures} updates to this card didn't go through, so it may be out of date. Let whoever gave it to you know.`);
 		expect(text).not.toContain('computer');
 	});
 
@@ -171,7 +171,7 @@ describe('stalenessBanner, a failed run on the Away Card', () => {
 			<StalenessBanner prominent generatedAt={GENERATED_AT} status={{ ...failingStatus, consecutiveFailures: 1 }} now={hoursAfter(GENERATED_AT, 12)} />,
 		);
 
-		expect(screen.getByRole('status').textContent).toContain('The last update to this list didn\'t go through');
+		expect(screen.getByRole('status').textContent).toContain('The last update to this card didn\'t go through');
 	});
 
 	it('leaves the owner\'s sentence alone everywhere else', () => {

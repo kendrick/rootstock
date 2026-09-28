@@ -52,7 +52,7 @@ describe('artifactError, for the household', () => {
 		render(<ArtifactError message={FAILURE} audience="household" />);
 
 		const alert = screen.getByRole('alert');
-		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This list couldn’t be put together today');
-		expect(alert.textContent).toBe('This list couldn’t be put together todayAsk whoever gave it to you.');
+		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This card couldn’t be put together today');
+		expect(alert.textContent).toBe('This card couldn’t be put together todayAsk whoever gave it to you.');
 	});
 });

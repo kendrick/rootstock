@@ -32,8 +32,8 @@ function failureSentence(consecutiveFailures: number, prominent: boolean): strin
 	// the owner's word. What they can do is tell the person who handed it over.
 	if (prominent) {
 		const updates = consecutiveFailures === 1
-			? 'The last update to this list'
-			: `The last ${consecutiveFailures} updates to this list`;
+			? 'The last update to this card'
+			: `The last ${consecutiveFailures} updates to this card`;
 
 		return `${updates} didn't go through, so it may be out of date. Let whoever gave it to you know.`;
 	}

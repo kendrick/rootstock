@@ -11,15 +11,15 @@ function ownerSentence(count: number): string {
 }
 
 /**
- * "On hold" rather than any of the words CONTEXT.md's Deferred Task and
- * Deferral entries rule out. It's also the honest one: a Guard held this work
- * back until conditions change, which is a pause and not a decision anyone
- * made about the work itself.
+ * "Held back" is CONTEXT.md's own verb for a Deferral; "hold", "blocked" and
+ * the rest are on the Deferred Task and Deferral _Avoid_ lines. It's also the
+ * honest phrase: a Guard paused this work until conditions change, and nobody
+ * decided anything about the work itself.
  */
 function heldSentence(count: number): string {
 	return count === 1
-		? '1 more task is on hold until conditions change.'
-		: `${count} more tasks are on hold until conditions change.`;
+		? '1 more task is held back until conditions change.'
+		: `${count} more tasks are held back until conditions change.`;
 }
 
 /**
@@ -32,7 +32,7 @@ function closingSentence(ownerOnly: number, deferred: number): string {
 		? 'to do or to decide'
 		: ownerOnly > 0 ? 'to do' : 'to decide';
 
-	return `This list isn't the whole week. The rest is the owner's ${verbs}.`;
+	return `This card isn't the whole week. The rest is the owner's ${verbs}.`;
 }
 
 /**
@@ -62,8 +62,8 @@ export function WithheldCount({ ownerOnly, deferred }: { ownerOnly: number; defe
 		<div className="space-y-1 border-t-2 border-rule px-5 py-4 font-mono text-evidence text-muted print:border-black print:break-inside-avoid print:text-black">
 			{ownerOnly > 0 && <p>{ownerSentence(ownerOnly)}</p>}
 			{deferred > 0 && <p>{heldSentence(deferred)}</p>}
-			{/* Says "list", never "the list above": on the week every fired Task
-			    is withheld there's no list above this to point at. */}
+			{/* Points at the card, never "the list above": on the week every fired
+			    Task is withheld there's no list above this to point at. */}
 			<p>{closingSentence(ownerOnly, deferred)}</p>
 		</div>
 	);

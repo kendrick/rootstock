@@ -46,7 +46,7 @@ test('prints its heading in ink, hides the nav, and carries a date and a box to 
 	expect(await boxes.count()).toBeGreaterThan(0);
 	await expect(boxes.first()).toHaveCSS('border-color', 'rgb(0, 0, 0)');
 
-	await expect(page.getByText(/^This list isn't the whole week\./)).toBeVisible();
+	await expect(page.getByText(/^This card isn't the whole week\./)).toBeVisible();
 
 	const pdf = await page.pdf({ format: 'Letter' });
 	// A blank or truncated page would still satisfy a bare "did not throw", so

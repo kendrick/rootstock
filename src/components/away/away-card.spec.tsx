@@ -61,7 +61,7 @@ const WITHHELD = [
 /**
  * No Occurrences unless a test passes some, rather than the committed seed, so
  * a line added to `src/seed/occurrences.json` can't quietly mark a fixture row
- * as done.
+ * as recorded.
  */
 function renderCard(artifact: Artifact, status: StatusRecord, now: Date, occurrences: Occurrence[] = []): HTMLElement {
 	const { container } = render(<AwayCard artifact={artifact} status={status} now={now} occurrences={occurrences} />);
@@ -191,8 +191,8 @@ describe('awayCard', () => {
 		const container = renderCard(awayArtifact, awayStatus, FRESH);
 
 		expect(container.textContent).toContain('2 more tasks are the owner\'s to do.');
-		expect(container.textContent).toContain('1 more task is on hold until conditions change.');
-		expect(container.textContent).toContain('This list isn\'t the whole week. The rest is the owner\'s to do or to decide.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
+		expect(container.textContent).toContain('This card isn\'t the whole week. The rest is the owner\'s to do or to decide.');
 
 		for (const { id, title } of WITHHELD) {
 			expect(container.textContent).not.toContain(title);
@@ -267,11 +267,11 @@ describe('awayCard', () => {
 	});
 
 	// The year is what a sheet found in a drawer next spring needs most.
-	it('prints the year on the line saying when the list was made', () => {
+	it('prints the year on the line saying when the card was made', () => {
 		const container = renderCard(awayArtifact, awayStatus, FRESH);
 
 		const made = container.querySelector('time')?.parentElement?.textContent ?? '';
-		expect(made).toMatch(/^This list was made .*2026/);
+		expect(made).toMatch(/^This card was made .*2026/);
 		expect(made).not.toContain('Generated');
 	});
 
@@ -398,9 +398,9 @@ describe('awayCard', () => {
 
 		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
 		expect(container.textContent).not.toContain('The yard doesn\'t need anything');
-		expect(container.textContent).toContain('Nothing on the list for you this week.');
+		expect(container.textContent).toContain('Nothing on this card for you this week.');
 		expect(container.textContent).toContain('2 more tasks are the owner\'s to do.');
-		expect(container.textContent).toContain('1 more task is on hold until conditions change.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
 	});
 
 	// The closing sentence points at no list, because on the week above there is
@@ -410,7 +410,7 @@ describe('awayCard', () => {
 		const withoutList = renderCard(nothingDelegableAwayArtifact, awayStatus, FRESH);
 
 		for (const container of [withList, withoutList]) {
-			expect(container.textContent).toContain('This list isn\'t the whole week.');
+			expect(container.textContent).toContain('This card isn\'t the whole week.');
 			expect(container.textContent).not.toContain('list above');
 		}
 	});
@@ -440,7 +440,7 @@ describe('awayCard', () => {
 		expect(container.textContent).toContain('The yard doesn\'t need anything this week.');
 		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
 		expect(container.textContent).not.toContain('the owner\'s to do');
-		expect(container.textContent).not.toContain('on hold');
+		expect(container.textContent).not.toContain('held back');
 		expect(container.textContent).not.toContain('isn\'t the whole week');
 	});
 
@@ -511,11 +511,11 @@ describe('recorded work on the card', () => {
 		return item;
 	}
 
-	it('prints recorded delegable work as done, not as an open box', () => {
+	it('prints recorded delegable work as recorded, not as an open box', () => {
 		render(<AwayCard artifact={awayArtifact} status={awayStatus} now={FRESH} occurrences={[recordedNitrogenOccurrence]} />);
 
 		const recorded = row(NARRATED_TEXT);
-		expect(recorded.textContent).toContain('Recorded Sep 10');
+		expect(recorded.textContent).toContain('Already recorded Sep 10');
 		expect(within(recorded).getByTestId('pen-box').childElementCount).toBeGreaterThan(0);
 	});
 
@@ -523,7 +523,7 @@ describe('recorded work on the card', () => {
 		render(<AwayCard artifact={awayArtifact} status={awayStatus} now={FRESH} occurrences={[recordedNitrogenOccurrence]} />);
 
 		const open = row(task(delegableUnnarratedTaskId).title);
-		expect(open.textContent).not.toContain('Recorded');
+		expect(open.textContent).not.toMatch(/recorded/i);
 		expect(within(open).getByTestId('pen-box').childElementCount).toBe(0);
 	});
 });

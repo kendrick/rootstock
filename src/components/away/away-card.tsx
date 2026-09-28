@@ -24,7 +24,7 @@ import { WithheldCount } from './withheld-count';
 export interface CardPartition {
 	/** Fired and delegable. The only Tasks anyone but the owner ever sees. */
 	shown: Task[];
-	/** Not delegable, fired or held: the owner's either way, chemical work above all. */
+	/** Not delegable, fired or held back: the owner's either way, chemical work above all. */
 	ownerOnly: Task[];
 	/** Delegable, but held back by a Guard: nobody does this work this week. */
 	deferred: Task[];
@@ -44,8 +44,8 @@ export interface CardPartition {
  */
 function emptyText(withheld: number): string {
 	return withheld === 0
-		? 'The yard doesn\'t need anything this week. Thanks for checking.'
-		: 'Nothing on the list for you this week. Thanks for checking.';
+		? 'The yard doesn\'t need anything this week. Thanks for looking.'
+		: 'Nothing on this card for you this week. Thanks for looking.';
 }
 
 /**
@@ -62,8 +62,8 @@ function emptyText(withheld: number): string {
  * the day someone writes a chemical Rule and forgets the tag.
  *
  * Delegability outranks deferral. Undelegable work is the owner's whether a
- * Guard holds it or not, and counting it as "on hold" tells the household it'll
- * come to them once the weather turns.
+ * Guard held it back or not, and counting it as held back tells the household
+ * it'll come to them once the weather turns.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the split belongs beside the one component that reads it; a second file is where a second copy of the rule starts
 export function partitionForCard(tasks: Task[]): CardPartition {
@@ -118,7 +118,7 @@ const MADE_ON = new Intl.DateTimeFormat('en-US', {
  * out: nobody writes on a phone, and 390px can't spare it. Print always keeps
  * it, because the returned sheet is where it earns its place.
  */
-const ROW_GRID = 'grid grid-cols-[2.5rem_minmax(0,1fr)_3.25rem] sm:grid-cols-[3.25rem_minmax(0,1fr)_3.5rem_8.5rem] print:grid-cols-[3.25rem_minmax(0,1fr)_3.5rem_8.5rem]';
+const ROW_GRID = 'grid grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] sm:grid-cols-[3.25rem_minmax(0,1fr)_4rem_8.5rem] print:grid-cols-[3.25rem_minmax(0,1fr)_4rem_8.5rem]';
 const WRITE_IN_CELL = 'hidden border-l-2 border-rule sm:block print:block print:border-black';
 
 export interface AwayCardProps {
@@ -173,11 +173,11 @@ export function AwayCard({ artifact, status, now, occurrences = seedOccurrences,
 			{(validated) => {
 				const { plan, narration, generatedAt } = validated.artifact;
 				const { shown, ownerOnly, deferred } = partitionForCard(plan.tasks);
-				// The Rule keeps firing until its window closes, done or not, so
+				// The Rule keeps firing until its window closes, recorded or not, so
 				// without this a recorded feeding prints as open and the lawn gets
-				// a second one. Printed as done rather than dropped: a missing row
-				// reads as work nobody called for, and "already done, don't redo
-				// it" is the line this reader actually needs.
+				// a second one. Printed as recorded rather than dropped: a missing
+				// row reads as work nobody called for, and "already recorded,
+				// don't redo it" is the line this reader actually needs.
 				const recorded = recordedDates(shown, occurrences, plan.asOf, rulesById);
 
 				return (
@@ -215,7 +215,7 @@ export function AwayCard({ artifact, status, now, occurrences = seedOccurrences,
 						    goes silent on a fresh Artifact. */}
 						<div className="space-y-5 px-5 py-4 print:space-y-4">
 							<p className="font-mono text-evidence text-muted print:text-black">
-								{'This list was made '}
+								{'This card was made '}
 								<time dateTime={generatedAt}>{MADE_ON.format(Date.parse(generatedAt))}</time>
 								.
 							</p>
@@ -244,7 +244,7 @@ export function AwayCard({ artifact, status, now, occurrences = seedOccurrences,
 											<div aria-hidden="true" className={cn(ROW_GRID, 'border-b-2 border-rule font-display text-label font-extrabold tracking-widest uppercase print:border-black')}>
 												<span className="px-2 py-1.5 text-center">No.</span>
 												<span className="border-l-2 border-rule px-3 py-1.5 print:border-black">Task</span>
-												<span className="border-l-2 border-rule px-1 py-1.5 text-center print:border-black">Done</span>
+												<span className="border-l-2 border-rule px-1 py-1.5 text-center print:border-black">Sign off</span>
 												<span className={cn(WRITE_IN_CELL, 'px-2 py-1.5')}>Initials / date</span>
 											</div>
 											{/* Safari drops list semantics once list-style is none,
@@ -270,7 +270,7 @@ export function AwayCard({ artifact, status, now, occurrences = seedOccurrences,
 																<p className="font-mono text-evidence print:text-black">
 																	{recordedOn === undefined
 																		? byWhen(task, rulesById.get(task.ruleId) ?? null, plan.asOf)
-																		: `Recorded ${shortDay(recordedOn)} · already done`}
+																		: `Already recorded ${shortDay(recordedOn)}`}
 																</p>
 															</div>
 															<span className="flex items-start justify-center border-l-2 border-rule px-1 py-3 print:border-black">

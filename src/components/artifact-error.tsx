@@ -79,7 +79,7 @@ function HouseholdError(): ReactElement {
 	return (
 		<section role="alert" className="mx-auto max-w-3xl px-4 py-12">
 			<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase print:text-black">
-				This list couldn&rsquo;t be put together today
+				This card couldn&rsquo;t be put together today
 			</h1>
 			<p className="mt-3 text-body text-foreground print:text-black">
 				Ask whoever gave it to you.

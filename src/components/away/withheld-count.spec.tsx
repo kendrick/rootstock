@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { WithheldCount } from './withheld-count';
 
-const NOT_EVERYTHING = 'This list isn\'t the whole week.';
+const NOT_EVERYTHING = 'This card isn\'t the whole week.';
 
 describe('withheldCount', () => {
 	// A zero line is worse than no line: it trains a reader to skip the block,
@@ -25,30 +25,30 @@ describe('withheldCount', () => {
 		expect(container.textContent).toContain('1 more task is the owner\'s to do.');
 	});
 
-	it('says held work is on hold, plural past one', () => {
+	it('says held-back work is held back, plural past one', () => {
 		const { container } = render(<WithheldCount ownerOnly={0} deferred={2} />);
 
-		expect(container.textContent).toContain('2 more tasks are on hold until conditions change.');
+		expect(container.textContent).toContain('2 more tasks are held back until conditions change.');
 	});
 
 	it('drops that plural at one too', () => {
 		const { container } = render(<WithheldCount ownerOnly={0} deferred={1} />);
 
-		expect(container.textContent).toContain('1 more task is on hold until conditions change.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
 	});
 
 	// Each reason stands on its own line only when it has a count behind it.
-	// "0 tasks are on hold" beside a real number reads as noise a reader learns
+	// "0 tasks are held back" beside a real number reads as noise a reader learns
 	// to skip past.
 	it('leaves out the reason that has no count behind it', () => {
 		const { container } = render(<WithheldCount ownerOnly={3} deferred={0} />);
 
-		expect(container.textContent).not.toContain('on hold');
+		expect(container.textContent).not.toContain('held back');
 	});
 
 	// The sentence that earns the whole component. Without it the counts read as
 	// trivia rather than as the reason not to walk away from a finished list.
-	it('says the list is not the whole week, in every state that renders', () => {
+	it('says the card is not the whole week, in every state that renders', () => {
 		const counts: [number, number][] = [[1, 0], [0, 1], [2, 3]];
 
 		for (const [ownerOnly, deferred] of counts) {
@@ -76,7 +76,7 @@ describe('withheldCount', () => {
 		const { container } = render(<WithheldCount ownerOnly={2} deferred={1} />);
 
 		expect(container.textContent).toBe(
-			`2 more tasks are the owner's to do.1 more task is on hold until conditions change.${NOT_EVERYTHING} The rest is the owner's to do or to decide.`,
+			`2 more tasks are the owner's to do.1 more task is held back until conditions change.${NOT_EVERYTHING} The rest is the owner's to do or to decide.`,
 		);
 	});
 
