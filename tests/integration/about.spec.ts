@@ -1,6 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { NARRATOR_BRIEF } from '../../src/generation/narrator-brief';
+
+/** Only the fields this spec checks. The schemas that own the full shape live under `src/artifact/`. */
+interface CommittedArtifact {
+	generatedAt: string;
+	plan: { tasks: unknown[] };
+}
 
 test('serves the about route', async ({ page }) => {
 	const response = await page.goto('about');
@@ -98,4 +106,20 @@ test('about route has no accessibility violations', async ({ page }) => {
 	await page.goto('about');
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
+});
+
+test('prints the committed run\'s own Task count and generation time under its steps', async ({ page }) => {
+	// Read from the file the page was built from, and worked out by slicing the
+	// ISO string rather than through Intl, so the page is checked against the
+	// file and not against a second copy of its own formatter.
+	const artifact = JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', 'data', 'artifact.json'), 'utf8')) as CommittedArtifact;
+	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	const [, month, day, hour, minute] = /^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})/u.exec(artifact.generatedAt) ?? [];
+	const tasks = artifact.plan.tasks.length;
+
+	await page.goto('about');
+
+	const steps = page.locator('#day ~ ol').first().getByRole('listitem');
+	await expect(steps.filter({ has: page.getByText('Plan the week', { exact: true }) })).toContainText(tasks === 0 ? 'No Tasks written' : `${tasks} ${tasks === 1 ? 'Task' : 'Tasks'} from`, { ignoreCase: true });
+	await expect(steps.filter({ has: page.getByText('Publish', { exact: true }) })).toContainText(`${months[Number(month) - 1]} ${Number(day)}, ${hour}:${minute} UTC`, { ignoreCase: true });
 });
