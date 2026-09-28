@@ -70,7 +70,7 @@ type ForecastCondition = Extract<GuardCondition, { kind: 'forecast-reaches' }>;
 /**
  * The forecast days a `forecast-reaches` Guard reads: the planned date and the `consecutiveDays - 1` after it, in the series, reduction and unit the condition names. Every one of them has to reach `value` for the condition to be met.
  *
- * Forecast only, and bounded behind `asOf`, for the reasons `rainChanceDays` gives. The planned date is inside the horizon because a heat limit is about the day the work would happen. `buildWindow` reduces these rows from forecast Observations alone, so today's row covers the hours still to come, and a measured reading earlier in the day can't stand in for the forecast.
+ * Forecast only, and bounded behind `asOf`, for the reasons `rainChanceDays` gives. The planned date is inside the horizon because a heat limit is about the day the work would happen. `buildWindow` reduces these rows from modeled Observations alone, so today's row covers the whole local day as the model sees it, hours already past included, and a measured reading can't stand in for the forecast.
  *
  * `unit` is matched as well as the series. A row in another unit would compare as a plausible number and still be the wrong one.
  */

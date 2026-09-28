@@ -861,6 +861,45 @@ describe('plan under a forecast-reaches guard', () => {
 		}]);
 	});
 
+	// The adapter marks an hour observed once it has passed, whatever its provenance, so on a 06:00 run the modeled 05:00 low is already an observed hour. It's still the model's reading of the day, and a frost limit that skipped it would read only the warm afternoon. November is Central standard time, so 11:00Z is 5am and 20:00Z is 2pm.
+	it('reads a modeled low from before the run as part of the day\'s forecast', () => {
+		const frostRelease = 'Held until the forecast low for the day stays above 36°F.';
+		const frostGuard = guardRule({
+			id: 'frost-limit',
+			name: 'Frost limit',
+			condition: {
+				kind: 'forecast-reaches',
+				variable: 'air-temperature',
+				depthCm: null,
+				aggregate: 'min',
+				comparison: 'lte',
+				value: 36,
+				unit: 'F',
+				consecutiveDays: 1,
+			},
+			release: frostRelease,
+		});
+		const coldMorning = [
+			observationSchema.parse({ ...airForecast('2026-11-10T11:00:00Z', 33), basis: 'observed' }),
+			airForecast('2026-11-10T20:00:00Z', 55),
+		];
+		const guarded = plan(inputWith({ asOf: '2026-11-10', rules: [work, frostGuard], observations: coldMorning }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'frost-limit', releaseWhen: frostRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-11-10',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'min',
+			value: 33,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
 	it('lets the work go ahead on a 78°F day in August', () => {
 		const guarded = plan(inputWith({ asOf: '2026-08-14', rules: [work, heatGuard], observations: mildAugust }));
 		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');

@@ -207,7 +207,7 @@ function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 }
 
 /**
- * The series a `forecast-reaches` Guard reads, grouped the same way as `seriesByAggregate`. `buildWindow` reduces their forecast days from forecast Observations alone.
+ * The series a `forecast-reaches` Guard reads, grouped the same way as `seriesByAggregate`. `buildWindow` reduces their forecast days from modeled Observations alone.
  */
 function forecastGuardSeries(rules: Rule[]): Map<Aggregate, Set<string>> {
 	const wanted = new Map<Aggregate, Set<string>>();
@@ -259,11 +259,13 @@ function compareDepth(left: number | null, right: number | null): number {
 function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
 	const window: DailyAggregate[] = [];
 	const forecastRead = forecastGuardSeries(input.rules);
-	const forecastObservations = input.observations.filter(observation => observation.basis === 'forecast');
+	const modeledObservations = input.observations.filter(observation => observation.provenance === 'modeled');
 
 	for (const [aggregate, keys] of seriesByAggregate(input.rules)) {
 		/*
-		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series a `forecast-reaches` Guard reads gets its forecast days from forecast Observations alone, and its observed days as usual. The forecast-only pass yields a row for exactly the dates whose row it drops, so the swap leaves no gap and no duplicate.
+		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series a `forecast-reaches` Guard reads gets its forecast days from modeled Observations alone, and its observed days as usual.
+		 *
+		 * Modeled, not forecast-basis. The adapter marks every elapsed hour observed, so a forecast-basis filter on a 06:00 run drops the model's 05:00 low, and a frost limit reads only the warm afternoon. The modeled pass marks a day forecast wherever the regular pass does, since every forecast hour is modeled, so the swap leaves no gap and no duplicate.
 		 */
 		const readAhead = forecastRead.get(aggregate) ?? new Set<string>();
 		const readsAhead = (day: DailyAggregate): boolean => readAhead.has(seriesKey(day.variable, day.depthCm));
@@ -272,7 +274,8 @@ function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
 				.filter(day => day.basis !== 'forecast' || !readsAhead(day)),
 			...(readAhead.size === 0
 				? []
-				: toDailyAggregates(forecastObservations, input.timeZone, aggregate).filter(readsAhead)),
+				: toDailyAggregates(modeledObservations, input.timeZone, aggregate)
+						.filter(day => day.basis === 'forecast' && readsAhead(day))),
 		];
 
 		for (const day of days) {
