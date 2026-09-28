@@ -50,7 +50,36 @@ function soilTemperature(date: string, value: number): DailyAggregate {
 	});
 }
 
+function airHigh(date: string, value: number, fields: Partial<DailyAggregate> = {}): DailyAggregate {
+	return dailyAggregateSchema.parse({
+		date,
+		variable: 'air-temperature',
+		depthCm: null,
+		aggregate: 'max',
+		value,
+		unit: 'F',
+		basis: 'forecast',
+		provenance: 'modeled',
+		source: 'open-meteo',
+		...fields,
+	});
+}
+
 const always: GuardCondition = guardConditionSchema.parse({ kind: 'always' });
+
+/** The owner's heat limit on broadcast herbicide: hold the work when the day's forecast high reaches 90F. */
+function heatLimit(consecutiveDays = 1): GuardCondition {
+	return guardConditionSchema.parse({
+		kind: 'forecast-reaches',
+		variable: 'air-temperature',
+		depthCm: null,
+		aggregate: 'max',
+		comparison: 'gte',
+		value: 90,
+		unit: 'F',
+		consecutiveDays,
+	});
+}
 
 function noRainWithin(days: number, probabilityAtLeast: number): GuardCondition {
 	return guardConditionSchema.parse({ kind: 'no-rain-within', days, probabilityAtLeast });
@@ -230,6 +259,88 @@ describe('evaluateGuardCondition', () => {
 			const window = toDailyAggregates(observations, timeZone, 'max');
 
 			expect(evaluateGuardCondition(fixtureRainCondition(), window, fixtureAsOf)).toBe('met');
+		});
+	});
+
+	describe('forecast-reaches', () => {
+		// The two days #34 names. A calendar fence on the hot months gets both of them wrong, which is why this condition reads the forecast instead.
+		it('is unmet on a 78F day in August', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh('2026-08-14', 78)], '2026-08-14')).toBe('unmet');
+		});
+
+		it('is met on a 95F day in May', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh('2026-05-20', 95)], '2026-05-20')).toBe('met');
+		});
+
+		it('is met by a high sitting exactly on the value', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 90)], asOf)).toBe('met');
+		});
+
+		it('is met under an lte comparison by a day at or below the value', () => {
+			const frost = guardConditionSchema.parse({
+				kind: 'forecast-reaches',
+				variable: 'air-temperature',
+				depthCm: null,
+				aggregate: 'min',
+				comparison: 'lte',
+				value: 36,
+				unit: 'F',
+				consecutiveDays: 1,
+			});
+
+			expect(evaluateGuardCondition(frost, [airHigh(asOf, 33, { aggregate: 'min' })], asOf)).toBe('met');
+			expect(evaluateGuardCondition(frost, [airHigh(asOf, 41, { aggregate: 'min' })], asOf)).toBe('unmet');
+		});
+
+		it('ignores a hot day past the horizon', () => {
+			// One day asked for means the planned date alone, so tomorrow's 99 has no say over today's 80.
+			const window = [airHigh(asOf, 80), airHigh(tomorrow, 99)];
+
+			expect(evaluateGuardCondition(heatLimit(), window, asOf)).toBe('unmet');
+		});
+
+		it('is met when every day of a two-day run reaches the value', () => {
+			const window = [airHigh(asOf, 95), airHigh(tomorrow, 92)];
+
+			expect(evaluateGuardCondition(heatLimit(2), window, asOf)).toBe('met');
+		});
+
+		it('is unmet when one day of a two-day run falls short', () => {
+			const window = [airHigh(asOf, 95), airHigh(tomorrow, 85)];
+
+			expect(evaluateGuardCondition(heatLimit(2), window, asOf)).toBe('unmet');
+		});
+
+		it('is unmet when the day on hand falls short, even with the rest of the run missing', () => {
+			expect(evaluateGuardCondition(heatLimit(2), [airHigh(asOf, 85)], asOf)).toBe('unmet');
+		});
+
+		it('is unavailable when the days on hand reach the value but the run is incomplete', () => {
+			// Tomorrow could still break the run, so 'met' here would be a claim the forecast never made.
+			expect(evaluateGuardCondition(heatLimit(2), [airHigh(asOf, 95)], asOf)).toBe('unavailable');
+		});
+
+		it('is unavailable on an empty window', () => {
+			expect(evaluateGuardCondition(heatLimit(), [], asOf)).toBe('unavailable');
+		});
+
+		it('is unavailable when the window carries only other series', () => {
+			const window = [rainChance(asOf, 90), soilTemperature(asOf, 95)];
+
+			expect(evaluateGuardCondition(heatLimit(), window, asOf)).toBe('unavailable');
+		});
+
+		it('is unavailable when the row on hand is observed rather than forecast', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 95, { basis: 'observed' })], asOf)).toBe('unavailable');
+		});
+
+		it('is unavailable when the row on hand is a mean rather than a maximum', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 95, { aggregate: 'mean' })], asOf)).toBe('unavailable');
+		});
+
+		it('is unavailable when the only forecast is stale', () => {
+			// Yesterday's forecast high says nothing about today.
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(yesterday, 99)], asOf)).toBe('unavailable');
 		});
 	});
 });

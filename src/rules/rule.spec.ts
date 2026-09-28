@@ -196,6 +196,30 @@ describe('guardConditionSchema', () => {
 	it('rejects an unknown condition kind', () => {
 		expect(() => guardConditionSchema.parse({ kind: 'wind-below', speed: 10 })).toThrow();
 	});
+
+	const heatLimit = {
+		kind: 'forecast-reaches',
+		variable: 'air-temperature',
+		depthCm: null,
+		aggregate: 'max',
+		comparison: 'gte',
+		value: 90,
+		unit: 'F',
+		consecutiveDays: 1,
+	};
+
+	it('parses a forecast-reaches condition carrying all seven reading fields', () => {
+		expect(guardConditionSchema.parse(heatLimit)).toEqual(heatLimit);
+	});
+
+	// Written out rather than read off `Object.keys(heatLimit)`, so the list under test can't shrink along with the fixture.
+	it.each(['variable', 'depthCm', 'aggregate', 'comparison', 'value', 'unit', 'consecutiveDays'])(
+		'rejects a forecast-reaches condition missing %s',
+		(field) => {
+			const { [field]: _dropped, ...missing } = heatLimit as Record<string, unknown>;
+			expect(() => guardConditionSchema.parse(missing)).toThrow();
+		},
+	);
 });
 
 describe('ruleSchema seed rules', () => {

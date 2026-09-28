@@ -179,6 +179,8 @@ function seriesKey(variable: Variable, depthCm: number | null): string {
  * collecting the mean would hand the Guard a series it may not read, which
  * lands on the same verdict as collecting nothing at all and is harder to spot
  * from a window that looks full.
+ *
+ * A `forecast-reaches` Guard names its series in full, the way a Threshold Rule does, so it's collected exactly as written.
  */
 function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 	const wanted = new Map<Aggregate, Set<string>>();
@@ -195,6 +197,9 @@ function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 		}
 		else if (rainForecastGuard(rule) !== null) {
 			want('max', seriesKey('precipitation-probability', null));
+		}
+		else if (rule.kind === 'guard' && rule.condition.kind === 'forecast-reaches') {
+			want(rule.condition.aggregate, seriesKey(rule.condition.variable, rule.condition.depthCm));
 		}
 	}
 

@@ -779,3 +779,95 @@ describe('plan window', () => {
 		expect(plan(inputWith({ rules: [calendarOnly] })).window).toEqual([]);
 	});
 });
+
+/*
+ * The owner's heat limit end to end, from hourly Observations through the window to the deferral. Every Task comes from one year-round Window Rule, so whatever holds it back is the heat Guard and nothing else. The instants are written in UTC for Central daylight time: 12:00Z is 7am and 21:00Z is 4pm.
+ */
+describe('plan under a forecast-reaches guard', () => {
+	const work = windowRule({ id: 'broadcast-herbicide', name: 'Broadcast herbicide', start: '01-01', end: '12-31' });
+	const heatRelease = 'Held until the forecast high for the day drops under 90°F.';
+	const heatGuard = guardRule({
+		id: 'heat-limit',
+		name: 'No broadcast herbicide above 90°F',
+		condition: {
+			kind: 'forecast-reaches',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			comparison: 'gte',
+			value: 90,
+			unit: 'F',
+			consecutiveDays: 1,
+		},
+		release: heatRelease,
+	});
+
+	function airForecast(observedAt: string, value: number): Observation {
+		return observationSchema.parse({
+			observedAt,
+			variable: 'air-temperature',
+			depthCm: null,
+			value,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		});
+	}
+
+	const hotMay = [airForecast('2026-05-20T12:00:00Z', 72), airForecast('2026-05-20T21:00:00Z', 95)];
+	const mildAugust = [airForecast('2026-08-14T12:00:00Z', 70), airForecast('2026-08-14T21:00:00Z', 78)];
+
+	it('defers the work on a 95°F day in May, keeping its rule and citation and naming the guard', () => {
+		const unguarded = plan(inputWith({ asOf: '2026-05-20', rules: [work], observations: hotMay }));
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: hotMay }));
+		const before = unguarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(before).toBeDefined();
+		expect(held?.status).toBe('deferred');
+		expect(held?.citation).toEqual(before?.citation);
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+	});
+
+	it('lets the work go ahead on a 78°F day in August', () => {
+		const guarded = plan(inputWith({ asOf: '2026-08-14', rules: [work, heatGuard], observations: mildAugust }));
+		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');
+
+		expect(task?.status).toBe('fired');
+		expect(task?.deferrals).toEqual([]);
+		expect(task?.annotations).toEqual([]);
+	});
+
+	it('annotates rather than defers when no air temperature was fetched', () => {
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: [] }));
+		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');
+
+		expect(task?.deferrals).toEqual([]);
+		expect(task?.annotations).toContainEqual({ guardId: 'heat-limit', text: FORECAST_UNAVAILABLE_TEXT });
+	});
+
+	it('carries the day\'s forecast high in the window', () => {
+		const window = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: hotMay })).window;
+
+		expect(() => z.array(dailyAggregateSchema).parse(window)).not.toThrow();
+		expect(window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
+	it('carries no air temperature when no guard asks for it', () => {
+		const window = plan(inputWith({ asOf: '2026-05-20', rules: [work], observations: hotMay })).window;
+
+		expect(window).toEqual([]);
+	});
+});

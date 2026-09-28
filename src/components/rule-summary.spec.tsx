@@ -342,6 +342,22 @@ describe('ruleSummary', () => {
 		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical');
 	});
 
+	// No seed Guard uses this condition yet (#34 leaves the heat Guard to the owner), so the rain Guard lends it everything else.
+	it('gives a forecast-reaches Guard its series, value and horizon in words', () => {
+		const guard = seedRule('rain-expected');
+		if (guard.kind !== 'guard') {
+			throw new Error('rain-expected is not a Guard');
+		}
+		const heat = { kind: 'forecast-reaches', variable: 'air-temperature', depthCm: null, aggregate: 'max', comparison: 'gte', value: 90, unit: 'F' } as const;
+
+		const { unmount } = render(<RuleSummary rule={{ ...guard, condition: { ...heat, consecutiveDays: 1 } }} />);
+		expect(screen.getByText('Applies when').nextElementSibling?.textContent).toBe('Forecast daily maximum air temperature, at or above 90°F today');
+		unmount();
+
+		render(<RuleSummary rule={{ ...guard, condition: { ...heat, consecutiveDays: 3 } }} />);
+		expect(screen.getByText('Applies when').nextElementSibling?.textContent).toBe('Forecast daily maximum air temperature, at or above 90°F on each of the 3 days starting today');
+	});
+
 	// `guardTargets` reaches a Plant named in `plantIds` or carrying one of the
 	// `plantTags`, so the two read as alternatives, never as both at once.
 	it('reads a Guard\'s Plant selectors as alternatives', () => {

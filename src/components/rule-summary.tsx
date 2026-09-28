@@ -156,6 +156,11 @@ function conditionText(condition: GuardCondition): string {
 			return `A day in the next ${condition.days === 1 ? 'day' : `${condition.days} days`} carries a ${condition.probabilityAtLeast}% or greater chance of rain`;
 		case 'within-window':
 			return `${condition.negate ? 'Outside ' : ''}${formatMonthDay(condition.start)} through ${formatMonthDay(condition.end)}`;
+		case 'forecast-reaches':
+			return `Forecast daily ${AGGREGATE_TEXT[condition.aggregate]} ${VARIABLE_TEXT[condition.variable]}`
+				+ `${condition.depthCm === null ? '' : ` at ${condition.depthCm} cm`}, `
+				+ `${COMPARISON_TEXT[condition.comparison]} ${formatValue(condition.value, condition.unit)} `
+				+ `${condition.consecutiveDays === 1 ? 'today' : `on each of the ${condition.consecutiveDays} days starting today`}`;
 	}
 }
 

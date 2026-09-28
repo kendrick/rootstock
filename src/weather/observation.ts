@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Threshold Rule can pattern-match on it exhaustively: adding a new series is a
  * schema change, not a typo waiting to slip past validation.
  */
-export const variableSchema = z.enum(['soil-temperature', 'precipitation', 'precipitation-probability']);
+export const variableSchema = z.enum(['soil-temperature', 'precipitation', 'precipitation-probability', 'air-temperature']);
 export type Variable = z.infer<typeof variableSchema>;
 
 /**

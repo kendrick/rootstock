@@ -72,7 +72,7 @@ describe('the query fetchObservations builds', () => {
 		expect(Object.fromEntries(url.searchParams)).toEqual({
 			latitude: '32.733276',
 			longitude: '-97.346596',
-			hourly: 'soil_temperature_6cm,precipitation,precipitation_probability',
+			hourly: 'soil_temperature_6cm,precipitation,precipitation_probability,temperature_2m',
 			temperature_unit: 'fahrenheit',
 			timezone: 'America/Chicago',
 			timeformat: 'unixtime',
@@ -94,7 +94,7 @@ describe('the query fetchObservations builds', () => {
 
 describe('the Observations fetchObservations returns', () => {
 	it('emits one record per hour per series', async () => {
-		expect(await fetchFortWorth()).toHaveLength(3 * HOURS_IN_FIXTURE);
+		expect(await fetchFortWorth()).toHaveLength(4 * HOURS_IN_FIXTURE);
 	});
 
 	it('returns records that all parse through observationSchema', async () => {
@@ -108,7 +108,7 @@ describe('the Observations fetchObservations returns', () => {
 		const observations = await fetchFortWorth();
 
 		expect(new Set(observations.map(observation => observation.variable))).toEqual(
-			new Set(['soil-temperature', 'precipitation', 'precipitation-probability']),
+			new Set(['soil-temperature', 'precipitation', 'precipitation-probability', 'air-temperature']),
 		);
 	});
 
@@ -137,6 +137,24 @@ describe('the Observations fetchObservations returns', () => {
 
 		expect(rain.every(observation => observation.depthCm === null && observation.unit === 'mm')).toBe(true);
 		expect(chance.every(observation => observation.depthCm === null && observation.unit === 'percent')).toBe(true);
+	});
+
+	it('maps temperature_2m onto air temperature, in Fahrenheit and at no depth', async () => {
+		const air = (await fetchFortWorth()).filter(observation => observation.variable === 'air-temperature');
+
+		expect(air).toHaveLength(HOURS_IN_FIXTURE);
+		expect(air[0]).toEqual({
+			observedAt: '2026-06-12T05:00:00.000Z',
+			variable: 'air-temperature',
+			depthCm: null,
+			value: 82.4,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		});
+		expect(air.every(observation => observation.depthCm === null && observation.unit === 'F')).toBe(true);
 	});
 
 	it('labels every Observation modeled and sourced to open-meteo with no station', async () => {
@@ -235,6 +253,14 @@ describe('rejections', () => {
 		const { fetch } = recordingFetch(celsius);
 
 		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/soil_temperature_6cm/);
+	});
+
+	it('rejects air temperature reported in Celsius', async () => {
+		// Its own case because a 32C afternoon read as 32F would lift the heat Guard's Deferral on the hottest day of the year.
+		const celsius = { ...fortWorth, hourly_units: { ...fortWorth.hourly_units, temperature_2m: '°C' } };
+		const { fetch } = recordingFetch(celsius);
+
+		await expect(fetchObservations({ location: LOCATION, now: NOW, fetch })).rejects.toThrow(/temperature_2m/);
 	});
 
 	it('rejects a non-success status rather than parsing the body', async () => {

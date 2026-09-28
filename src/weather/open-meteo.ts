@@ -63,7 +63,7 @@ interface Series {
  * Where the API's names meet ours. The `hourly=` parameter is built from this
  * list, so what is requested and what is mapped cannot drift apart.
  *
- * A fourth series is two edits, not one: this array and `responseSchema`
+ * Each new series is two edits, not one: this array and `responseSchema`
  * below, which names the same keys so the parse can stay statically typed.
  * Forgetting the second is a compile error rather than a silent gap, because
  * indexing `payload.hourly` by an apiName the schema does not carry fails
@@ -73,6 +73,7 @@ const SERIES = [
 	{ apiName: 'soil_temperature_6cm', variable: 'soil-temperature', depthCm: 6, unit: 'F', reportedUnit: '°F' },
 	{ apiName: 'precipitation', variable: 'precipitation', depthCm: null, unit: 'mm', reportedUnit: 'mm' },
 	{ apiName: 'precipitation_probability', variable: 'precipitation-probability', depthCm: null, unit: 'percent', reportedUnit: '%' },
+	{ apiName: 'temperature_2m', variable: 'air-temperature', depthCm: null, unit: 'F', reportedUnit: '°F' },
 ] as const satisfies readonly Series[];
 
 const hourlySeriesSchema = z.array(z.number().nullable());
@@ -89,6 +90,7 @@ const responseSchema = z.object({
 		soil_temperature_6cm: hourlySeriesSchema,
 		precipitation: hourlySeriesSchema,
 		precipitation_probability: hourlySeriesSchema,
+		temperature_2m: hourlySeriesSchema,
 	}),
 });
 
