@@ -2,19 +2,27 @@ import type { ReactElement } from 'react';
 import type { RuleTicketLine } from './ticket-lines';
 import type { RuleStanding } from './waiting';
 import type { AfterLink } from '@/components/rule-summary';
+import type { Occurrence } from '@/planner/occurrence';
 import type { Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
 import { RuleSummary } from '@/components/rule-summary';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
-import { seedPlants } from '@/seed';
+import { seedOccurrences, seedPlants } from '@/seed';
+import { anchorFor, recordedDay } from './anchor';
 import { bandAnchor, drawnBands } from './bands';
 import { ticketLinesFor } from './ticket-lines';
-import { groupChecks, rankRules } from './waiting';
+import { groupChecks, intervalText, rankRules } from './waiting';
 
 export interface RuleListProps {
 	rules: Rule[];
 	plan: Plan;
+	/**
+	 * Defaults to the committed history, the record the daily run plans from
+	 * (ADR 0006), so the line agrees with the Plan on the page rather than with
+	 * whatever this browser's Store holds.
+	 */
+	occurrences?: readonly Occurrence[];
 }
 
 const LINK = cn('underline underline-offset-4', FOCUS_RING);
@@ -73,7 +81,7 @@ function TicketLines({ lines }: { lines: readonly RuleTicketLine[] }): ReactElem
 	);
 }
 
-function RuleRow({ standing, after, lines }: { standing: RuleStanding; after: AfterLink | null; lines: readonly RuleTicketLine[] }): ReactElement {
+function RuleRow({ standing, after, lines, anchor }: { standing: RuleStanding; after: AfterLink | null; lines: readonly RuleTicketLine[]; anchor: Occurrence | null }): ReactElement {
 	const { rule, waitingOn, checks } = standing;
 
 	// The status is the one line the band changes, so it sits straight under the
@@ -106,11 +114,14 @@ function RuleRow({ standing, after, lines }: { standing: RuleStanding; after: Af
 			{standing.band === 'fired' && <TicketLines lines={lines} />}
 			{/* A follow-up counts from the Rule it follows, and the season line never
 			    says so. The record's "Measured from" row names the same Rule; this
-			    line puts it where a reader asking why the Rule is quiet looks. */}
-			{standing.band === 'waiting' && after !== null && (
+			    line puts it where a reader asking why the Rule is quiet looks. Once
+			    that Rule's work is recorded, "Waits on" would call it outstanding, so
+			    the line gives the interval and the day it counts from instead. */}
+			{standing.band === 'waiting' && after !== null && rule.kind === 'cadence' && (
 				<p className="text-pretty">
-					{'Waits on '}
+					{anchor === null ? 'Waits on ' : `Due ${intervalText(rule)} after `}
 					<a href={after.href} className={LINK}>{after.name}</a>
+					{anchor !== null && `, recorded ${recordedDay(anchor)}`}
 				</p>
 			)}
 			{/* The release condition the Planner copied onto each Deferral, not the
@@ -147,7 +158,7 @@ function RuleRow({ standing, after, lines }: { standing: RuleStanding; after: Af
  * last observed reading beside the value the Rule wants, which is two committed
  * numbers rather than a guess about when they will meet.
  */
-export function RuleList({ rules, plan }: RuleListProps): ReactElement {
+export function RuleList({ rules, plan, occurrences = seedOccurrences }: RuleListProps): ReactElement {
 	const ranked = rankRules(rules, plan);
 	const names = new Map(rules.map(rule => [rule.id, rule.name]));
 
@@ -184,6 +195,7 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 									standing={standing}
 									after={afterLink(standing.rule, names)}
 									lines={ticketLinesFor(standing.rule.id, plan.tasks)}
+									anchor={anchorFor(standing.rule, occurrences, seedPlants)}
 								/>
 							))}
 						</ul>

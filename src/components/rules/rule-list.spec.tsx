@@ -1,3 +1,4 @@
+import type { Occurrence } from '@/planner/occurrence';
 import type { Plan } from '@/planner/plan';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -235,6 +236,38 @@ describe('ruleList', () => {
 		const status = row.querySelector('[data-rule-status]') as HTMLElement;
 		expect(status.textContent).toContain(`Waits on ${thresholdRule.name}`);
 		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
+	});
+
+	// Once the first application is recorded, "Waits on" would call it
+	// outstanding. The follow-up is waiting out its interval instead.
+	it('gives a follow-up its interval and the recorded day once the Rule it follows is done', () => {
+		const recorded: Occurrence = {
+			id: 'spring-pre-emergent-2026',
+			ruleId: thresholdRule.id,
+			plantId: 'front-lawn',
+			completedAt: '2026-03-03T15:00:00Z',
+			recordedAt: '2026-03-03T15:00:00Z',
+			source: 'seed',
+		};
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} occurrences={[recorded]} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Due 42–56 days after ${thresholdRule.name}, recorded March 3, 2026`);
+		expect(status.textContent).not.toContain('Waits on');
+		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
+	});
+
+	// An Occurrence for another Rule or another Plant is not the anchor.
+	it('keeps "Waits on" when nothing on record is the follow-up\'s anchor', () => {
+		const elsewhere: Occurrence[] = [
+			{ id: 'other-rule', ruleId: windowRule.id, plantId: 'front-lawn', completedAt: '2026-03-03T15:00:00Z', recordedAt: '2026-03-03T15:00:00Z', source: 'seed' },
+			{ id: 'other-plant', ruleId: thresholdRule.id, plantId: 'fig-1', completedAt: '2026-03-03T15:00:00Z', recordedAt: '2026-03-03T15:00:00Z', source: 'seed' },
+		];
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} occurrences={elsewhere} />);
+
+		expect(screen.getByText(/Waits on/u)).toBeDefined();
+		expect(screen.queryByText(/^Due /u)).toBeNull();
 	});
 
 	it('gives no other Rule a "Waits on" line', () => {

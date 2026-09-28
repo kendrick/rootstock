@@ -200,7 +200,7 @@ function listOf(items: string[]): string {
 	return items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
 
-function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
+export function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
 	const { min, max } = rule.everyDays;
 
 	return min === max ? `${min} days` : `${min}–${max} days`;
