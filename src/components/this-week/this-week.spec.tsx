@@ -786,6 +786,12 @@ describe('closing soon', () => {
 		expect(screen.getByText('Rain chance Sep 28 8% / Sep 29 2% / Sep 30 78%')).toBeDefined();
 	});
 
+	it('names a Plant the inventory has since dropped by its id, as the row does', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants.filter(plant => plant.id !== 'front-lawn')} store={fakeStore()} />);
+
+		expect(screen.getByRole('complementary', { name: 'Closing soon' }).textContent).toContain('Fall pre-emergent, front-lawn:');
+	});
+
 	it('draws no band while every window is weeks from closing', async () => {
 		await mount(<ThisWeek artifact={{ ...held, plan: { ...held.plan, asOf: '2026-09-11' } }} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
 

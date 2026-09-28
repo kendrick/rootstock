@@ -118,7 +118,9 @@ function ClosingSoonLine({ tasks, rulesById, plantsById, window, asOf, completed
 						? ticketAnchor('Held back', held.indexOf(task) + 1)
 						: ticketAnchor('Ready now', fired.indexOf(task) + 1);
 					const rule = rulesById.get(task.ruleId);
-					const plant = task.plantId === null ? null : plantsById.get(task.plantId)?.name ?? null;
+					// The raw id when the inventory no longer holds the Plant, as the row does,
+					// so two closing Tasks from one Rule never read the same.
+					const plant = task.plantId === null ? null : plantsById.get(task.plantId)?.name ?? task.plantId;
 					const name = `${rule?.name ?? task.ruleId}${plant === null ? '' : `, ${plant}`}`;
 					const guards = task.deferrals.map(deferral => rulesById.get(deferral.guardId));
 					const wet = guards.map(guard => rainBefore(guard, window, asOf, closes)).find(day => day !== null) ?? null;

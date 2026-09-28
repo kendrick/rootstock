@@ -512,12 +512,14 @@ describe('taskItem', () => {
 		// The chevron carried no words, so nothing on the screen said the
 		// evidence was there at all. The label is the promise the brief sentence
 		// makes, in the brief sentence's own vocabulary.
-		it('labels itself in words, and leaves the Rule\'s name to the row above it', () => {
+		it('labels itself in words, with the Rule\'s name for screen readers only', () => {
 			const { container } = renderItem(
 				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
 			);
 
-			expect(container.querySelector('summary')?.textContent).toBe('Rule and evidence');
+			const summary = container.querySelector('summary');
+			expect(summary?.textContent).toBe('Rule and evidence, Fall pre-emergent');
+			expect(summary?.querySelector('.sr-only')?.textContent).toBe(', Fall pre-emergent');
 		});
 	});
 
