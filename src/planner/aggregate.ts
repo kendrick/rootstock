@@ -45,36 +45,28 @@ function reduce(values: number[], aggregate: Aggregate): number {
 }
 
 /**
- * Decimal places `toDailyAggregates` rounds every reduced value to.
+ * Decimal places `plan()` in `planner.ts` rounds `Plan.window` to, right
+ * before it returns—not a precision this file applies.
  *
- * Soil temperature is compared against a Threshold Rule's `value` in whole
+ * `toDailyAggregates` reduces to a raw value on purpose. Every Rule and
+ * Guard reads its output before anything rounds, and `meetsThreshold`
+ * compares that raw value against a Rule's `value` with an inclusive
+ * gte/lte. Rounding here instead would settle that comparison on a
+ * reading no longer exact: a raw 54.996 would round to 55.0 and fire
+ * `gte 55` a day before the yard actually crossed it, which is the
+ * defect #59's own notes name as the one to avoid. `Plan.window` carries
+ * no such risk—nothing reads it again for a verdict—so this precision
+ * applies there instead, after every Rule and Guard already has the raw
+ * number.
+ *
+ * Soil temperature is compared against a Rule's `value` in whole
  * degrees, and precipitation probability compares in whole percentage
- * points, so a tenth is one digit more than either comparison needs. Full
- * float precision bought nothing past that: the extra digits are what's
- * left over from dividing by twenty-four hourly readings, and they are
- * what churned `daily-run.sh`'s commit every morning (#59).
- *
- * `meetsThreshold` treats `value` as an inclusive gte/lte boundary, and
- * both shipped Threshold Rules give it a whole-number `value` (70F lte,
- * 55F gte), already a multiple of this rounding's step. Rounding to the
- * nearest tenth of a value on that grid never moves a reading from the
- * satisfying side of the comparison to the failing side: whichever way
- * the comparison points, a reading that already meets `value` still
- * meets it once rounded. `threshold-rule.spec.ts` tests both directions.
- *
- * The opposite failure can't be ruled out here. A reading within 0.05 of
- * `value` can round onto the satisfying side, and `toDailyAggregates`
- * reduces hourly readings before any Rule is in scope to round away
- * from. Neither shipped Rule's fixture data comes within several tenths
- * of a degree of its threshold on the days that decide its verdict, so
- * the gap is real but unexercised—the one to close if a future Rule's
- * `value` ever needs finer than whole-unit precision.
+ * points, so a tenth is one digit more than either needs. Full float
+ * precision buys nothing past that: the extra digits are what's left
+ * over from dividing by twenty-four hourly readings, and they are what
+ * churned `daily-run.sh`'s commit every morning.
  */
 export const AGGREGATE_DECIMAL_PLACES = 1;
-
-function round(value: number): number {
-	return Number(value.toFixed(AGGREGATE_DECIMAL_PLACES));
-}
 
 /**
  * Every `Group` is seeded with the Observation that created it, so `used`
@@ -159,7 +151,7 @@ export function toDailyAggregates(
 			variable: group.variable,
 			depthCm: group.depthCm,
 			aggregate,
-			value: round(reduce(values, aggregate)),
+			value: reduce(values, aggregate),
 			unit: representative.unit,
 			basis,
 			provenance,

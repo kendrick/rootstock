@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
-import { toDailyAggregates } from './aggregate';
+import { AGGREGATE_DECIMAL_PLACES, toDailyAggregates } from './aggregate';
 import { evaluateCadenceRule } from './cadence-rule';
 import { daysBetween } from './dates';
 import { isDelegable } from './delegation';
@@ -433,6 +433,19 @@ function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableT
 }
 
 /**
+ * Rounds `window` to `AGGREGATE_DECIMAL_PLACES` for the Plan it ships in.
+ *
+ * Only `plan()` calls this, and only on the copy it is about to return.
+ * `createTasks` and `applyGuards` both read `window` first, at full
+ * precision, because `evaluateThresholdRule` needs the exact reading a
+ * Rule's `value` will be compared against—see `AGGREGATE_DECIMAL_PLACES`'s
+ * own comment in aggregate.ts for what rounding first would have cost.
+ */
+function roundWindowForEmission(window: DailyAggregate[]): DailyAggregate[] {
+	return window.map(day => ({ ...day, value: Number(day.value.toFixed(AGGREGATE_DECIMAL_PLACES)) }));
+}
+
+/**
  * Turns one day's inputs into the Plan for that date.
  *
  * Everything here is derived from the arguments. There is no clock read, no
@@ -464,6 +477,11 @@ function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableT
  * that writes the Artifact—and a function re-parsing what it just built would
  * pay a boundary's price in the middle of the system. The specs prove the
  * returned Plan parses; the Planner does not pay for that proof on every call.
+ *
+ * `window` is rounded only in the returned object, never before. Every Rule
+ * and Guard above the `return` reads the same full-precision `window`
+ * `buildWindow` produced, which is what keeps a Threshold Rule's verdict
+ * independent of the digits the published Artifact carries.
  */
 export function plan(input: PlanInput): Plan {
 	const window = buildWindow(input, windowSpan(input.rules));
@@ -476,6 +494,6 @@ export function plan(input: PlanInput): Plan {
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window,
+		window: roundWindowForEmission(window),
 	};
 }
