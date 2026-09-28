@@ -57,7 +57,7 @@ describe('runReadout', () => {
 		};
 
 		expect(runReadout(withRain, okStatus, context).weather)
-			.toBe('32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm, rain chance');
+			.toBe('32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm, chance of rain');
 	});
 
 	it('says so when the window holds no readings', () => {

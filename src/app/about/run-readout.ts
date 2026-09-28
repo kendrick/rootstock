@@ -4,6 +4,7 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import { CHECK_LABELS } from '@/components/rules/waiting';
+import { VARIABLE_TEXT } from '@/components/series-text';
 import { dayOfMonth } from '@/components/this-week/citation-line';
 import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
 
@@ -48,15 +49,14 @@ function count(n: number, one: string, many: string): string {
 	return `${n} ${n === 1 ? one : many}`;
 }
 
+/**
+ * The shared prose spelling, plus a depth where the series has one. Read from
+ * `VARIABLE_TEXT` rather than switched on here: that record is typed over
+ * every Variable, so a new series gets its words in one place and this line
+ * can't fall out of step with the Rule and Citation text that use them.
+ */
 function variableName(day: DailyAggregate): string {
-	switch (day.variable) {
-		case 'soil-temperature':
-			return day.depthCm === null ? 'soil temperature' : `soil temperature at ${day.depthCm} cm`;
-		case 'precipitation-probability':
-			return 'rain chance';
-		case 'precipitation':
-			return 'rainfall';
-	}
+	return day.depthCm === null ? VARIABLE_TEXT[day.variable] : `${VARIABLE_TEXT[day.variable]} at ${day.depthCm} cm`;
 }
 
 /**
