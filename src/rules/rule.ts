@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { kebabIdSchema } from '@/validation/ids';
-import { aggregateSchema, unitSchema, variableSchema } from '@/weather/observation';
+import { aggregateSchema, FORECAST_DAYS, unitSchema, variableSchema } from '@/weather/observation';
 import { regionSchema } from '@/yard/plant';
 
 /**
@@ -284,7 +284,10 @@ export const guardConditionSchema = z.discriminatedUnion('kind', [
 		comparison: comparisonSchema,
 		value: z.number(),
 		unit: unitSchema,
-		consecutiveDays: z.number().int().min(1),
+		// A Threshold Rule's run has no ceiling (ADR 0003 widens the window instead), but this run reads ahead, and no Rule can widen a forecast Open-Meteo doesn't publish. A longer run would answer 'unavailable' every day.
+		consecutiveDays: z.number().int().min(1).max(FORECAST_DAYS, {
+			message: `a forecast-reaches run can't outlast the ${FORECAST_DAYS}-day forecast the daily run fetches`,
+		}),
 	}),
 ]);
 

@@ -9,6 +9,11 @@ export const variableSchema = z.enum(['soil-temperature', 'precipitation', 'prec
 export type Variable = z.infer<typeof variableSchema>;
 
 /**
+ * How many days of forecast the daily run fetches, counting the day it runs. The measurement behind the number sits in open-meteo.ts, which requests it. It lives here because a Rule has to be checked against it too, and the Rule schema shouldn't depend on a provider's adapter to learn how far ahead a forecast reaches.
+ */
+export const FORECAST_DAYS = 7;
+
+/**
  * The unit a value is expressed in. One enum per project rather than per
  * Variable because a Rule reads `unit` alongside `value` without needing to
  * infer it from `variable` first.

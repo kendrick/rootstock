@@ -212,6 +212,12 @@ describe('guardConditionSchema', () => {
 		expect(guardConditionSchema.parse(heatLimit)).toEqual(heatLimit);
 	});
 
+	// Open-Meteo is asked for 7 forecast days, the planned date included, so a run of 7 is the longest one the forecast can settle.
+	it('accepts a forecast-reaches run of 7 days and rejects one of 8', () => {
+		expect(guardConditionSchema.parse({ ...heatLimit, consecutiveDays: 7 })).toEqual({ ...heatLimit, consecutiveDays: 7 });
+		expect(() => guardConditionSchema.parse({ ...heatLimit, consecutiveDays: 8 })).toThrow(/forecast/);
+	});
+
 	// Written out rather than read off `Object.keys(heatLimit)`, so the list under test can't shrink along with the fixture.
 	it.each(['variable', 'depthCm', 'aggregate', 'comparison', 'value', 'unit', 'consecutiveDays'])(
 		'rejects a forecast-reaches condition missing %s',

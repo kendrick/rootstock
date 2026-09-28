@@ -831,6 +831,36 @@ describe('plan under a forecast-reaches guard', () => {
 		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
 	});
 
+	// A probe reading beats a modeled one inside `toDailyAggregates`, which is right for a day that happened and wrong for one that hasn't. A 9am reading of 75°F says nothing about a 4pm forecast of 95°F.
+	it('defers on the modeled forecast high when a cooler manual reading sits on the same day', () => {
+		const morningProbe = observationSchema.parse({
+			observedAt: '2026-05-20T14:00:00Z',
+			variable: 'air-temperature',
+			depthCm: null,
+			value: 75,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'measured',
+			source: 'manual',
+			station: 'backyard-thermometer',
+		});
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: [...hotMay, morningProbe] }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
 	it('lets the work go ahead on a 78°F day in August', () => {
 		const guarded = plan(inputWith({ asOf: '2026-08-14', rules: [work, heatGuard], observations: mildAugust }));
 		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');

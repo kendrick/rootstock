@@ -1,7 +1,7 @@
 import type { Location } from './location';
 import type { Observation, Unit, Variable } from './observation';
 import { z } from 'zod';
-import { observationSchema } from './observation';
+import { FORECAST_DAYS, observationSchema } from './observation';
 
 /**
  * Open-Meteo publishes under CC BY 4.0, and the licence requires attribution
@@ -25,7 +25,7 @@ export class OpenMeteoError extends Error {
 const HISTORICAL_FORECAST_ENDPOINT = 'https://historical-forecast-api.open-meteo.com/v1/forecast';
 
 /**
- * Both counts were measured against the live API and are load-bearing.
+ * Both counts were measured against the live API and are load-bearing. `FORECAST_DAYS` is defined in observation.ts, where rule.ts reads it too, and the note on it lives here with the measurement.
  *
  * 92 past days go to the historical-forecast endpoint rather than
  * `api.open-meteo.com/v1/forecast`, which keeps only about 57 past days of
@@ -47,7 +47,6 @@ const HISTORICAL_FORECAST_ENDPOINT = 'https://historical-forecast-api.open-meteo
  * the window the Rules evaluated, is untouched.
  */
 const PAST_DAYS = 92;
-const FORECAST_DAYS = 7;
 
 interface Series {
 	/** What Open-Meteo calls the series, in the `hourly=` parameter and in the response body. */
@@ -166,7 +165,7 @@ function buildUrl(location: Location): string {
  * screen: a watered lawn in a Texas July runs cooler than the model's bare dirt.
  *
  * The two day counts in the query are measured values with their own note at
- * `PAST_DAYS` and `FORECAST_DAYS` above, including why seven forecast days
+ * `PAST_DAYS` above, including why seven forecast days
  * rather than ADR 0003's fortnight.
  */
 export async function fetchObservations({
