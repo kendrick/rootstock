@@ -258,6 +258,24 @@ describe('ruleList', () => {
 		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
 	});
 
+	// Each Plant counts from its own record, so the lawn's Mar 10 doesn't push
+	// back the fig's Mar 1. The line cites the one due first and says whose it is.
+	it('cites the record that comes due first when a follow-up reaches two Plants', () => {
+		if (cadenceRule.kind !== 'cadence') {
+			throw new Error('cadenceRule is not a Cadence Rule');
+		}
+		const twoPlants = { ...cadenceRule, appliesTo: { plantIds: ['front-lawn', 'fig-1'], plantTags: null, ruleTags: null } };
+		const records: Occurrence[] = [
+			{ id: 'lawn', ruleId: thresholdRule.id, plantId: 'front-lawn', completedAt: '2026-03-10T15:00:00Z', recordedAt: '2026-03-10T15:00:00Z', source: 'seed' },
+			{ id: 'fig', ruleId: thresholdRule.id, plantId: 'fig-1', completedAt: '2026-03-01T15:00:00Z', recordedAt: '2026-03-01T15:00:00Z', source: 'seed' },
+		];
+		render(<RuleList rules={[thresholdRule, twoPlants]} plan={emptyPlan} occurrences={records} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Due 42–56 days after ${thresholdRule.name}, recorded March 1, 2026 for Brown Turkey fig`);
+	});
+
 	// An Occurrence for another Rule or another Plant is not the anchor.
 	it('keeps "Waits on" when nothing on record is the follow-up\'s anchor', () => {
 		const elsewhere: Occurrence[] = [

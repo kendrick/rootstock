@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { FollowUpAnchor } from './anchor';
 import type { RuleTicketLine } from './ticket-lines';
 import type { RuleStanding } from './waiting';
 import type { AfterLink } from '@/components/rule-summary';
@@ -81,7 +82,7 @@ function TicketLines({ lines }: { lines: readonly RuleTicketLine[] }): ReactElem
 	);
 }
 
-function RuleRow({ standing, after, lines, anchor }: { standing: RuleStanding; after: AfterLink | null; lines: readonly RuleTicketLine[]; anchor: Occurrence | null }): ReactElement {
+function RuleRow({ standing, after, lines, anchor }: { standing: RuleStanding; after: AfterLink | null; lines: readonly RuleTicketLine[]; anchor: FollowUpAnchor | null }): ReactElement {
 	const { rule, waitingOn, checks } = standing;
 
 	// The status is the one line the band changes, so it sits straight under the
@@ -121,7 +122,7 @@ function RuleRow({ standing, after, lines, anchor }: { standing: RuleStanding; a
 				<p className="text-pretty">
 					{anchor === null ? 'Waits on ' : `Due ${intervalText(rule)} after `}
 					<a href={after.href} className={LINK}>{after.name}</a>
-					{anchor !== null && `, recorded ${recordedDay(anchor)}`}
+					{anchor !== null && `, recorded ${recordedDay(anchor.occurrence)}${anchor.plantName === null ? '' : ` for ${anchor.plantName}`}`}
 				</p>
 			)}
 			{/* The release condition the Planner copied onto each Deferral, not the
