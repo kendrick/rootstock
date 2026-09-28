@@ -97,3 +97,26 @@ describe('artifactGate, a Plan made from other records', () => {
 		expect(shown(null)).toBeNull();
 	});
 });
+
+// The Away Card's reader can't fix a schema and shouldn't be handed field
+// paths. The household variant swaps the whole error state; the owner's
+// routes keep theirs.
+describe('artifactGate, for the household', () => {
+	it('renders the household error state, with no field path in it', () => {
+		const children = vi.fn(content);
+
+		render(<ArtifactGate artifact={brokenArtifact} status={okStatus} audience="household">{children}</ArtifactGate>);
+
+		const alert = screen.getByRole('alert').textContent ?? '';
+		expect(alert).toContain('Ask whoever gave it to you.');
+		expect(alert).not.toContain('generatedAt');
+		expect(alert).not.toContain('data/artifact.json');
+		expect(children).not.toHaveBeenCalled();
+	});
+
+	it('keeps the owner\'s error state when no audience is named', () => {
+		render(<ArtifactGate artifact={brokenArtifact} status={okStatus}>{content}</ArtifactGate>);
+
+		expect(screen.getByRole('alert').textContent).toContain('data/artifact.json');
+	});
+});

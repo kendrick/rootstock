@@ -2,6 +2,13 @@ import type { ReactElement } from 'react';
 import { Badge } from '@/components/ui/badge';
 
 /**
+ * The owner can act on a failing field path; the household can't. Someone
+ * holding the Away Card has no repository, no schema and no standing to fix
+ * either, so their version names the one step they can take.
+ */
+export type ErrorAudience = 'owner' | 'household';
+
+/**
  * What a route renders instead of itself when the committed Artifact or its
  * status record fails to validate.
  *
@@ -12,7 +19,11 @@ import { Badge } from '@/components/ui/badge';
  * arrived, which is how that reader tells a hand-edit from a bad generation run.
  * One wrong field reads differently from a dozen.
  */
-export function ArtifactError({ message }: { message: string }): ReactElement {
+export function ArtifactError({ message, audience = 'owner' }: { message: string; audience?: ErrorAudience }): ReactElement {
+	if (audience === 'household') {
+		return <HouseholdError />;
+	}
+
 	return (
 		<section role="alert" className="mx-auto max-w-3xl px-4 py-12">
 			{/*
@@ -53,6 +64,25 @@ export function ArtifactError({ message }: { message: string }): ReactElement {
 				{' '}
 				<code className="font-mono">schemas/</code>
 				, then re-run the generation to rewrite the file.
+			</p>
+		</section>
+	);
+}
+
+/**
+ * The Away Card's error state. Still an alert with the page's only h1, so it
+ * lands the same way for a screen reader. It drops the parse sentence, which
+ * names Artifact fields a household member can't use and a stranger holding
+ * the link shouldn't be handed.
+ */
+function HouseholdError(): ReactElement {
+	return (
+		<section role="alert" className="mx-auto max-w-3xl px-4 py-12">
+			<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase print:text-black">
+				This list couldn&rsquo;t be put together today
+			</h1>
+			<p className="mt-3 text-body text-foreground print:text-black">
+				Ask whoever gave it to you.
 			</p>
 		</section>
 	);
