@@ -1,34 +1,41 @@
 import type { Narration } from './narration';
 import type { Plan } from '@/planner/plan';
+import type { Rule } from '@/rules/rule';
 
 /**
- * `Task.ruleId`, `Deferral.guardId`, `Annotation.guardId`, and
- * `GuardCheck.guardId` all name a Rule by bare string id, and a Guard is a
- * Rule too (CONTEXT.md). None of those schemas import `@/rules` to check one
- * against, so this is the only place a retired ruleId or guardId gets
- * caught. #23 retired three Guards and came within one Citation of
- * publishing an Artifact naming Rules the seed no longer held, and nothing
- * failed.
+ * `Task.ruleId` must name a task-creating Rule (window, threshold, or
+ * cadence). `Deferral.guardId`, `Annotation.guardId`, and
+ * `guardChecks[].guardId` must each name a Guard, and a Guard is the one Rule
+ * kind CONTEXT.md says creates no work. `@/planner/task`'s schemas carry all
+ * four as bare strings and import nothing from `@/rules` to check either the
+ * id or the role, so a ruleId that names a real Guard, or a guardId that
+ * names a real task-creating Rule, would resolve against a same-space check
+ * and still be wrong. #23 retired three Guards and came within one Citation
+ * of publishing an Artifact naming Rules the seed no longer held, and
+ * nothing failed.
  */
-export function findUnresolvedRuleIds(plan: Plan, ruleIds: ReadonlySet<string>): string[] {
+export function findUnresolvedRuleIds(plan: Plan, rules: readonly Rule[]): string[] {
+	const taskCreatingIds = new Set(rules.filter(rule => rule.kind !== 'guard').map(rule => rule.id));
+	const guardIds = new Set(rules.filter(rule => rule.kind === 'guard').map(rule => rule.id));
+
 	const problems: string[] = [];
 	for (const task of plan.tasks) {
-		if (!ruleIds.has(task.ruleId)) {
-			problems.push(`task '${task.id}' ruleId names unknown rule '${task.ruleId}'`);
+		if (!taskCreatingIds.has(task.ruleId)) {
+			problems.push(`task '${task.id}' ruleId '${task.ruleId}' does not name a task-creating Rule`);
 		}
 		for (const deferral of task.deferrals) {
-			if (!ruleIds.has(deferral.guardId)) {
-				problems.push(`task '${task.id}' deferral guardId names unknown rule '${deferral.guardId}'`);
+			if (!guardIds.has(deferral.guardId)) {
+				problems.push(`task '${task.id}' deferral guardId '${deferral.guardId}' does not name a Guard`);
 			}
 		}
 		for (const annotation of task.annotations) {
-			if (!ruleIds.has(annotation.guardId)) {
-				problems.push(`task '${task.id}' annotation guardId names unknown rule '${annotation.guardId}'`);
+			if (!guardIds.has(annotation.guardId)) {
+				problems.push(`task '${task.id}' annotation guardId '${annotation.guardId}' does not name a Guard`);
 			}
 		}
 		for (const check of task.guardChecks ?? []) {
-			if (!ruleIds.has(check.guardId)) {
-				problems.push(`task '${task.id}' guardChecks guardId names unknown rule '${check.guardId}'`);
+			if (!guardIds.has(check.guardId)) {
+				problems.push(`task '${task.id}' guardChecks guardId '${check.guardId}' does not name a Guard`);
 			}
 		}
 	}

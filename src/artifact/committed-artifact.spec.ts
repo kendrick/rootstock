@@ -1,5 +1,6 @@
 import type { Plan } from '@/planner/plan';
 import type { Task } from '@/planner/task';
+import type { GuardRule, WindowRule } from '@/rules/rule';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -8,6 +9,10 @@ import { seedPlannedFrom } from '@/artifact/planned-from';
 import { findCoordinateKeys, findCoordinatePairs, seedRules } from '@/seed';
 import { findUnresolvedNarratedTaskIds, findUnresolvedRuleIds, showsPlannedFromNotice } from './committed-artifact';
 import { narratedArtifact } from './fixtures';
+
+const REGION = { name: 'Test County', hardinessZone: '8b' };
+const OWNER_SOURCE = { kind: 'owner' as const, label: 'Test practice', url: null };
+const WHOLE_YARD = { plantIds: null, plantTags: null, ruleTags: null };
 
 // A self-contained fixture rather than `narratedArtifact`: that fixture's
 // ruleIds only have to be internally consistent, not stay in step with
@@ -32,6 +37,45 @@ function fixtureTask(overrides: Partial<Task> = {}): Task {
 
 function fixturePlan(tasks: Task[]): Plan {
 	return { asOf: '2026-09-11', tasks, window: [] };
+}
+
+// A task-creating Rule fixture, kept to the `window` kind since the check
+// under test only cares that `kind !== 'guard'`.
+function fixtureWindowRule(overrides: Partial<WindowRule> = {}): WindowRule {
+	return {
+		id: 'valid-rule',
+		kind: 'window',
+		name: 'Test window rule',
+		region: REGION,
+		source: OWNER_SOURCE,
+		tags: [],
+		delegable: true,
+		priority: 0,
+		appliesTo: WHOLE_YARD,
+		productLabel: null,
+		start: '01-01',
+		end: '02-01',
+		...overrides,
+	};
+}
+
+function fixtureGuardRule(overrides: Partial<GuardRule> = {}): GuardRule {
+	return {
+		id: 'valid-guard',
+		kind: 'guard',
+		name: 'Test guard rule',
+		region: REGION,
+		source: OWNER_SOURCE,
+		tags: [],
+		delegable: true,
+		priority: 0,
+		appliesTo: WHOLE_YARD,
+		productLabel: null,
+		condition: { kind: 'always' },
+		effect: 'annotate',
+		text: 'Test annotation',
+		...overrides,
+	} as GuardRule;
 }
 
 /*
@@ -91,9 +135,7 @@ describe('the committed artifact and status record parse', () => {
 	});
 });
 
-describe('every ruleId and guardId the committed artifact names resolves against src/seed/rules.json', () => {
-	const ruleIds = new Set(seedRules.map(rule => rule.id));
-
+describe('every ruleId and guardId the committed artifact names resolves against src/seed/rules.json, with the right role', () => {
 	function parsedArtifact() {
 		const result = safeParseArtifact(artifactJson);
 		if (!result.ok) {
@@ -113,7 +155,7 @@ describe('every ruleId and guardId the committed artifact names resolves against
 	// 0007 already allows for.
 	it('resolves every Task ruleId, Deferral guardId, Annotation guardId, and guardChecks guardId, or ArtifactGate covers the drift (ADR 0007)', () => {
 		if (artifact.plannedFrom === seedPlannedFrom) {
-			expect(findUnresolvedRuleIds(artifact.plan, ruleIds)).toEqual([]);
+			expect(findUnresolvedRuleIds(artifact.plan, seedRules)).toEqual([]);
 		}
 		else {
 			expect(showsPlannedFromNotice(artifact.plannedFrom, seedPlannedFrom)).toBe(true);
@@ -137,8 +179,20 @@ describe('every ruleId and guardId the committed artifact names resolves against
 	it('reports a task whose ruleId names a rule the seed no longer holds', () => {
 		const plan = fixturePlan([fixtureTask({ id: 'retired-rule@test-plant', ruleId: 'retired-rule' })]);
 
-		expect(findUnresolvedRuleIds(plan, new Set(['valid-rule']))).toEqual([
-			'task \'retired-rule@test-plant\' ruleId names unknown rule \'retired-rule\'',
+		expect(findUnresolvedRuleIds(plan, [fixtureWindowRule({ id: 'valid-rule' })])).toEqual([
+			'task \'retired-rule@test-plant\' ruleId \'retired-rule\' does not name a task-creating Rule',
+		]);
+	});
+
+	// The role check, not just the id check: 'valid-guard' exists, but as a
+	// Guard, and a Guard creates no work (CONTEXT.md). A ruleId naming one is
+	// exactly as wrong as a ruleId naming nothing, and has to be caught the
+	// same way.
+	it('reports a task whose ruleId names a Guard rather than a task-creating Rule', () => {
+		const plan = fixturePlan([fixtureTask({ id: 'valid-guard@test-plant', ruleId: 'valid-guard' })]);
+
+		expect(findUnresolvedRuleIds(plan, [fixtureGuardRule({ id: 'valid-guard' })])).toEqual([
+			'task \'valid-guard@test-plant\' ruleId \'valid-guard\' does not name a task-creating Rule',
 		]);
 	});
 
@@ -150,10 +204,29 @@ describe('every ruleId and guardId the committed artifact names resolves against
 			guardChecks: [{ guardId: 'a-third-retired-guard', verdict: 'met' }],
 		})]);
 
-		expect(findUnresolvedRuleIds(plan, new Set(['valid-rule']))).toEqual([
-			'task \'valid-rule@test-plant\' deferral guardId names unknown rule \'retired-guard\'',
-			'task \'valid-rule@test-plant\' annotation guardId names unknown rule \'another-retired-guard\'',
-			'task \'valid-rule@test-plant\' guardChecks guardId names unknown rule \'a-third-retired-guard\'',
+		expect(findUnresolvedRuleIds(plan, [fixtureWindowRule({ id: 'valid-rule' })])).toEqual([
+			'task \'valid-rule@test-plant\' deferral guardId \'retired-guard\' does not name a Guard',
+			'task \'valid-rule@test-plant\' annotation guardId \'another-retired-guard\' does not name a Guard',
+			'task \'valid-rule@test-plant\' guardChecks guardId \'a-third-retired-guard\' does not name a Guard',
+		]);
+	});
+
+	// The other direction of the same role check: 'valid-rule' exists and is
+	// task-creating, so an id-only check would wave a Deferral, an Annotation,
+	// and a guardChecks entry naming it straight through, even though none of
+	// them named a Guard.
+	it('reports a deferral, an annotation, and a guardChecks entry whose guardId names a task-creating Rule rather than a Guard', () => {
+		const plan = fixturePlan([fixtureTask({
+			status: 'deferred',
+			deferrals: [{ guardId: 'valid-rule', releaseWhen: 'never' }],
+			annotations: [{ guardId: 'valid-rule', text: 'irrelevant' }],
+			guardChecks: [{ guardId: 'valid-rule', verdict: 'met' }],
+		})]);
+
+		expect(findUnresolvedRuleIds(plan, [fixtureWindowRule({ id: 'valid-rule' })])).toEqual([
+			'task \'valid-rule@test-plant\' deferral guardId \'valid-rule\' does not name a Guard',
+			'task \'valid-rule@test-plant\' annotation guardId \'valid-rule\' does not name a Guard',
+			'task \'valid-rule@test-plant\' guardChecks guardId \'valid-rule\' does not name a Guard',
 		]);
 	});
 
