@@ -373,7 +373,7 @@ function RecordedWork({ history, rules }: { history: History | null; rules: Rule
 	if (history.status === 'failed') {
 		return (
 			<p className="text-body text-muted">
-				This browser won't open its record of finished work, so what was recorded here can't be shown. Private windows do this.
+				This browser won't open its record of work, so what was recorded here can't be shown. Private windows do this.
 			</p>
 		);
 	}

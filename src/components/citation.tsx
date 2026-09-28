@@ -223,8 +223,9 @@ export interface CitationDisclosureProps {
  * the page. A site whose whole claim is that its reasoning is inspectable
  * cannot put that reasoning behind a script.
  *
- * The summary says what is behind it and names the Rule beside those words.
- * The Task's own text belongs to the row above and never here. A summary
+ * The summary says what is behind it and nothing else. The row above already
+ * prints the Rule's name, and repeating it here put the same name on one row
+ * three or four times. The Task's own text belongs to the row above too. A summary
  * carrying that text puts the thing a reader came to do inside the disclosure
  * control, and leaves the evidence itself advertised by a 16px chevron: #50
  * counted three visible tasks against zero visible citations on that shape.
@@ -267,9 +268,6 @@ export function CitationDisclosure({
 				/>
 				<span className="min-w-0 flex-1">
 					<span className="font-medium text-foreground">{CITATION_LABEL}</span>
-					{rule !== null && (
-						<span className="text-muted-foreground">{` · ${rule.name}`}</span>
-					)}
 				</span>
 			</summary>
 

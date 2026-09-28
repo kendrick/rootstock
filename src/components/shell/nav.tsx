@@ -42,7 +42,7 @@ export function Nav(): ReactElement {
 		// print:hidden because a paper reader cannot follow a link. #63 is the one
 		// route this rule actually reaches: Plan, Yard and Rules have no print path
 		// today, so the nav they carry never meets it.
-		<nav aria-label="Main" className="mt-3 print:hidden">
+		<nav aria-label="Main" className="mt-1 print:hidden sm:mt-3">
 			{/* Tighter in the lg margin, which is 200px of text wide. At gap-x-8 the
 			    three labels overrun it and RULES drops to a line of its own. */}
 			<ul className="flex flex-wrap items-baseline gap-x-8 gap-y-2 lg:gap-x-4">

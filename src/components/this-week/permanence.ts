@@ -45,15 +45,23 @@ function spokenDay(isoDate: string): string {
  */
 export function permanenceNote(asOf: string | null): string {
 	const when = asOf === null ? '' : ` on ${spokenDay(asOf)}`;
-	return `Signing off records the work as done${when}, in this browser only. Press the box again within ${RECORD_DELAY_MS / 1000} seconds to cancel; after that it cannot be taken back.`;
+	return `Signing off records the work${when}, in this browser only. Press the box again within ${RECORD_DELAY_MS / 1000} seconds to cancel; after that it cannot be taken back.`;
 }
 
 /** What a refused untick says, on the Task and in the live region. */
 export const UNDO_REFUSAL = `This one stays recorded. ${NO_UNDO}`;
 
-/** Said once, when a sign-off starts its wait. */
-export function pendingAnnouncement(taskText: string): string {
-	return `Recording in ${RECORD_DELAY_MS / 1000} seconds: ${asSentence(taskText)} Press the box again to cancel.`;
+/**
+ * Said once, when a sign-off starts its wait.
+ *
+ * How to cancel comes first, and the Task's text isn't read at all. A screen
+ * reader speaks at roughly three words a second, and the whole instruction
+ * read ahead of "press again" could run past the four seconds the cancel
+ * lasts, which made the one irreversible act on the page uncancellable by ear.
+ * The box's own name already carries the Task.
+ */
+export function pendingAnnouncement(): string {
+	return `Press again to cancel. Recording in ${RECORD_DELAY_MS / 1000} seconds.`;
 }
 
 /**
@@ -77,7 +85,7 @@ export const NOT_SAVED = 'Not recorded: this browser could not save the sign-off
  * sign-off off rather than letting it fail tap by tap, and the sentence says
  * the Plan is untouched, because the Plan never came from this Store.
  */
-export const STORE_UNAVAILABLE = 'This browser cannot open its record of finished work, so sign-off is off and earlier sign-offs from this browser do not show. The tasks below are unaffected.';
+export const STORE_UNAVAILABLE = 'This browser cannot open its record of work, so sign-off is off and earlier sign-offs from this browser do not show. The tasks below are unaffected.';
 
 /**
  * Ends a sentence that may not have been written as one. A Task's text is
