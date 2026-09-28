@@ -51,3 +51,16 @@ export function findUnresolvedNarratedTaskIds(narration: Narration | null, plan:
 		.filter(task => !taskIds.has(task.taskId))
 		.map(task => `narration task references unknown task '${task.taskId}'`);
 }
+
+/**
+ * Mirrors `ArtifactGate`'s own condition for showing the "records changed
+ * after this plan was made" notice. ADR 0007 lets a committed Plan legitimately
+ * name a seed the build has since moved past: the site rebuilds on every push,
+ * the Plan only on the next daily run, and a Rule retirement can't regenerate
+ * the Artifact in CI to match. `findUnresolvedRuleIds` above only holds when
+ * `plannedFrom` agrees with the build's own seed; once it doesn't, this is
+ * what a reader sees instead of a Rule reference that quietly stopped resolving.
+ */
+export function showsPlannedFromNotice(plannedFrom: string | null, seedFingerprint: string): boolean {
+	return plannedFrom !== null && plannedFrom !== seedFingerprint;
+}

@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
+import { seedPlannedFrom } from '@/artifact/planned-from';
 import { findCoordinateKeys, findCoordinatePairs, seedRules } from '@/seed';
-import { findUnresolvedNarratedTaskIds, findUnresolvedRuleIds } from './committed-artifact';
+import { findUnresolvedNarratedTaskIds, findUnresolvedRuleIds, showsPlannedFromNotice } from './committed-artifact';
 import { narratedArtifact } from './fixtures';
 
 // A self-contained fixture rather than `narratedArtifact`: that fixture's
@@ -71,7 +72,7 @@ describe('the committed artifact and status record parse', () => {
 describe('every ruleId and guardId the committed artifact names resolves against src/seed/rules.json', () => {
 	const ruleIds = new Set(seedRules.map(rule => rule.id));
 
-	function parsedPlan() {
+	function parsedArtifact() {
 		const result = safeParseArtifact(artifactJson);
 		if (!result.ok) {
 			throw new Error(result.error);
@@ -79,16 +80,31 @@ describe('every ruleId and guardId the committed artifact names resolves against
 		return result.value;
 	}
 
-	it('resolves every Task ruleId, Deferral guardId, Annotation guardId, and guardChecks guardId', () => {
-		expect(findUnresolvedRuleIds(parsedPlan().plan, ruleIds)).toEqual([]);
+	const artifact = parsedArtifact();
+
+	// ADR 0007: the seed deploys on every push, but the Plan is only remade by
+	// the daily run, so a Rule retirement PR can't regenerate the Artifact in
+	// CI to match. When plannedFrom no longer agrees with the build's own seed
+	// fingerprint, "every ruleId resolves" isn't a claim this committed Plan
+	// makes, and ArtifactGate shows its own notice for exactly that gap. This
+	// asserts the notice fires instead of failing the build over a window ADR
+	// 0007 already allows for.
+	it('resolves every Task ruleId, Deferral guardId, Annotation guardId, and guardChecks guardId, or ArtifactGate covers the drift (ADR 0007)', () => {
+		if (artifact.plannedFrom === seedPlannedFrom) {
+			expect(findUnresolvedRuleIds(artifact.plan, ruleIds)).toEqual([]);
+		}
+		else {
+			expect(showsPlannedFromNotice(artifact.plannedFrom, seedPlannedFrom)).toBe(true);
+		}
 	});
 
 	// narration.tasks carries a taskId, not a ruleId (narration.ts: a Rule can
 	// fire for several Plants, so the task id is the precise handle). Checking
 	// it against Rule ids would be the wrong membership test even though it
-	// shares the word "id" with the field above.
+	// shares the word "id" with the field above. Unconditional, unlike the
+	// check above: a taskId is checked against this same Plan's own Task ids,
+	// so ADR 0007's seed drift has no bearing on whether it holds.
 	it('resolves every narration.tasks taskId against a Task the committed Plan holds', () => {
-		const artifact = parsedPlan();
 		expect(findUnresolvedNarratedTaskIds(artifact.narration, artifact.plan)).toEqual([]);
 	});
 
@@ -126,6 +142,22 @@ describe('every ruleId and guardId the committed artifact names resolves against
 		expect(findUnresolvedNarratedTaskIds(broken.narration, broken.plan)).toEqual([
 			'narration task references unknown task \'no-such-task\'',
 		]);
+	});
+});
+
+describe('showsPlannedFromNotice mirrors ArtifactGate\'s own notice condition (ADR 0007)', () => {
+	it('is false when plannedFrom agrees with the seed fingerprint', () => {
+		expect(showsPlannedFromNotice('abcd1234', 'abcd1234')).toBe(false);
+	});
+
+	it('is true when plannedFrom names a different seed fingerprint', () => {
+		expect(showsPlannedFromNotice('abcd1234', 'ffff0000')).toBe(true);
+	});
+
+	// null means a pre-ADR-0007 Artifact, and ArtifactGate shows no notice for
+	// that case either (there's nothing on the Artifact to compare).
+	it('is false when plannedFrom is absent', () => {
+		expect(showsPlannedFromNotice(null, 'abcd1234')).toBe(false);
 	});
 });
 
