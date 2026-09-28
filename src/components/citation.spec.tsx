@@ -112,11 +112,12 @@ describe('citationDisclosure', () => {
 	 * #50 counted three visible tasks against zero visible citations, because
 	 * the only thing advertising the evidence was a 16px chevron with no words
 	 * beside it. These four assertions are that finding turned into a test: the
-	 * label says what is behind it, it says it in the brief's own words, the
-	 * Rule is named before anything is opened, and the panel still defaults to
-	 * closed so a caller has to choose which one opens.
+	 * label says what is behind it, it says it in the brief's own words, and the
+	 * panel still defaults to closed so a caller has to choose which one opens.
+	 * The Rule's name is visible on the row above and spoken here, so each
+	 * disclosure keeps a name of its own.
 	 */
-	it('labels the disclosure in words and names the Rule before it is opened', () => {
+	it('labels the disclosure in words, naming the Rule for screen readers only', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={windowTask.citation}
@@ -125,8 +126,10 @@ describe('citationDisclosure', () => {
 		);
 
 		const summary = container.querySelector('summary');
-		expect(summary?.textContent).toContain(CITATION_LABEL);
-		expect(summary?.textContent).toContain('Fall pre-emergent');
+		// Visibly just the label; the Rule's name is there for screen readers, so
+		// each disclosure on a page of several still has a name of its own.
+		expect(summary?.querySelector(':scope span:not(.sr-only) > span:not(.sr-only)')?.textContent).toBe(CITATION_LABEL);
+		expect(summary?.querySelector('.sr-only')?.textContent).toBe(', Fall pre-emergent');
 		expect(container.querySelector('details')?.open).toBe(false);
 	});
 

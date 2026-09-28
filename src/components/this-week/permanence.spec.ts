@@ -70,11 +70,18 @@ describe('the sign-off wait', () => {
 	// The sentence states the window's length, so it is read off the same
 	// constant the timer runs on rather than typed in.
 	it('states the length of the window the timer actually gives', () => {
-		expect(pendingAnnouncement('Feed the Esperanza.')).toContain(`${RECORD_DELAY_MS / 1000} seconds`);
+		expect(pendingAnnouncement()).toContain(`${RECORD_DELAY_MS / 1000} seconds`);
 	});
 
 	it('says how to cancel, and that a cancel records nothing', () => {
-		expect(pendingAnnouncement('Feed the Esperanza.')).toMatch(/again to cancel/i);
+		expect(pendingAnnouncement()).toMatch(/again to cancel/i);
 		expect(CANCELLED).toMatch(/nothing was recorded/i);
+	});
+
+	it('says how to cancel first, in few enough words to hear inside the window', () => {
+		// About three words a second at a screen reader's default rate. The cancel
+		// instruction has to land well inside the window, not at its end.
+		expect(pendingAnnouncement()).toMatch(/^Press again to cancel\./u);
+		expect(pendingAnnouncement().split(/\s+/u).length).toBeLessThanOrEqual(3 * (RECORD_DELAY_MS / 1000) - 4);
 	});
 });

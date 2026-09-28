@@ -260,20 +260,22 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 								{row.ruleName}
 								<Marker n={at.rule} />
 							</span>
-							{row.plantName !== null && (
-								<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
-									{row.plantName}
-									{at.plant !== null && <Marker n={at.plant} />}
-								</span>
-							)}
-							{!task.delegable && (
-								<span className="whitespace-nowrap">
-									<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
-										Not delegable
+							<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+								{row.plantName !== null && (
+									<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
+										{row.plantName}
+										{at.plant !== null && <Marker n={at.plant} />}
 									</span>
-									{at.delegable !== null && <Marker n={at.delegable} />}
-								</span>
-							)}
+								)}
+								{!task.delegable && (
+									<span className="whitespace-nowrap">
+										<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+											Owner only
+										</span>
+										{at.delegable !== null && <Marker n={at.delegable} />}
+									</span>
+								)}
+							</span>
 						</span>
 						{row.instruction !== null && at.instruction !== null && (
 							<span className="min-w-0">
@@ -305,8 +307,8 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 										</span>
 									)}
 									<span aria-hidden="true" className="size-8 border-2 border-foreground" />
-									<span className="font-display font-semibold text-label tracking-widest text-foreground uppercase">
-										Sign off
+									<span className="text-center font-display font-semibold text-label tracking-widest text-foreground uppercase">
+										{task.delegable ? 'Sign off' : 'Owner signs off'}
 										<Marker n={at.signOff} />
 									</span>
 								</span>
@@ -355,7 +357,6 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 					<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground" />
 					<span className="min-w-0 flex-1">
 						<span className="font-medium text-foreground">Rule and evidence</span>
-						<span className="text-muted-foreground">{` · ${row.ruleName}`}</span>
 						<Marker n={at.drawer} />
 					</span>
 				</div>
@@ -373,8 +374,8 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 					</Note>
 				)}
 				{at.delegable !== null && (
-					<Note n={at.delegable} part="Not delegable">
-						The rest of the household may not do this work, so it stays off the Away Card. The Rule decides that when it&apos;s written, and the yard&apos;s tag policy can only narrow it. A Rule tagged chemical is never delegable, whatever it says.
+					<Note n={at.delegable} part="Owner only">
+						The rest of the household may not do this work, so it stays off the Away Card, and the box on This Week reads &ldquo;Owner signs off&rdquo;. The Rule decides that when it&apos;s written, and the yard&apos;s tag policy can only narrow it. A Rule tagged chemical is never delegable, whatever it says.
 					</Note>
 				)}
 				{at.instruction !== null && (
