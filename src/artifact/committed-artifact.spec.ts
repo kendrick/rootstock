@@ -67,6 +67,28 @@ describe('the committed artifact and status record parse', () => {
 		const status = parseStatusRecord(statusJson);
 		expect(status.attemptedAt).toEqual(expect.any(String));
 	});
+
+	// run.ts: publishedResult stamps status.artifactGeneratedAt from the very
+	// Artifact it just published, and failureResult carries the previous
+	// status's artifactGeneratedAt forward untouched. generate.ts only writes
+	// data/artifact.json when a run publishes, and daily-run.sh commits it
+	// "only when it changed" (a failed generation leaves the committed one
+	// untouched on purpose), so a failed run moves attemptedAt and error but
+	// never artifactGeneratedAt, and never touches artifact.json at all. The
+	// two files can't fall out of step by construction. This matters because
+	// todaysRun trusts status.artifactGeneratedAt alone, deliberately never
+	// reading plan.asOf (todays-run.ts), so a mismatch here would let a
+	// scheduled run skip today while the site serves an Artifact older than
+	// the status record claims.
+	it('status.artifactGeneratedAt names the committed artifact\'s generatedAt', () => {
+		const result = safeParseArtifact(artifactJson);
+		if (!result.ok) {
+			throw new Error(result.error);
+		}
+		const status = parseStatusRecord(statusJson);
+
+		expect(status.artifactGeneratedAt).toBe(result.value.generatedAt);
+	});
 });
 
 describe('every ruleId and guardId the committed artifact names resolves against src/seed/rules.json', () => {
