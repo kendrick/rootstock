@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactElement } from 'react';
+import type { ChangeEvent, ReactElement, ReactNode } from 'react';
 import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
@@ -9,6 +9,7 @@ import { CitationDisclosure } from '@/components/citation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { citationLine, dayOfMonth, shortDate } from './citation-line';
+import { guardEvidence } from './guard-evidence';
 import { LATE_GRACE_MS, NOT_SAVED, RECORD_DELAY_MS, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { mechanicalRemainder, taskText } from './task-text';
 
@@ -56,6 +57,8 @@ export interface TaskItemProps extends SignOffProps {
 	narrationText?: string | null;
 	/** `Plan.window`, passed through so a threshold Citation can show the readings it cites. */
 	window?: DailyAggregate[];
+	/** `Plan.asOf`, the day a Guard read its forecast from. Without it a Deferral prints no evidence line. */
+	asOf?: string;
 	checked?: boolean;
 	/** The ISO day the Occurrence that checks this Task carries. Printed under the evidence. */
 	recordedOn?: string | null;
@@ -68,6 +71,13 @@ export interface TaskItemProps extends SignOffProps {
  * can still back out; `saving` is the write, which a tap can no longer stop.
  */
 type Phase = 'idle' | 'pending' | 'saving';
+
+/** The Guard's readings in the evidence line's own type, or nothing when it read no series. */
+function GuardReading({ evidence }: { evidence: string | null }): ReactElement | null {
+	return evidence === null
+		? null
+		: <span className="mt-0.5 block font-mono text-evidence tracking-tight text-foreground uppercase print:text-black">{evidence}</span>;
+}
 
 /**
  * The Guard's name when the rule set carries it, and the raw id when it does
@@ -89,7 +99,7 @@ function GuardNote({
 	children,
 }: {
 	icon: typeof Info;
-	children: ReactElement | ReactElement[];
+	children: ReactNode;
 }): ReactElement {
 	return (
 		<p className="flex items-start gap-2 text-note text-muted">
@@ -134,6 +144,7 @@ export function TaskItem({
 	plantsById,
 	narrationText = null,
 	window,
+	asOf,
 	checked = false,
 	recordedOn = null,
 	citationOpen = false,
@@ -278,24 +289,31 @@ export function TaskItem({
 						{rule?.name ?? task.ruleId}
 					</span>
 
-					{plantName !== null && (
-						<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
-							{plantName}
-						</span>
-					)}
+					{/* One group, so the row's justify-between has two children. With
+					    three, the Plant floated mid-line between the name and the mark
+					    on a wide screen and read as a layout bug. */}
+					<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+						{plantName !== null && (
+							<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
+								{plantName}
+							</span>
+						)}
 
-					{/*
+						{/*
 					 * On the row, not only inside the disclosure. The household can
 					 * land on this page too, and a Task that is not theirs to do has
 					 * to say so before anyone reaches its box. Ink, because red is
 					 * kept for recorded work. It reads the `delegable` stamped at
-					 * authoring time and derives nothing (AGENTS.md).
+					 * authoring time and derives nothing (AGENTS.md). "Owner only"
+					 * rather than "Not delegable": the household reads this row, and
+					 * delegable is the glossary's word, not theirs.
 					 */}
-					{!task.delegable && (
-						<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
-							Not delegable
-						</span>
-					)}
+						{!task.delegable && (
+							<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+								Owner only
+							</span>
+						)}
+					</span>
 				</span>
 
 				{text !== null && (
@@ -413,8 +431,10 @@ export function TaskItem({
 								 * The input still fills the whole cell; this is only the mark.
 								 */}
 								<span aria-hidden="true" className="pointer-events-none size-8 border-2 border-foreground peer-checked:hidden peer-disabled:border-muted" />
-								<span aria-hidden="true" className="pointer-events-none font-display font-semibold text-label tracking-widest text-foreground uppercase peer-checked:hidden peer-disabled:text-muted peer-disabled:line-through">
-									Sign off
+								{/* Whose box it is, at the box. The mark on the row says the
+								    work is the owner's; a household member's thumb lands here. */}
+								<span aria-hidden="true" className="pointer-events-none text-center font-display font-semibold text-label tracking-widest text-foreground uppercase peer-checked:hidden peer-disabled:text-muted peer-disabled:line-through">
+									{task.delegable ? 'Sign off' : 'Owner signs off'}
 								</span>
 								{pending && !checked && (
 									<span aria-hidden="true" className="pointer-events-none flex flex-col items-center gap-1.5 text-center">
@@ -489,6 +509,11 @@ export function TaskItem({
 								{' '}
 								<span className="text-foreground">{deferral.releaseWhen}</span>
 							</span>
+							{/* The days the Guard read, so the hold is checkable on the row
+							    like every other claim on the ticket. */}
+							{asOf !== undefined && window !== undefined && (
+								<GuardReading evidence={guardEvidence(rulesById.get(deferral.guardId), window, asOf)} />
+							)}
 						</GuardNote>
 					))}
 

@@ -24,6 +24,13 @@ export interface DeferredSectionProps extends SignOffProps {
 	recordedOn?: ReadonlyMap<string, string>;
 	/** The permanence note, dated by the caller, which holds the Plan. */
 	note?: string;
+	/**
+	 * The id of a permanence note the page already prints. Given one, the held
+	 * rows point at it rather than printing a second copy.
+	 */
+	describedBy?: string;
+	/** `Plan.asOf`, so a Deferral can print the days its Guard read. */
+	asOf?: string;
 	/** The one Task on the page whose evidence opens on load, when it is one of these. */
 	openCitationId?: string | null;
 }
@@ -80,12 +87,16 @@ export function DeferredSection({
 	completedIds,
 	recordedOn,
 	note = permanenceNote(null),
+	describedBy,
+	asOf,
 	openCitationId = null,
 	...signOff
 }: DeferredSectionProps): ReactElement {
-	// This list carries its own permanence note, so its rows point at it rather
-	// than at the one over the ready work, which may not be on the page.
-	const noteId = useId();
+	// This list carries its own permanence note unless the page hands it one it
+	// already prints. Rendered alone, the note over the ready work may not be on
+	// the page at all.
+	const ownNoteId = useId();
+	const noteId = describedBy ?? ownNoteId;
 	const headingId = useId();
 
 	return (
@@ -101,9 +112,11 @@ export function DeferredSection({
 			 * every other box writes, so the warning `TaskGroup` carries over
 			 * the ready work has to reach this list as well. Without it a
 			 * reader could only be told by the live region, which says nothing
-			 * to anyone looking at the screen.
+			 * to anyone looking at the screen. On This Week the note already
+			 * prints once above the ready work, and a second copy word for word
+			 * read as padding, so there the rows point at that one instead.
 			 */}
-			{tasks.length > 0 && (
+			{tasks.length > 0 && describedBy === undefined && (
 				<p id={noteId} className="max-w-prose text-note text-muted">{note}</p>
 			)}
 
@@ -119,6 +132,7 @@ export function DeferredSection({
 							plantsById={plantsById}
 							narrationText={narrationById?.get(task.id) ?? null}
 							window={window}
+							asOf={asOf}
 							checked={completedIds?.has(task.id) ?? false}
 							recordedOn={recordedOn?.get(task.id) ?? null}
 							citationOpen={task.id === openCitationId}

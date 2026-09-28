@@ -396,7 +396,7 @@ describe('plantSheet', () => {
 		await settled();
 
 		const recorded = section('Recorded work');
-		expect(recorded.textContent).toContain('won\'t open its record of finished work');
+		expect(recorded.textContent).toContain('won\'t open its record of work');
 		// The browser's own error string is not the reader's business.
 		expect(recorded.textContent).not.toContain('This browser refused to open its own storage.');
 		expect(within(recorded).queryByText('Nothing has been recorded against this plant yet.')).toBeNull();

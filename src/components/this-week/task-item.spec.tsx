@@ -142,14 +142,15 @@ describe('taskItem', () => {
 			const { container } = renderItem(<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />);
 
 			expect(firedTask.delegable).toBe(false);
-			expect(container.querySelector('li > div')?.textContent).toMatch(/Not delegable/);
+			expect(container.querySelector('li > div')?.textContent).toMatch(/Owner only/);
+			expect(container.querySelector('li > div')?.textContent).toMatch(/Owner signs off/);
 		});
 
 		it('adds no mark to a Task the household may do', () => {
 			const { container } = renderItem(<TaskItem task={delegableTask} rulesById={rulesById} plantsById={plantsById} />);
 
 			expect(delegableTask.delegable).toBe(true);
-			expect(container.querySelector('li > div')?.textContent).not.toMatch(/Not delegable/);
+			expect(container.querySelector('li > div')?.textContent).not.toMatch(/Owner only|Owner signs off/);
 		});
 	});
 
@@ -511,14 +512,14 @@ describe('taskItem', () => {
 		// The chevron carried no words, so nothing on the screen said the
 		// evidence was there at all. The label is the promise the brief sentence
 		// makes, in the brief sentence's own vocabulary.
-		it('labels itself in words and names the Rule behind the Task', () => {
+		it('labels itself in words, with the Rule\'s name for screen readers only', () => {
 			const { container } = renderItem(
 				<TaskItem task={firedTask} rulesById={rulesById} plantsById={plantsById} />,
 			);
 
-			const summary = container.querySelector('summary')?.textContent ?? '';
-			expect(summary).toContain('Rule and evidence');
-			expect(summary).toContain('Fall pre-emergent');
+			const summary = container.querySelector('summary');
+			expect(summary?.textContent).toBe('Rule and evidence, Fall pre-emergent');
+			expect(summary?.querySelector('.sr-only')?.textContent).toBe(', Fall pre-emergent');
 		});
 	});
 
