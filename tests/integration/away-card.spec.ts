@@ -146,3 +146,19 @@ test('away card has no accessibility violations', async ({ page }) => {
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
 });
+
+/*
+ * SheetFrame drops the nav on this route so a household reader can't walk from
+ * the card into the routes that name the Withheld work. A footer link to
+ * /about would undo that, since About's nav reaches This Week. The paper version of
+ * the same rule is PRODUCT.md's: the card asks nobody to follow a link.
+ */
+test('the card links nowhere, footer included', async ({ page }) => {
+	await page.clock.setFixedTime(FRESH);
+	await page.goto(`away/${slug}`);
+	await waitForHydration(page);
+
+	await expect(page.locator('footer')).toBeVisible();
+	await expect(page.locator('footer a')).toHaveCount(0);
+	await expect(page.locator('a[href]')).toHaveCount(0);
+});

@@ -81,3 +81,21 @@ test('prints the same type whether the reader\'s system is light or dark', async
 	expect(light.length).toBeGreaterThan(0);
 	expect(await printed('dark')).toEqual(light);
 });
+
+/*
+ * The stub has to come off the printer as one sheet for a normal week, or the
+ * second page lands on the floor. Counted in the PDF's own page objects, the
+ * unit a printer reads, rather than inferred from a scroll height. `/Pages` is
+ * the page tree, not a page, hence the `[^s]`.
+ */
+test('prints on one Letter page', async ({ page, browserName }) => {
+	test.skip(browserName !== 'chromium', 'page.pdf() is only implemented in headless Chromium');
+
+	await page.goto(`away/${slug}`);
+	await page.emulateMedia({ media: 'print' });
+
+	const pdf = await page.pdf({ format: 'Letter', preferCSSPageSize: true });
+	const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
+
+	expect(pages).toHaveLength(1);
+});
