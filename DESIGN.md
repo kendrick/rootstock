@@ -162,6 +162,22 @@ Under `prefers-reduced-motion` both arrive immediately and without the travel, s
 
 Paper has one scheme. The Away Card is printed and read in a hand, so print pins the light values whatever the screen was doing, flattens the stamp red to ink, and drops the carbonless copy edges, which are a screen convention and on paper would be two bands of wasted toner.
 
+The Away Card's route sets `@page { margin: 0 }` and moves the 0.75in margin onto the body. With no page margin, Chrome has nowhere to draw its default header and footer, and that footer is the page URL, which on this route carries the slug. A reader who never unticks "Headers and footers" would otherwise print the card's one secret. A normal week prints on one Letter page, and an end-to-end spec counts the pages in the PDF to hold it there.
+
+## The Stub
+
+The Away Card is the stub: the copy torn off the ticket and handed to whoever does the job. It's a different thing from the count at the foot of This Week's Task Table, which this document also calls a stub. The household holds it, in the yard, with a pen. They have standing to do the work on it and none to judge what's missing from it, so everything on the stub is either work they can do or a count of work they can't.
+
+The head carries the ticket number, `No. <year>-<day of year> · Stub`, derived the way the Ticket Head derives it but from the Plan's date, so every copy of one week's card carries one number. Under it the heading names the yard and the Plan's week ("Yard tasks, week of Sep 28"), never the reader's today, because the sheet lives on a fridge for days. A mono line says when the list was made, year included. The staleness banner's prominent variant sits above the first row and speaks to the household: a failed run asks them to tell whoever gave them the list.
+
+The rows use the Task Table's grammar, cut down to what the household needs: `NO. | TASK | DONE | INITIALS / DATE`. The numeral is set in the title role. The instruction is Assistant `text-body` prose, and under it a mono line in the evidence role says when the row stops mattering: "By Thu Oct 1" for a Window Rule, from the Rule's window end, and "This week" for everything else. Rule names and evidence stay off, since this reader can't act on either. DONE is an empty ink box for a pen. INITIALS / DATE is a blank cell for the returned sheet to carry back who did the work and when, which the owner can then record. On a phone below `sm` the write-in cell drops out, since nobody writes on a screen. Print always keeps it.
+
+Work the committed history already records prints as done. Its box carries an ink cross and its line reads "Recorded Sep 27 · already done", because a missing row reads as work nobody called for and the household would do it again. The history is `src/seed/occurrences.json` alone, never a browser's ticks (ADR 0006).
+
+The stub ends on whose the rest is. It counts Withheld work in its two senses, the owner's to do and on hold, names none of it, and closes on "This list isn't the whole week. The rest is the owner's to do or to decide." Undelegable work counts as the owner's even when a Guard holds it, so the card never implies held work will come to the household. The empty states thank the reader, and the error state tells them to ask whoever gave them the list.
+
+The stub is ink on white, with no colour, no interaction, and no link, footer included. The Print button is the one control, 44px tall, and it doesn't print.
+
 ## Migration Debt
 
 `globals.css` carries the old shell's token vocabulary (`--color-card`, `--color-muted-foreground`, and the rest) remapped onto this world. The shared pieces every route pulls in—`citation.tsx`, `staleness-banner.tsx`, `rule-summary.tsx`, `artifact-error.tsx`, `soil-sparkline.tsx`—still speak those names, and dropping the tokens would leave parts of every surface unstyled at once. They are not a second palette, since every one resolves to a value above. Each dies as its component is redrawn, and the last one out takes the block with it.

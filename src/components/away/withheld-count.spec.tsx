@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { WithheldCount } from './withheld-count';
 
-const REASON = 'The yard needs more this week than this page shows.';
+const NOT_EVERYTHING = 'This list isn\'t the whole week.';
 
 describe('withheldCount', () => {
 	// A zero line is worse than no line: it trains a reader to skip the block,
@@ -16,56 +16,67 @@ describe('withheldCount', () => {
 	it('counts the owner\'s own work, plural past one', () => {
 		const { container } = render(<WithheldCount ownerOnly={2} deferred={0} />);
 
-		expect(container.textContent).toContain('2 tasks are for the owner to do.');
+		expect(container.textContent).toContain('2 more tasks are the owner\'s to do.');
 	});
 
 	it('drops the plural at one', () => {
 		const { container } = render(<WithheldCount ownerOnly={1} deferred={0} />);
 
-		expect(container.textContent).toContain('1 task is for the owner to do.');
+		expect(container.textContent).toContain('1 more task is the owner\'s to do.');
 	});
 
-	it('says what deferred work is waiting on, plural past one', () => {
+	it('says held work is on hold, plural past one', () => {
 		const { container } = render(<WithheldCount ownerOnly={0} deferred={2} />);
 
-		expect(container.textContent).toContain('2 tasks are waiting for conditions to change.');
+		expect(container.textContent).toContain('2 more tasks are on hold until conditions change.');
 	});
 
 	it('drops that plural at one too', () => {
 		const { container } = render(<WithheldCount ownerOnly={0} deferred={1} />);
 
-		expect(container.textContent).toContain('1 task is waiting for conditions to change.');
+		expect(container.textContent).toContain('1 more task is on hold until conditions change.');
 	});
 
 	// Each reason stands on its own line only when it has a count behind it.
-	// "0 tasks are waiting" beside a real number reads as noise a reader learns to
-	// skip past.
+	// "0 tasks are on hold" beside a real number reads as noise a reader learns
+	// to skip past.
 	it('leaves out the reason that has no count behind it', () => {
 		const { container } = render(<WithheldCount ownerOnly={3} deferred={0} />);
 
-		expect(container.textContent).not.toContain('waiting for conditions');
+		expect(container.textContent).not.toContain('on hold');
 	});
 
 	// The sentence that earns the whole component. Without it the counts read as
 	// trivia rather than as the reason not to walk away from a finished list.
-	it('says why the counts are there at all, in every state that renders', () => {
+	it('says the list is not the whole week, in every state that renders', () => {
 		const counts: [number, number][] = [[1, 0], [0, 1], [2, 3]];
 
 		for (const [ownerOnly, deferred] of counts) {
 			const { container } = render(<WithheldCount ownerOnly={ownerOnly} deferred={deferred} />);
-			expect(container.textContent).toContain(REASON);
+			expect(container.textContent).toContain(NOT_EVERYTHING);
 		}
+	});
+
+	// The card ends on whose the rest is. Held work is the owner's to decide,
+	// so the household never reads it as theirs once the weather turns.
+	it('ends on the owner, in the sense each count gives the work', () => {
+		const ending = (ownerOnly: number, deferred: number) =>
+			render(<WithheldCount ownerOnly={ownerOnly} deferred={deferred} />).container.lastElementChild?.lastElementChild?.textContent;
+
+		expect(ending(2, 0)).toBe(`${NOT_EVERYTHING} The rest is the owner's to do.`);
+		expect(ending(0, 1)).toBe(`${NOT_EVERYTHING} The rest is the owner's to decide.`);
+		expect(ending(2, 1)).toBe(`${NOT_EVERYTHING} The rest is the owner's to do or to decide.`);
 	});
 
 	// An exact match rather than a list of things not to say. The point of the
 	// count is that it identifies nothing, and any wording that crept in later—a
 	// task, a plant, a chemical—would fail here rather than needing to have been
 	// anticipated.
-	it('renders the counts and the reason and nothing else', () => {
+	it('renders the counts and the ending and nothing else', () => {
 		const { container } = render(<WithheldCount ownerOnly={2} deferred={1} />);
 
 		expect(container.textContent).toBe(
-			`2 tasks are for the owner to do.1 task is waiting for conditions to change.${REASON}`,
+			`2 more tasks are the owner's to do.1 more task is on hold until conditions change.${NOT_EVERYTHING} The rest is the owner's to do or to decide.`,
 		);
 	});
 
