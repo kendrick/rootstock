@@ -37,6 +37,19 @@ describe('withheldCount', () => {
 		expect(container.textContent).toContain('1 more task is held back until conditions change.');
 	});
 
+	// A Deferral stops the owner too. The owner's count says how much of their
+	// work waits on conditions, and never moves it into the household's sense.
+	it('says how much of the owner\'s work waits on conditions', () => {
+		const text = (ownerOnly: number, ownerWaiting: number) =>
+			render(<WithheldCount ownerOnly={ownerOnly} ownerWaiting={ownerWaiting} deferred={0} />).container.firstElementChild?.firstElementChild?.textContent;
+
+		expect(text(2, 1)).toBe('2 more tasks are the owner\'s to do, 1 of them once conditions change.');
+		expect(text(3, 2)).toBe('3 more tasks are the owner\'s to do, 2 of them once conditions change.');
+		expect(text(1, 1)).toBe('1 more task is the owner\'s to do once conditions change.');
+		expect(text(2, 2)).toBe('2 more tasks are the owner\'s to do once conditions change.');
+		expect(text(2, 0)).toBe('2 more tasks are the owner\'s to do.');
+	});
+
 	// Each reason stands on its own line only when it has a count behind it.
 	// "0 tasks are held back" beside a real number reads as noise a reader learns
 	// to skip past.

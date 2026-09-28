@@ -3,11 +3,22 @@ import type { ReactElement } from 'react';
 /**
  * Plural only past one. "1 more tasks" reads like a template nobody
  * proofread, and a reader who notices that stops trusting the number beside it.
+ *
+ * `waiting` is the part of the owner's work a Guard held back. A Deferral stops
+ * the owner too, so the sentence says that part waits on conditions. It stays
+ * in the owner's sentence, because moving it to the held-back line would tell
+ * the household it comes to them once the weather turns.
  */
-function ownerSentence(count: number): string {
-	return count === 1
-		? '1 more task is the owner\'s to do.'
-		: `${count} more tasks are the owner's to do.`;
+function ownerSentence(count: number, waiting: number): string {
+	const subject = count === 1 ? '1 more task is' : `${count} more tasks are`;
+
+	if (waiting === 0) {
+		return `${subject} the owner's to do.`;
+	}
+	if (waiting === count) {
+		return `${subject} the owner's to do once conditions change.`;
+	}
+	return `${subject} the owner's to do, ${waiting} of them once conditions change.`;
 }
 
 /**
@@ -53,14 +64,21 @@ function closingSentence(ownerOnly: number, deferred: number): string {
  * tasks" is chrome that teaches a reader to skip the whole block on the week it
  * finally matters.
  */
-export function WithheldCount({ ownerOnly, deferred }: { ownerOnly: number; deferred: number }): ReactElement | null {
+export function WithheldCount({ ownerOnly, ownerWaiting = 0, deferred }: {
+	/** Undelegable Tasks, fired or held back. */
+	ownerOnly: number;
+	/** How many of `ownerOnly` a Guard held back. */
+	ownerWaiting?: number;
+	/** Delegable Tasks a Guard held back. */
+	deferred: number;
+}): ReactElement | null {
 	if (ownerOnly === 0 && deferred === 0) {
 		return null;
 	}
 
 	return (
 		<div className="space-y-1 border-t-2 border-rule px-5 py-4 font-mono text-evidence text-muted print:border-black print:break-inside-avoid print:text-black">
-			{ownerOnly > 0 && <p>{ownerSentence(ownerOnly)}</p>}
+			{ownerOnly > 0 && <p>{ownerSentence(ownerOnly, ownerWaiting)}</p>}
 			{deferred > 0 && <p>{heldSentence(deferred)}</p>}
 			{/* Points at the card, never "the list above": on the week every fired
 			    Task is withheld there's no list above this to point at. */}

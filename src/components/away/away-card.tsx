@@ -61,9 +61,11 @@ function emptyText(withheld: number): string {
  * Planner's decision made a second time, with a second chance to get it wrong
  * the day someone writes a chemical Rule and forgets the tag.
  *
- * Delegability outranks deferral. Undelegable work is the owner's whether a
- * Guard held it back or not, and counting it as held back tells the household
- * it'll come to them once the weather turns.
+ * Delegability outranks deferral for the bucket. Undelegable work is the
+ * owner's whether a Guard held it back or not, and counting it in `deferred`
+ * would tell the household it'll come to them once the weather turns. The
+ * Deferral still stops the owner, so the card reads `status` off `ownerOnly`
+ * again when it words the count.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the split belongs beside the one component that reads it; a second file is where a second copy of the rule starts
 export function partitionForCard(tasks: Task[]): CardPartition {
@@ -295,7 +297,11 @@ export function AwayCard({ artifact, status, now, occurrences = seedOccurrences,
 									)}
 						</div>
 
-						<WithheldCount ownerOnly={ownerOnly.length} deferred={deferred.length} />
+						<WithheldCount
+							ownerOnly={ownerOnly.length}
+							ownerWaiting={ownerOnly.filter(task => task.status === 'deferred').length}
+							deferred={deferred.length}
+						/>
 					</div>
 				);
 			}}

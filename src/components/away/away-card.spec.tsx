@@ -117,6 +117,29 @@ describe('partitionForCard', () => {
 		expect(deferred).toEqual([]);
 	});
 
+	// The other half of the same Task. A Deferral stops everyone until
+	// conditions change, the owner included, so the count has to say so as
+	// well as saying whose the work is.
+	it('says the owner\'s held-back work waits on conditions, without handing it to the household', () => {
+		const heldChemical = {
+			...task(chemicalTaskId),
+			status: 'deferred' as const,
+			deferrals: [{ guardId: 'rain-expected', releaseWhen: 'the rain passes' }],
+		};
+		const artifact: Artifact = {
+			...awayArtifact,
+			plan: {
+				...awayArtifact.plan,
+				tasks: awayArtifact.plan.tasks.map(each => each.id === chemicalTaskId ? heldChemical : each),
+			},
+		};
+
+		const container = renderCard(artifact, awayStatus, FRESH);
+
+		expect(container.textContent).toContain('2 more tasks are the owner\'s to do, 1 of them once conditions change.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
+	});
+
 	// CONTEXT.md's Approaching Task entry: there is no work to do yet. Counting
 	// it as withheld would tell the household about work that does not exist.
 	it('leaves an approaching Task out of both withheld buckets', () => {
