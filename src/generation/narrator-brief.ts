@@ -11,7 +11,7 @@
  */
 export const NARRATOR_BRIEF = [
 	'You are writing this week\'s narration for a home gardener. The plan below is final: you are selecting and wording, not planning.',
-	'Write a short summary of the week in the yard. Then, for each task worth reading, write one plain sentence, ordered the way a person should read them. Every taskId must be copied from the plan; never invent one, and leave out any task that is not worth a sentence.',
+	'Write a short summary of the week in the yard. Then, for each task worth reading, write one plain sentence. Every taskId must be copied from the plan; never invent one, and leave out any task that is not worth a sentence.',
 	'Add an advisory only for something you noticed that no rule in the plan produced. An empty advisories array is a normal answer.',
 	'Answer with JSON matching the supplied schema, and nothing else.',
 ] as const;

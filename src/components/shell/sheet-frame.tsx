@@ -31,8 +31,10 @@ export function SheetFrame({ children }: { children: ReactNode }): ReactElement 
 	const pathname = usePathname();
 	const isAwayCard = pathname.startsWith('/away/');
 	// The Rules route lists every Rule itself, the silent ones under Waiting, so
-	// the margin's copy of them would name the same Rules a second time.
-	const showNotLit = pathname.replace(/\/$/u, '') !== '/rules';
+	// the margin's copy of them would name the same Rules a second time. About
+	// drops it too, because on a phone it lands after the page's last section and
+	// reads as part of the explanation.
+	const showNotLit = !['/rules', '/about'].includes(pathname.replace(/\/$/u, ''));
 
 	if (isAwayCard) {
 		// Still a main landmark. The card brings its own sheet, not its own document

@@ -7,7 +7,11 @@ test('serves the about route', async ({ page }) => {
 	expect(response?.status()).toBe(200);
 
 	await expect(page.getByRole('banner')).toContainText('rootstock');
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing here was invented');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('How this works');
+
+	// The footer and the New Here band both send a reader here as "How this
+	// works", and the tab is how a reader tells this page from the others.
+	await expect(page).toHaveTitle('How this works · rootstock');
 });
 
 test('shows the instruction the Narrator is actually handed', async ({ page }) => {
@@ -16,7 +20,9 @@ test('shows the instruction the Narrator is actually handed', async ({ page }) =
 	// The page's claim is that nothing on it was written for it, and the brief is
 	// the one part a reader has no other way to check. Asserting the rendered text
 	// against the same constant `buildPrompt` sends is what stops the page drifting
-	// into a paraphrase of the prompt while still looking quoted.
+	// into a paraphrase of the prompt while still looking quoted. It sits folded,
+	// so the reader has to open it first.
+	await page.getByText('The exact instruction it\'s given').click();
 	for (const paragraph of NARRATOR_BRIEF) {
 		await expect(page.getByText(paragraph, { exact: true })).toBeVisible();
 	}
@@ -32,7 +38,44 @@ test('sends a first-time reader from the plan to the account of it', async ({ pa
 	await expect(band).toBeVisible();
 
 	await band.getByRole('link', { name: 'How this works' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing here was invented');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('How this works');
+});
+
+test('draws the specimen with the same column heads as the ticket', async ({ page }) => {
+	// The specimen is only worth annotating if a reader recognizes it on This
+	// Week afterwards. It draws its own heads, which drift from the ticket's
+	// without anyone noticing, so this compares what the two pages render.
+	const heads = async (): Promise<string | null> => page.locator('div[aria-hidden="true"]', { hasText: /sign off/i }).first().textContent();
+
+	await page.goto('.');
+	const ticket = await heads();
+
+	await page.goto('about');
+	expect(await heads()).toBe(ticket);
+});
+
+test('describes every route the nav offers', async ({ page }) => {
+	await page.goto('about');
+
+	// The page is the answer to "how do I use this", so a route added to the nav
+	// without a row here is a question it stops answering.
+	const nav = page.getByRole('navigation', { name: 'Main' }).getByRole('link');
+	const pages = page.locator('dl').filter({ hasText: 'Away Card' }).getByRole('link');
+	const offered = await nav.evaluateAll(links => links.map(link => link.getAttribute('href')));
+	const described = await pages.evaluateAll(links => links.map(link => link.getAttribute('href')));
+
+	expect(offered.length).toBeGreaterThan(0);
+	for (const href of offered) {
+		expect(described).toContain(href);
+	}
+});
+
+test('leaves the Rules nothing lit off the page that explains them', async ({ page }) => {
+	await page.goto('about');
+
+	// On a phone the margin's list lands after the page's last section and reads
+	// as part of it.
+	await expect(page.getByText('Not this week', { exact: true })).toHaveCount(0);
 });
 
 test('drops the band for good once it is dismissed', async ({ page }) => {
