@@ -27,11 +27,13 @@ describe('the narrator brief', () => {
 		expect(sentenceWith(/annotation/i, /already/i, /don't repeat|never repeat/i, /advisory/i)).toBeDefined();
 	});
 
-	it('makes the summary name every deferred task', () => {
+	it('makes the summary name every deferred task and what would release it', () => {
 		// The summary called a week "a simple feeding week" while a Guard held the fall
 		// pre-emergent two days before its window closed. A held Task is the one a reader most
 		// needs told about, and the summary is read first.
-		expect(sentenceWith(/summary/i, /every task/i, /deferred/i)).toBeDefined();
+		// A summary that names the held Task but not its release condition tells a reader something
+		// is waiting without saying what it waits on.
+		expect(sentenceWith(/summary/i, /every task/i, /deferred/i, /release/i)).toBeDefined();
 	});
 
 	it('still lets the Narrator skip a task', () => {

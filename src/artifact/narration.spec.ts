@@ -64,8 +64,9 @@ describe('narrationJsonSchema', () => {
 
 	// #66's rules live in the brief and in these descriptions, which codex reads through
 	// --output-schema. These pin the emitted JSON Schema, since that file is what codex opens.
-	it('tells the model the summary names every deferred task', () => {
+	it('tells the model the summary names every deferred task and what would release it', () => {
 		expect(descriptionOf('summary')).toMatch(/every task whose status is deferred/i);
+		expect(descriptionOf('summary')).toMatch(/release/i);
 	});
 
 	it('tells the model an advisory never repeats an annotation', () => {
