@@ -172,7 +172,9 @@ function narration(artifact: Artifact): string {
 	const advisories = count(artifact.narration.advisories.length, 'Advisory', 'Advisories');
 	const total = artifact.plan.tasks.length;
 	if (total === 0) {
-		return `Narrator wrote the summary only / ${advisories}`;
+		// Names the absence rather than saying "only", which an Advisory beside
+		// it would contradict.
+		return `Narrator wrote the summary, no Task sentences / ${advisories}`;
 	}
 
 	// Distinct ids, because `validateNarration` checks membership and not

@@ -81,7 +81,16 @@ describe('runReadout', () => {
 
 		expect(readout.plan).toBe('9 Rules held / No Tasks written');
 		expect(readout.guards).toBe('No Tasks for a Guard to check');
-		expect(readout.narration).toBe('Narrator wrote the summary only / 0 Advisories');
+		expect(readout.narration).toBe('Narrator wrote the summary, no Task sentences / 0 Advisories');
+	});
+
+	it('names what a quiet week\'s Narration left out without contradicting its Advisories', () => {
+		const quiet: Artifact = {
+			...withTasks(narratedArtifact, []),
+			narration: { summary: 'A quiet week.', tasks: [], advisories: [{ text: 'The fig is dropping leaves early.' }] },
+		};
+
+		expect(runReadout(quiet, okStatus, context).narration).toBe('Narrator wrote the summary, no Task sentences / 1 Advisory');
 	});
 
 	it('reports a Guard that looked and let the work through, once verdicts are recorded', () => {
