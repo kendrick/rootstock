@@ -58,6 +58,19 @@ describe('toDailyAggregates', () => {
 		expect(single(result).value).toBe(63);
 	});
 
+	it('rounds a repeating-decimal mean to the named precision', () => {
+		const result = toDailyAggregates(
+			[at(0, { value: 70 }), at(8, { value: 71 }), at(16, { value: 73 })],
+			timeZone,
+			'mean',
+		);
+
+		// (70 + 71 + 73) / 3 = 71.3333..., worked out by hand: a repeating
+		// decimal, which is exactly the shape #59 wants stopped before it
+		// reaches the committed Artifact.
+		expect(single(result).value).toBe(71.3);
+	});
+
 	it('reduces the same day to min, max, and sum on request', () => {
 		const day = [at(0, { value: 10 }), at(8, { value: 20 }), at(16, { value: 30 })];
 

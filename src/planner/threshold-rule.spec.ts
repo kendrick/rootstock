@@ -2,13 +2,14 @@ import type { DailyAggregate } from './plan';
 import type { RuleVerdict } from './planner';
 import type { Citation } from './task';
 import type { ThresholdRule } from '@/rules/rule';
+import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
 import { thresholdRuleSchema } from '@/rules/rule';
 import { toDailyAggregates } from './aggregate';
 import { asOf as fixtureAsOf, observations, rules, timeZone } from './fixtures';
 import { dailyAggregateSchema } from './plan';
 import { citationSchema } from './task';
-import { evaluateThresholdRule } from './threshold-rule';
+import { evaluateThresholdRule, meetsThreshold } from './threshold-rule';
 
 /*
  * Every Rule below is built through the real schema and every day through the
@@ -56,6 +57,42 @@ function day(date: string, value: number, fields: Partial<DailyAggregate> = {}):
 
 function forecast(date: string, value: number, fields: Partial<DailyAggregate> = {}): DailyAggregate {
 	return day(date, value, { basis: 'forecast', ...fields });
+}
+
+/**
+ * `noUncheckedIndexedAccess` types `records[0]` as possibly `undefined`; the
+ * rounding-boundary tests below reduce a single hand-built day and want that
+ * length checked once rather than repeated at every call site.
+ */
+function single(records: DailyAggregate[]): DailyAggregate {
+	expect(records).toHaveLength(1);
+	const [record] = records;
+	if (record === undefined) {
+		throw new Error('unreachable: length was just asserted to be 1');
+	}
+	return record;
+}
+
+/**
+ * One hourly soil-temperature reading, for the rounding-boundary tests
+ * below. These go through `toDailyAggregates` itself rather than through
+ * `day()`, because the whole point is exercising its rounding on a
+ * hand-picked raw mean—`day()` parses a value straight through the schema
+ * and never rounds anything.
+ */
+function reading(hour: number, value: number): Observation {
+	const paddedHour = String(hour).padStart(2, '0');
+	return {
+		observedAt: `2026-09-11T${paddedHour}:00:00Z`,
+		variable: 'soil-temperature',
+		depthCm: 6,
+		value,
+		unit: 'F',
+		basis: 'observed',
+		provenance: 'modeled',
+		source: 'open-meteo',
+		station: null,
+	};
 }
 
 /**
@@ -644,5 +681,49 @@ describe('evaluateThresholdRule', () => {
 			const wider = springRule({ direction: null, season: { start: '02-01', end: '02-28' } });
 			expect(citationOf(evaluateThresholdRule(wider, window, asOf))).toMatchObject({ projectedDate: '2026-02-28' });
 		});
+	});
+});
+
+/*
+ * `toDailyAggregates` rounds every reduced value to
+ * `AGGREGATE_DECIMAL_PLACES`, and `meetsThreshold` treats `rule.value` as an
+ * inclusive gte/lte boundary (#59). Each test below picks a raw mean within
+ * half a rounding unit of a whole-number `value`, which is as close as
+ * rounding can bring a reading to crossing either shipped Threshold Rule's
+ * line.
+ */
+describe('rounding at the edge of a Threshold Rule\'s value', () => {
+	it('keeps an lte verdict when a satisfying raw mean rounds up onto the value itself', () => {
+		// (69.88 + 70.0 + 70.0) / 3 = 69.96, worked out by hand: already at
+		// or under 70F before rounding runs.
+		const window = toDailyAggregates([reading(0, 69.88), reading(8, 70.0), reading(16, 70.0)], 'UTC', 'mean');
+		const raw = 69.96;
+
+		expect(single(window).value).toBe(70);
+		expect(meetsThreshold(raw, rule({ comparison: 'lte', value: 70 }))).toBe(true);
+		expect(meetsThreshold(single(window).value, rule({ comparison: 'lte', value: 70 }))).toBe(true);
+	});
+
+	it('keeps a gte verdict when a satisfying raw mean rounds down onto the value itself', () => {
+		// (55.02 + 55.06) / 2 = 55.04, worked out by hand: already at or
+		// over 55F before rounding runs.
+		const window = toDailyAggregates([reading(0, 55.02), reading(12, 55.06)], 'UTC', 'mean');
+		const raw = 55.04;
+
+		expect(single(window).value).toBe(55);
+		expect(meetsThreshold(raw, rule({ comparison: 'gte', value: 55 }))).toBe(true);
+		expect(meetsThreshold(single(window).value, rule({ comparison: 'gte', value: 55 }))).toBe(true);
+	});
+
+	it('keeps an lte verdict false for a raw mean just past the value, even once rounding moves it', () => {
+		// (70.02 + 70.06 + 70.10) / 3 = 70.06, worked out by hand: already
+		// past 70F, and rounding to 70.1 does not pull it back across the
+		// line.
+		const window = toDailyAggregates([reading(0, 70.02), reading(8, 70.06), reading(16, 70.10)], 'UTC', 'mean');
+		const raw = 70.06;
+
+		expect(single(window).value).toBe(70.1);
+		expect(meetsThreshold(raw, rule({ comparison: 'lte', value: 70 }))).toBe(false);
+		expect(meetsThreshold(single(window).value, rule({ comparison: 'lte', value: 70 }))).toBe(false);
 	});
 });
