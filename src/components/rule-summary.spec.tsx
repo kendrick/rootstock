@@ -399,6 +399,23 @@ describe('ruleSummary', () => {
 			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant in the ground yet');
 		});
 
+		// The seed has three planned Plants tagged `native`, and none planted.
+		it('says "in the ground" when a tag reaches only planned Plants', () => {
+			const planned = { ...fixedInterval, appliesTo: { plantIds: null, plantTags: ['native'], ruleTags: null } };
+			render(<RuleSummary rule={planned} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant in the ground yet');
+		});
+
+		// No Plant in the inventory carries `orchid`, planted or planned, so
+		// "in the ground yet" would promise a Plant that isn't on the way.
+		it('says no Plant matches when the selectors reach nothing at all', () => {
+			const unmatched = { ...fixedInterval, appliesTo: { plantIds: ['orchid-1'], plantTags: ['orchid'], ruleTags: null } };
+			render(<RuleSummary rule={unmatched} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant matches yet');
+		});
+
 		// A Guard's "Reaches" row says which work it looks at.
 		it('leaves the row off a Guard', () => {
 			render(<RuleSummary rule={seedRule('rain-expected')} showPlants />);

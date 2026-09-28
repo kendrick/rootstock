@@ -215,7 +215,17 @@ function plantsText(rule: Rule): string {
 		return 'Every plant';
 	}
 
-	return plants.length === 0 ? 'No Plant in the ground yet' : plants.map(plant => plant.name).join(', ');
+	if (plants.length > 0) {
+		return plants.map(plant => plant.name).join(', ');
+	}
+
+	// `targets` drops planned Plants after matching, so an empty list can mean
+	// the selectors hit only planned Plants or hit nothing at all. Asking again
+	// with every Plant counted as planted tells the two apart without a second
+	// copy of the matching rules.
+	const matchedAny = targets(rule, seedPlants.map(plant => ({ ...plant, status: 'planted' as const }))).plants?.length !== 0;
+
+	return matchedAny ? 'No Plant in the ground yet' : 'No Plant matches yet';
 }
 
 export interface AfterLink {
