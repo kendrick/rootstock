@@ -290,8 +290,12 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		band: 'waiting',
 		inCurrentPlan: false,
 		// The Plan is evaluated for one day, so a Rule with no Task is known not
-		// due on that day only. It may fire tomorrow.
-		waitingOn: `Every ${intervalText(rule)}; not due as of ${formatMonthDay(plan.asOf.slice(5))}`,
+		// due on that day only. It may fire tomorrow. A follow-up counts from the
+		// Rule it follows rather than every so many days, so "Every" would be
+		// wrong for it; the row names that Rule on a line of its own.
+		waitingOn: rule.after === null
+			? `Every ${intervalText(rule)}; not due as of ${formatMonthDay(plan.asOf.slice(5))}`
+			: `Not due as of ${formatMonthDay(plan.asOf.slice(5))}`,
 		checks: [],
 		daysAway: null,
 	};

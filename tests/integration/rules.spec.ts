@@ -144,3 +144,106 @@ for (const width of [195, 299, 300, 390]) {
 		expect(overlaps).toBe(false);
 	});
 }
+
+// A fired Rule names its line on This Week, and the link has to land on the
+// row carrying that Rule. Asserted on the row This Week draws rather than on
+// the href, so numbering that drifts from the ticket's fails here.
+test('links each fired Rule to its line on the ticket', async ({ page }) => {
+	await page.goto('rules');
+
+	const fired = page.getByRole('region', { name: 'Fired this week' });
+	test.skip(await fired.count() === 0, 'The committed Plan fired nothing');
+
+	const rows = fired.locator('li[id^="rule-"]');
+	const lines: { name: string; label: string; href: string }[] = [];
+	for (let index = 0; index < await rows.count(); index++) {
+		const row = rows.nth(index);
+		const name = (await row.locator('h3 [aria-hidden="true"]').textContent()) ?? '';
+		const links = row.getByRole('link', { name: /^(?:Ready now|Held back) \d{2}\b/u });
+		expect(await links.count(), `${name} names no ticket line`).toBeGreaterThan(0);
+		for (let line = 0; line < await links.count(); line++) {
+			const link = links.nth(line);
+			lines.push({ name, label: (await link.textContent()) ?? '', href: (await link.getAttribute('href')) ?? '' });
+		}
+	}
+
+	for (const { name, label, href } of lines) {
+		await page.goto(href);
+		const row = page.locator(':target');
+		await expect(row, `${label} lands on no row`).toHaveCount(1);
+		await expect(row).toContainText(name);
+	}
+});
+
+test('names the Plants a Rule reaches in its record', async ({ page }) => {
+	await page.goto('rules');
+
+	const term = page.locator('#rule-fall-pre-emergent dl dt', { hasText: /^For$/u });
+	await expect(term).toHaveCount(1);
+	await expect(term.locator('+ dd')).toHaveText('Front lawn');
+});
+
+// The follow-up waits on another Rule, and its status says which, linked to
+// that Rule's own row.
+test('says which Rule a chained Cadence Rule waits on', async ({ page }) => {
+	await page.goto('rules');
+
+	const row = page.getByRole('region', { name: 'Waiting' }).locator('#rule-spring-pre-emergent-follow-up');
+	test.skip(await row.count() === 0, 'The follow-up is not waiting on the committed Plan');
+
+	const status = row.locator('[data-rule-status]');
+	await expect(status).toContainText('Waits on Spring pre-emergent');
+	await status.getByRole('link', { name: 'Spring pre-emergent' }).click();
+	await expect(page.locator(':target h3')).toContainText('Spring pre-emergent');
+});
+
+test('opens with a standfirst saying how to read the page', async ({ page }) => {
+	await page.goto('rules');
+
+	await expect(page.locator('main h1 + p')).toContainText('band');
+});
+
+// The strip lists what's drawn and nothing else, in the page's own order.
+test('indexes every band the page draws, and only those', async ({ page }) => {
+	await page.goto('rules');
+
+	const drawn = await page.locator('main section[aria-labelledby^="band-"] h2').allTextContents();
+	const index = page.getByRole('navigation', { name: 'On this page' });
+	expect(drawn.length).toBeGreaterThan(0);
+	await expect(index.getByRole('link')).toHaveText(drawn, { ignoreCase: true });
+
+	for (const label of drawn) {
+		const href = await index.getByRole('link', { name: label, exact: true }).getAttribute('href');
+		await expect(page.locator(`h2${href}`)).toHaveText(label);
+	}
+});
+
+// Sticky from sm, as /about's is. A jump to a band has to leave its heading
+// below the strip, not under it.
+test('keeps the band index in view from sm, clear of the band it jumps to', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('rules');
+
+	const index = page.getByRole('navigation', { name: 'On this page' });
+	const last = index.getByRole('link').last();
+	const label = (await last.textContent()) ?? '';
+	await last.click();
+	await expect(page).toHaveURL(/#band-/u);
+
+	const strip = await index.boundingBox();
+	const heading = await page.getByRole('heading', { level: 2, name: label, exact: true }).boundingBox();
+	expect(strip!.y).toBeLessThanOrEqual(1);
+	expect(heading!.y).toBeGreaterThanOrEqual(strip!.y + strip!.height - 1);
+});
+
+// The spring Rule's published range came from the same authority as the Rule,
+// and that name printed twice in one row reads as two sources.
+test('prints each source label once per Rule', async ({ page }) => {
+	await page.goto('rules');
+
+	const repeats = await page.evaluate(() => [...document.querySelectorAll('main li[id^="rule-"]')].flatMap((row) => {
+		const labels = [...row.querySelectorAll('span')].map(span => span.textContent?.trim() ?? '').filter(text => text.startsWith('· '));
+		return labels.length === new Set(labels).size ? [] : [`${row.id}: ${labels.join(' | ')}`];
+	}));
+	expect(repeats).toEqual([]);
+});

@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import type { GuardCondition, Rule, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
+import type { GuardCondition, Rule, Source, TagPolicy, ThresholdRule, WindowRule } from '@/rules/rule';
 import { ExternalLink } from 'lucide-react';
 import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
 import { SourceBadge } from '@/components/source-badge';
@@ -7,6 +7,7 @@ import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { MONTHS } from '@/planner/dates';
 import { isDelegable } from '@/planner/delegation';
+import { targets } from '@/planner/targets';
 import { seedPlants, seedTagPolicy } from '@/seed';
 
 const COMPARISON_TEXT: Record<ThresholdRule['comparison'], string> = {
@@ -70,6 +71,32 @@ function thresholdSentence(rule: ThresholdRule): string {
 		+ `${valueWords} ${formatValue(rule.value, rule.unit)} ${run}`;
 }
 
+/**
+ * The range's own document, where it came from the Rule's own authority. The
+ * badge beside the name already prints that authority, and a second copy one
+ * row down reads as a second source. The link stays, because the sheet that
+ * printed the range is often not the Rule's own document.
+ */
+function SheetLink({ url }: { url: string | null }): ReactElement | null {
+	if (url === null) {
+		return null;
+	}
+
+	return (
+		<a href={url} target="_blank" rel="noopener noreferrer" className={cn('underline underline-offset-4', FOCUS_RING)}>
+			<span className="whitespace-nowrap">
+				Source
+				<ExternalLink aria-hidden="true" className="ml-1.5 inline size-3.5 align-[-0.1em]" />
+			</span>
+			<span className="sr-only"> for the published range (opens in a new tab)</span>
+		</a>
+	);
+}
+
+function sameAuthority(left: Source, right: Source): boolean {
+	return left.kind === right.kind && left.label === right.label;
+}
+
 function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
 	return (
 		<>
@@ -91,13 +118,15 @@ function ThresholdRows({ rule }: { rule: ThresholdRule }): ReactElement {
 			 * 55F and this yard picked 55, and that narrowing is a local judgment.
 			 * Showing only the acted-on number hides the judgment; showing only the
 			 * range hides what will actually happen. The range carries its own
-			 * SourceBadge because the extension sheet that printed it is frequently
+			 * source because the extension sheet that printed it is frequently
 			 * not the same document as the Rule's own source.
 			 */}
 			{rule.published !== null && (
 				<Row term="Published range">
 					<span>{`${rule.published.low} to ${formatValue(rule.published.high, rule.unit)}`}</span>
-					<SourceBadge source={rule.published.source} />
+					{sameAuthority(rule.published.source, rule.source)
+						? <SheetLink url={rule.published.source.url} />
+						: <SourceBadge source={rule.published.source} />}
 				</Row>
 			)}
 		</>
@@ -174,6 +203,21 @@ function reachText(appliesTo: Rule['appliesTo']): string {
 	return plantGroup === '' ? work : `${work}, ${plantGroup}`;
 }
 
+/**
+ * Resolved through the Planner's own `targets`, so the row can't name a Plant
+ * the Planner would skip, a planned one included. A whole-yard Rule resolves
+ * to no list at all and gets one Task with no Plant, so the row says so rather
+ * than naming every Plant as if each had a line of its own.
+ */
+function plantsText(rule: Rule): string {
+	const { plants } = targets(rule, seedPlants);
+	if (plants === null) {
+		return 'Every plant';
+	}
+
+	return plants.length === 0 ? 'No Plant in the ground yet' : plants.map(plant => plant.name).join(', ');
+}
+
 export interface AfterLink {
 	name: string;
 	href: string;
@@ -196,6 +240,12 @@ export interface RuleSummaryProps {
 	hideRegion?: boolean;
 	/** Prints the Rule's kind in words among its marks. The Rules route passes it. */
 	showKind?: boolean;
+	/**
+	 * Adds a "For" row naming the Plants the Rule reaches. The Rules route passes
+	 * it. This Week's Task already names its Plant, and the Plant sheet is that
+	 * Plant, so there the row would repeat what sits above it.
+	 */
+	showPlants?: boolean;
 	/** Set under the name, ahead of the record. The Rules route puts the Rule's standing here. */
 	status?: ReactNode;
 	/**
@@ -236,6 +286,7 @@ export function RuleSummary({
 	hideRegion = false,
 	after = null,
 	showKind = false,
+	showPlants = false,
 	status = null,
 	asHeading = false,
 }: RuleSummaryProps): ReactElement {
@@ -281,6 +332,9 @@ export function RuleSummary({
 						{`${rule.region.name} · Zone ${rule.region.hardinessZone}`}
 					</Row>
 				)}
+
+				{/* A Guard's "Reaches" row answers this for it, in terms of work. */}
+				{showPlants && rule.kind !== 'guard' && <Row term="For">{plantsText(rule)}</Row>}
 
 				{rule.kind === 'window' && <WindowRows rule={rule} />}
 				{rule.kind === 'threshold' && <ThresholdRows rule={rule} />}

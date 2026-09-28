@@ -215,11 +215,64 @@ describe('ruleList', () => {
 		expect(screen.queryByText(/delegable/iu)).toBeNull();
 	});
 
+	// Once from the record's "Measured from" row and once from the status, and
+	// both have to land on the same row.
 	it('links a follow-up to the row of the Rule it is measured from', () => {
 		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		const link = screen.getByRole('link', { name: thresholdRule.name });
-		const target = container.querySelector(link.getAttribute('href') ?? '');
-		expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
+		const links = screen.getAllByRole('link', { name: thresholdRule.name });
+		expect(links).toHaveLength(2);
+		for (const link of links) {
+			const target = container.querySelector(link.getAttribute('href') ?? '');
+			expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
+		}
+	});
+
+	it('says in a waiting follow-up\'s status which Rule it waits on', () => {
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Waits on ${thresholdRule.name}`);
+		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
+	});
+
+	it('gives no other Rule a "Waits on" line', () => {
+		render(<RuleList rules={allFixtureRules.filter(rule => rule !== cadenceRule)} plan={emptyPlan} />);
+
+		expect(screen.queryByText(/Waits on/u)).toBeNull();
+	});
+
+	// This Week numbers Ready now and Held back apart, so the window Rule's
+	// fired Task is Ready now 01 and the Guard's held one is Held back 01.
+	it('links a fired Rule to its line on This Week', () => {
+		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
+
+		const fired = screen.getByRole('region', { name: 'Fired this week' });
+		const link = within(fired).getByRole('link', { name: 'Ready now 01' });
+		expect(link.getAttribute('href')).toBe('/rootstock/#ready-now-01');
+		expect(link.closest('[data-rule-status]')).not.toBeNull();
+	});
+
+	it('names each Plant when a fired Rule has lines for several', () => {
+		const task = planWithTasks.tasks[0]!;
+		const plan: Plan = {
+			...planWithTasks,
+			tasks: [
+				{ ...task, id: taskId(windowRule.id, 'front-lawn'), plantId: 'front-lawn' },
+				{ ...task, id: taskId(windowRule.id, 'fig-1'), plantId: 'fig-1', status: 'deferred' },
+			],
+		};
+		render(<RuleList rules={[windowRule]} plan={plan} />);
+
+		const status = screen.getByRole('region', { name: 'Fired this week' }).querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain('On this week\'s ticket: Ready now 01 for Front lawn, Held back 01 for Brown Turkey fig');
+	});
+
+	it('names the Plants each Rule reaches, and none for a Guard', () => {
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const terms = screen.getAllByText('For', { selector: 'dt' });
+		expect(terms).toHaveLength(allFixtureRules.filter(rule => rule.kind !== 'guard').length);
 	});
 });

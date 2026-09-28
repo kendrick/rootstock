@@ -1,9 +1,15 @@
 import type { ReactElement } from 'react';
-import type { Band, RuleStanding } from './waiting';
+import type { RuleTicketLine } from './ticket-lines';
+import type { RuleStanding } from './waiting';
 import type { AfterLink } from '@/components/rule-summary';
 import type { Plan } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
 import { RuleSummary } from '@/components/rule-summary';
+import { FOCUS_RING } from '@/lib/focus';
+import { cn } from '@/lib/utils';
+import { seedPlants } from '@/seed';
+import { bandAnchor, drawnBands } from './bands';
+import { ticketLinesFor } from './ticket-lines';
 import { groupChecks, rankRules } from './waiting';
 
 export interface RuleListProps {
@@ -11,19 +17,11 @@ export interface RuleListProps {
 	plan: Plan;
 }
 
-/**
- * The band headings, in the order a reader asks for them.
- *
- * Each says what the band means rather than naming a state, because "waiting"
- * alone leaves a reader guessing whether the yard is broken or simply out of
- * season.
- */
-const BANDS: readonly { band: Band; label: string; note: string }[] = [
-	{ band: 'fired', label: 'Fired this week', note: 'These produced work on the current Plan.' },
-	{ band: 'approaching', label: 'Approaching', note: 'The Planner expects these to be satisfied. A forecast can be revised, so nothing here has fired.' },
-	{ band: 'waiting', label: 'Waiting', note: 'Out of season, waiting on a reading, or not yet due. Every one of them is still in the rule set.' },
-	{ band: 'guard', label: 'Guards', note: 'These create no work. Each one can defer or annotate work another Rule asked for, and names every Task it reached this week.' },
-];
+const LINK = cn('underline underline-offset-4', FOCUS_RING);
+
+// Clears the band index, which sticks to the top of the column from sm. On a
+// phone it doesn't stick, so the jump needs only a little air.
+const JUMP_MARGIN = 'scroll-mt-4 sm:scroll-mt-16';
 
 /** The in-page id a Rule's row carries, so "Measured from" can link to it. */
 function ruleAnchor(ruleId: string): string {
@@ -44,7 +42,38 @@ function lowerFirst(text: string): string {
 	return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink | null }): ReactElement {
+function plantName(plantId: string | null): string {
+	return plantId === null ? 'the whole yard' : seedPlants.find(plant => plant.id === plantId)?.name ?? plantId;
+}
+
+/**
+ * Where a fired Rule's work sits on This Week, by the line number the ticket
+ * prints. Plain links, not next/link: a client-side hop doesn't update
+ * `:target`, so This Week's row would never mark itself.
+ */
+function TicketLines({ lines }: { lines: readonly RuleTicketLine[] }): ReactElement | null {
+	if (lines.length === 0) {
+		return null;
+	}
+	// With one Plant the For row already names it. With several, each line says
+	// whose it is, or the reader can't tell which link to follow.
+	const named = new Set(lines.map(line => line.plantId)).size > 1;
+
+	return (
+		<p className="text-pretty">
+			{'On this week\'s ticket: '}
+			{lines.map((line, index) => (
+				<span key={line.href}>
+					{index > 0 && ', '}
+					<a href={line.href} className={cn(LINK, 'whitespace-nowrap')}>{line.label}</a>
+					{named && ` for ${plantName(line.plantId)}`}
+				</span>
+			))}
+		</p>
+	);
+}
+
+function RuleRow({ standing, after, lines }: { standing: RuleStanding; after: AfterLink | null; lines: readonly RuleTicketLine[] }): ReactElement {
 	const { rule, waitingOn, checks } = standing;
 
 	// The status is the one line the band changes, so it sits straight under the
@@ -74,6 +103,16 @@ function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink
 							</ul>
 						</div>
 					))}
+			{standing.band === 'fired' && <TicketLines lines={lines} />}
+			{/* A follow-up counts from the Rule it follows, and the season line never
+			    says so. The record's "Measured from" row names the same Rule; this
+			    line puts it where a reader asking why the Rule is quiet looks. */}
+			{standing.band === 'waiting' && after !== null && (
+				<p className="text-pretty">
+					{'Waits on '}
+					<a href={after.href} className={LINK}>{after.name}</a>
+				</p>
+			)}
 			{/* The release condition the Planner copied onto each Deferral, not the
 			    Guard's current text, which may have changed since. */}
 			{[...new Set(checks.map(check => check.releaseWhen).filter(release => release !== null))].map(release => (
@@ -83,12 +122,12 @@ function RuleRow({ standing, after }: { standing: RuleStanding; after: AfterLink
 	);
 
 	return (
-		<li id={ruleAnchor(rule.id)} className="scroll-mt-4 border-t-2 border-rule px-3 py-3 first:border-t-0">
+		<li id={ruleAnchor(rule.id)} className={cn(JUMP_MARGIN, 'border-t-2 border-rule px-3 py-3 first:border-t-0')}>
 			{/* RuleSummary carries the whole record: the window or the condition, the
 			    published range, the product label, the source and the delegability. The
 			    bands decide the order of the page and change nothing about what a Rule
 			    is allowed to say about itself. */}
-			<RuleSummary rule={rule} hideRegion asHeading showKind after={after} status={status} />
+			<RuleSummary rule={rule} hideRegion asHeading showKind showPlants after={after} status={status} />
 		</li>
 	);
 }
@@ -116,22 +155,17 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 	// prints, so `hideRegion` keeps it off each row and the page adds no third copy.
 	return (
 		<div className="space-y-8">
-
-			{BANDS.map(({ band, label, note }) => {
+			{/* A band with nothing in it is not drawn. An empty heading over an empty
+			    list reads as a rendering failure rather than as a quiet week. */}
+			{drawnBands(ranked).map(({ band, label, note }) => {
 				const inBand = ranked.filter(standing => standing.band === band);
 
-				// A band with nothing in it is not drawn. An empty heading over an empty
-				// list reads as a rendering failure rather than as a quiet week.
-				if (inBand.length === 0) {
-					return null;
-				}
-
 				return (
-					<section key={band} aria-labelledby={`band-${band}`} className="space-y-3">
+					<section key={band} aria-labelledby={bandAnchor(band)} className="space-y-3">
 						<div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t-2 border-rule pt-3">
 							<h2
-								id={`band-${band}`}
-								className="font-display text-heading font-extrabold tracking-wider text-foreground uppercase"
+								id={bandAnchor(band)}
+								className={cn(JUMP_MARGIN, 'font-display text-heading font-extrabold tracking-wider text-foreground uppercase')}
 							>
 								{label}
 							</h2>
@@ -149,6 +183,7 @@ export function RuleList({ rules, plan }: RuleListProps): ReactElement {
 									key={standing.rule.id}
 									standing={standing}
 									after={afterLink(standing.rule, names)}
+									lines={ticketLinesFor(standing.rule.id, plan.tasks)}
 								/>
 							))}
 						</ul>
