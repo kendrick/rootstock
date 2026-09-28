@@ -568,7 +568,7 @@ export default function AboutPage(): ReactElement {
 
 				{readout !== null && (
 					<p className="max-w-prose text-note text-muted">
-						The line under each step is what that step did on the run that made the current ticket.
+						The lines under steps 1 to 5 are what each step did on the run that made the current ticket. The line under step 6 is the latest attempt, which is that same run unless a later one failed.
 					</p>
 				)}
 

@@ -12,6 +12,9 @@ import { runReadout } from './run-readout';
 // with itself.
 const context = { rules: seedRules, seedFingerprint: seedPlannedFrom };
 
+/** The status record the run that made `narratedArtifact` would have written. */
+const publishedStatus = { ...okStatus, attemptedAt: narratedArtifact.generatedAt, artifactGeneratedAt: narratedArtifact.generatedAt };
+
 function withTasks(artifact: Artifact, tasks: Task[]): Artifact {
 	return { ...artifact, plan: { ...artifact.plan, tasks } };
 }
@@ -30,7 +33,7 @@ function rainChance(date: string, basis: 'observed' | 'forecast'): DailyAggregat
 
 describe('runReadout', () => {
 	it('reads the September run the way a grader would off the file', () => {
-		expect(runReadout(narratedArtifact, okStatus, context)).toEqual({
+		expect(runReadout(narratedArtifact, publishedStatus, context)).toEqual({
 			weather: '32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
 			plan: '9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
 			// In the order the Plan's Tasks carry them: the pre-emergent Task's
@@ -131,10 +134,22 @@ describe('runReadout', () => {
 		expect(runReadout(unnarratedArtifact, okStatus, context).narration).toBe('No Narration / Planner\'s wording on every Task');
 	});
 
-	it('reads the last attempt off the status record, failures included', () => {
+	it('calls a failed attempt after the ticket the latest attempt, and dates the ticket apart', () => {
+		// failingStatus tried on Sep 14 and failed; the ticket is still Sep 11's.
+		// A line reading "Last run Sep 14" under "the run that made the ticket"
+		// would pin a failure on a run that published.
 		expect(runReadout(narratedArtifact, failingStatus, context).age)
-			.toBe('Last run Mon Sep 14, 11:03 UTC: failed / 3 failures in a row');
+			.toBe('Latest attempt Mon Sep 14, 11:03 UTC: failed / 3 failures in a row / ticket from Fri Sep 11, 11:04 UTC');
 		expect(runReadout(narratedArtifact, { ...failingStatus, consecutiveFailures: 1 }, context).age)
-			.toBe('Last run Mon Sep 14, 11:03 UTC: failed / 1 failure in a row');
+			.toBe('Latest attempt Mon Sep 14, 11:03 UTC: failed / 1 failure in a row / ticket from Fri Sep 11, 11:04 UTC');
+	});
+
+	it('treats a published attempt as the ticket\'s run only when it names the ticket\'s generatedAt', () => {
+		// okStatus records the unnarrated twin's generatedAt, two seconds after
+		// the narrated one's, so it is not the run that made this ticket.
+		expect(runReadout(narratedArtifact, okStatus, context).age)
+			.toBe('Latest attempt Fri Sep 11, 11:04 UTC: published / 0 failures in a row / ticket from Fri Sep 11, 11:04 UTC');
+		expect(runReadout(narratedArtifact, publishedStatus, context).age)
+			.toBe('Last run Fri Sep 11, 11:04 UTC: published / 0 failures in a row');
 	});
 });

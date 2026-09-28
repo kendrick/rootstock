@@ -190,9 +190,19 @@ function narration(artifact: Artifact): string {
  * clock-side job above the specimen, and it renders nothing on a fresh ticket,
  * which would leave this row blank most days. The status record is what the
  * banner reasons from, and it stays true however long the page sits.
+ *
+ * The status record describes the latest attempt, which after a failure isn't
+ * the run that made the ticket. It's that run only when it published and names
+ * this Artifact's `generatedAt`. Otherwise the line says "latest attempt" and
+ * dates the ticket separately, so a failure isn't read as the ticket's own run.
  */
-function age(status: StatusRecord): string {
-	return `Last run ${instant(status.attemptedAt)}: ${status.ok ? 'published' : 'failed'} / ${count(status.consecutiveFailures, 'failure', 'failures')} in a row`;
+function age(status: StatusRecord, generatedAt: string): string {
+	const outcome = `${status.ok ? 'published' : 'failed'} / ${count(status.consecutiveFailures, 'failure', 'failures')} in a row`;
+	const sameRun = status.ok && status.artifactGeneratedAt === generatedAt;
+
+	return sameRun
+		? `Last run ${instant(status.attemptedAt)}: ${outcome}`
+		: `Latest attempt ${instant(status.attemptedAt)}: ${outcome} / ticket from ${instant(generatedAt)}`;
 }
 
 export function runReadout(artifact: Artifact, status: StatusRecord, context: ReadoutContext): RunReadout {
@@ -202,6 +212,6 @@ export function runReadout(artifact: Artifact, status: StatusRecord, context: Re
 		guards: guards(artifact, context),
 		narration: narration(artifact),
 		publish: `Generated ${instant(artifact.generatedAt)}`,
-		age: age(status),
+		age: age(status, artifact.generatedAt),
 	};
 }

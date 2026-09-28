@@ -1,7 +1,7 @@
 import type { Artifact } from '@/artifact/artifact';
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { approachingArtifact, deferredTaskId, narratedArtifact, okStatus } from '@/artifact/fixtures';
+import { approachingArtifact, deferredTaskId, failingStatus, narratedArtifact, okStatus } from '@/artifact/fixtures';
 import { loadArtifact } from '@/artifact/load';
 import AboutPage from './page';
 
@@ -21,7 +21,8 @@ afterEach(() => {
 
 const SPECIMEN_INTRO = /Here is one real Task from the current ticket/u;
 const UNREADABLE = /The current ticket couldn.t be read/u;
-const READOUT_CAPTION = /The line under each step is what that step did on the run that made the current ticket/u;
+const READOUT_CAPTION = /The lines under steps 1 to 5 are what each step did on the run that made the current ticket/u;
+const publishedStatus = { ...okStatus, attemptedAt: narratedArtifact.generatedAt, artifactGeneratedAt: narratedArtifact.generatedAt };
 
 function withTasks(artifact: Artifact, keep: (id: string) => boolean): Artifact {
 	return { ...artifact, plan: { ...artifact.plan, tasks: artifact.plan.tasks.filter(task => keep(task.id)) } };
@@ -40,8 +41,17 @@ describe('about page', () => {
 		expect(screen.queryByText(SPECIMEN_INTRO)).toBeNull();
 	});
 
+	it('dates the ticket apart from a later attempt that failed', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: failingStatus });
+
+		render(<AboutPage />);
+
+		expect(screen.getByText(/under step 6 is the latest attempt/u)).toBeDefined();
+		expect(screen.getByText('Latest attempt Mon Sep 14, 11:03 UTC: failed / 3 failures in a row / ticket from Fri Sep 11, 11:04 UTC')).toBeDefined();
+	});
+
 	it('puts what each step did on the ticket\'s run under that step', () => {
-		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: publishedStatus });
 
 		render(<AboutPage />);
 
