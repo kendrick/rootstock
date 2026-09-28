@@ -48,7 +48,7 @@ export const narrationSchema = z.strictObject({
 					.describe('The sentence a person reads for that task, in plain language.'),
 			}),
 		)
-		.describe('The tasks worth doing this week, in the order they should be read.'),
+		.describe('The tasks worth a sentence this week. The Planner sets the order they appear in.'),
 	advisories: z
 		.array(
 			z.strictObject({

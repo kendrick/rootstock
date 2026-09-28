@@ -114,3 +114,15 @@ test('the expired banner has no accessibility violations', async ({ page }) => {
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
 });
+
+test('the page that explains the age warning shows it too', async ({ page }) => {
+	// /about tells a cold reader that every page showing the ticket warns once it's
+	// stale, and then shows a Task from that ticket. Without the banner there, the
+	// one page making the claim would be the one breaking it.
+	await page.clock.setFixedTime(STALE);
+	await page.goto('about');
+
+	const banner = page.getByRole('status');
+	await expect(banner).toBeVisible();
+	await expect(banner.locator('time')).toHaveAttribute('datetime', artifact.generatedAt);
+});

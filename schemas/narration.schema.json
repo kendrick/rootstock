@@ -25,7 +25,7 @@
 				],
 				"additionalProperties": false
 			},
-			"description": "The tasks worth doing this week, in the order they should be read."
+			"description": "The tasks worth a sentence this week. The Planner sets the order they appear in."
 		},
 		"advisories": {
 			"type": "array",

@@ -20,7 +20,7 @@ Rules are stored as data rather than code: a fall pre-emergent window, a soil te
 
 The property is one yard, and the reader is whoever is standing in it. The rest of the household reads the Away Card instead, a printable, read-only list of the work that may be delegated, served at a slug no committed file carries and rendering the same way whether or not anyone is travelling.
 
-The property that matters most is the one a screenshot cannot show: **the Planner is the only thing here that may create a Task.** Narration receives a finished Plan. Validation rejects any narration naming a rule ID the Plan did not contain, and a run that fails validation falls back to mechanical prose rather than publishing a lie. [ADR 0001](docs/adr/0001-the-planner-authors-every-task.md) has the full argument, including what the decision costs. The vocabulary above is exact, and [CONTEXT.md](CONTEXT.md) defines every term of it.
+The property that matters most is the one a screenshot cannot show: **the Planner is the only thing here that may create a Task.** Narration receives a finished Plan. Narration points at Tasks by ID, and validation rejects it whole if any ID isn't in the Plan, so the run falls back to mechanical prose rather than publishing a lie. It checks IDs, not wording, which is why every row prints its Rule and evidence from the Plan beside the sentence. [ADR 0001](docs/adr/0001-the-planner-authors-every-task.md) has the full argument, including what the decision costs. The vocabulary above is exact, and [CONTEXT.md](CONTEXT.md) defines every term of it.
 
 ## How a Run Works
 
@@ -28,7 +28,7 @@ The property that matters most is the one a screenshot cannot show: **the Planne
 
 The site itself is a static export with no server runtime, so it makes no model call and no network fetch in the browser. The build bakes the committed Artifact in, and the page you load parses that JSON and renders it. The one figure computed at render time is Staleness, the Artifact's age, because a baked answer becomes a lie the moment the daily run stops.
 
-Nothing runs `scripts/daily-run.sh` on a schedule yet. The script is proven end to end and the last run was by hand, so the published Artifact is only as fresh as the last time somebody ran it, which is what Staleness on the page reports. [docs/operations/daily-run.md](docs/operations/daily-run.md) says what runs today, and has the crontab line a box would use, the environment it needs, and what to do when the credential behind Narration expires.
+A launchd agent has run `scripts/daily-run.sh` at 06:00 every morning on the owner's Mac since 2026-09-15. If it stops, the published Artifact stops getting fresher, and Staleness on the page reports that. [docs/operations/daily-run.md](docs/operations/daily-run.md) covers what runs today, how to schedule it on another machine, the environment it needs, and what to do when the credential behind Narration expires.
 
 The browser keeps one thing to itself. Ticking a Task writes an Occurrence to that browser's IndexedDB, and the daily run plans from the committed history in `src/seed/occurrences.json` alone, so a tick changes what that reader sees and never what the site publishes. [ADR 0006](docs/adr/0006-the-daily-run-plans-from-committed-history.md) has the argument and what it costs.
 

@@ -14,7 +14,7 @@ The second reader is the rest of the household, who read the Away Card: a printa
 
 The third reader is someone arriving cold with no idea what this is—mostly a household member handed a link, and some of the time a stranger who found the public URL. Weight them roughly 60/40 in that order. This reader is real but secondary: the product is built for the household, and written so an outsider is not confused either. There is nothing to sell them. `/about` makes its case out of the committed Artifact and the real rule set, so a reader who doubts a claim can go and check it against the plan.
 
-That reader lands on `/about`, because This Week states the plan without establishing what produced it or why it should be trusted. The page annotates a real row from this morning's ticket and sets out what the model may and may not do. It also quotes the instruction the Narrator is handed, word for word. This Week stays at `/` for the owner who opens the site daily, and a dismissible band there points a first-time visitor across.
+That reader lands on `/about`, because This Week states the plan without establishing what produced it or why it should be trusted. The page says what the site is and walks through a day's run, annotates a real row from the current ticket, says what each route is for, and sets out what the model may and may not do. It also quotes the instruction the Narrator is handed, word for word. This Week stays at `/` for the owner who opens the site daily, and a dismissible band there points a first-time visitor across.
 
 ## Product Purpose
 
@@ -24,7 +24,7 @@ Success is the owner acting on the week's work with the reasoning in hand, and t
 
 ## Positioning
 
-The Planner is the only thing in the system that may create a Task. A model may select, order, and write prose over a finished Plan; it may not add a Task, remove one, or change a date, and narration naming a rule ID the Plan does not hold is rejected in favor of mechanical prose. Turn the model off and the same Tasks appear on the same dates—only the wording changes, from written sentences back to the terse mechanical ones the Planner already put in each `Task.title`—and the Artifact records which of the two it carries.
+The Planner is the only thing in the system that may create a Task. A model may select from a finished Plan and write its prose, while the Planner keeps the order; it may not add a Task, remove one, or change a date, and narration pointing at a Task ID the Plan does not hold is rejected in favor of mechanical prose. The check reads IDs, not wording, so the Rule and evidence print from the Plan beside every sentence. Turn the model off and the same Tasks appear on the same dates—only the wording changes, from written sentences back to the terse mechanical ones the Planner already put in each `Task.title`—and the Artifact records which of the two it carries.
 
 A Guard holds work back and says what would release it. No Guard can delete a Task, because a Task that disappears is indistinguishable from one nobody thought of.
 
