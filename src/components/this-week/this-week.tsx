@@ -456,7 +456,11 @@ export function ThisWeek({
 					window={artifact.plan.window}
 					completedIds={completedIds}
 					recordedOn={recordedOn}
-					describedBy={noteId}
+					note={permanenceNote(artifact.plan.asOf)}
+					// Only when Ready now drew the note. TaskGroup prints its description
+					// only over rows, so on a Plan holding nothing but held work the held
+					// list has to carry its own, or its live boxes go unwarned.
+					describedBy={tasks.some(task => task.status === 'fired') ? noteId : undefined}
 					asOf={artifact.plan.asOf}
 					openCitationId={openCitationId}
 					{...signOff}

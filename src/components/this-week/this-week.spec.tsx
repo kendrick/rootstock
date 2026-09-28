@@ -772,6 +772,14 @@ describe('closing soon', () => {
 		expect(within(band).getByRole('link').getAttribute('href')).toBe('#held-back-01');
 	});
 
+	it('still warns that signing off is permanent when held work is all there is', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
+
+		const note = screen.getByText(permanenceNote('2026-09-28'));
+		const box = screen.getByRole('checkbox');
+		expect(box.getAttribute('aria-describedby')).toBe(note.id);
+	});
+
 	it('prints the days the Guard read under its Deferral', async () => {
 		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
 
