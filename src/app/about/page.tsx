@@ -88,8 +88,11 @@ function rendered(task: Task, artifact: Artifact): Rendered {
 	// sentence, and with it off the row has already said the Rule's name above, so
 	// only the clause the Planner added survives.
 	const text = taskText(task.title, artifact.narration?.tasks.find(entry => entry.taskId === task.id)?.text ?? null);
-	const narrated = text === task.title ? null : text;
 	const mechanical = mechanicalRemainder(task.title, ruleName, plantName);
+	// Against both, because a Narrator can hand back exactly the clause the row
+	// prints with it off. That sentence changes nothing on This Week, and counting
+	// it as the Narrator's would put the same line in both rows of the comparison.
+	const narrated = text === task.title || text === mechanical ? null : text;
 
 	return {
 		task,
@@ -685,7 +688,7 @@ export default function AboutPage(): ReactElement {
 				 * trusted on.
 				 */}
 				<p className="max-w-prose text-body text-foreground">
-					Most of that holds because the Narrator&apos;s answer has nowhere to put a date, a Rule or evidence, so the ticket prints those from the Plan. It points at Tasks by the IDs the Planner gave them. If any ID isn&apos;t in the Plan, the run throws the whole write-up away and publishes the Planner&apos;s wording instead. The Artifact records that, and the run still counts as a success. Losing the writing is not worth a wrong line.
+					Most of that holds because the Narrator&apos;s answer has nowhere to put a date, a Rule or evidence, so the ticket prints those from the Plan. It points at Tasks by the IDs the Planner gave them. If any ID isn&apos;t in the Plan, the run throws the whole Narration away and publishes the Planner&apos;s wording instead. The Artifact records that, and the run still counts as a success. Losing the writing is not worth a wrong line.
 				</p>
 				<p className="max-w-prose text-body text-foreground">
 					No code checks what a sentence says. That&apos;s why every row still shows its Rule and evidence, straight from the Plan, beside the Narrator&apos;s words.

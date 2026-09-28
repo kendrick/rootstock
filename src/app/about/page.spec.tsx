@@ -67,6 +67,33 @@ describe('about page', () => {
 		expect(screen.getByText(/none of its sentences differs from the Planner.s/u)).toBeDefined();
 	});
 
+	it('offers no comparison when the Narrator returned the line the row already prints', () => {
+		// With the Narrator off, this row prints "never recorded" under the Rule's
+		// name. A Narrator answering with that same clause changed nothing on This
+		// Week, so there's no second wording to set beside it.
+		const [fired] = narratedArtifact.plan.tasks;
+		if (fired === undefined) {
+			throw new Error('narratedArtifact has no Task to reshape');
+		}
+		const echoed: Artifact = {
+			...narratedArtifact,
+			plan: {
+				...narratedArtifact.plan,
+				tasks: [{ ...fired, id: 'esperanza-feeding@esperanza-1', ruleId: 'esperanza-feeding', plantId: 'esperanza-1', citation: { kind: 'cadence', lastOccurrenceId: null, elapsedDays: null }, annotations: [], guardChecks: null, title: 'Feed the Esperanza (Esperanza), never recorded' }],
+			},
+			narration: { summary: 'A quiet week.', tasks: [{ taskId: 'esperanza-feeding@esperanza-1', text: 'never recorded' }], advisories: [] },
+		};
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: echoed, status: okStatus });
+
+		render(<AboutPage />);
+
+		// The specimen renders, so the Artifact parsed and the absence below is the
+		// comparison's own, not the unreadable-ticket fallback.
+		expect(screen.getByText(SPECIMEN_INTRO)).toBeDefined();
+		expect(screen.queryByRole('heading', { name: 'The same Task, written two ways' })).toBeNull();
+		expect(screen.getByText(/none of its sentences differs from the Planner.s/u)).toBeDefined();
+	});
+
 	it('draws an approaching specimen the way This Week does, with no box to sign off', () => {
 		vi.mocked(loadArtifact).mockReturnValue({ artifact: approachingArtifact, status: okStatus });
 
