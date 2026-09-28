@@ -395,7 +395,7 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 						)
 					: (
 							<Note n={at.signOff} part="Sign off">
-								{`${task.status === 'deferred' ? 'A Guard is holding this Task back, so the box sits under a HELD mark. The box still works, because a Guard\'s hold is advice. ' : ''}Tap the box on This Week when the work is done. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels; after that the record stays. It's saved in this browser only, so it doesn't change the published ticket or tell anyone else. Tomorrow's plan can't see it either, because the Planner reads the record of work the owner keeps in the repository. A Task can come back until the owner records it there.`}
+								{`${task.status === 'deferred' ? 'A Guard is holding this Task back, so the box sits under a HELD mark. The box still works, because a Deferral is advice. ' : ''}Tap the box on This Week when the work is done. A second tap within ${RECORD_DELAY_MS / 1000} seconds cancels; after that the record stays. It's saved in this browser only, so it doesn't change the published ticket or tell anyone else. Tomorrow's plan can't see it either, because the Planner reads the record of work the owner keeps in the repository. A Task can come back until the owner records it there.`}
 							</Note>
 						)}
 				{at.guard !== null && firstGuard !== undefined && (

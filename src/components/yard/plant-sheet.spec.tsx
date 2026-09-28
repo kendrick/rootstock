@@ -236,9 +236,9 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const guards = section('Guards that can hold it back or add a note');
+		const guards = section('Guards that can defer its work or add a note');
 		expect(guards.textContent).toContain('Rain expected');
-		expect(guards.textContent).toContain('Guard · can hold work back');
+		expect(guards.textContent).toContain('Guard · can defer work');
 		// Listed apart from the Rules that ask for work.
 		expect(section('Rules that ask for work here').textContent).not.toContain('Rain expected');
 	});
@@ -260,7 +260,7 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant, { rules: [...ruleFixtures, reaching] });
 		await settled();
 
-		const guards = section('Guards that can hold it back or add a note');
+		const guards = section('Guards that can defer its work or add a note');
 		expect(guards.textContent).toContain(reaching.name);
 		expect(guards.textContent).toContain('Guard · can add a note');
 	});
@@ -562,13 +562,13 @@ describe('plantSheet, quiet Rules', () => {
 		}
 	});
 
-	it('says whether each Guard is acting on this week\'s ticket', async () => {
+	it('gives each Guard its verdict on this Plant\'s work, in the Rules page\'s words', async () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		const guards = within(section('Guards that can defer its work or add a note')).getAllByRole('listitem');
 		for (const guard of guards) {
-			expect(guard.textContent).toMatch(/Acting on this week's ticket|Holding nothing this week/u);
+			expect(guard.textContent).toMatch(/Deferring:|Annotating:|Let through|Reaches no Task this week|(Deferring|Annotating) nothing this week/u);
 		}
 	});
 });
@@ -591,13 +591,13 @@ describe('plantSheet, standing scoped to the open Plant', () => {
 		},
 	};
 
-	it('says a Guard is holding nothing when it acts only on another Plant\'s Task', async () => {
+	it('says a Guard reaches nothing here when it acts only on another Plant\'s Task', async () => {
 		renderSheet(lawnPlant, { artifact: elsewhere });
 		await settled();
 
-		const guards = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem');
+		const guards = within(section('Guards that can defer its work or add a note')).getAllByRole('listitem');
 		for (const guard of guards) {
-			expect(guard.textContent).toContain('Holding nothing this week');
+			expect(guard.textContent).toContain('Reaches no Task this week');
 		}
 	});
 
@@ -672,12 +672,12 @@ describe('plantSheet, whole-yard work', () => {
 		},
 	};
 
-	it('says a Guard is acting when it holds a whole-yard Task', async () => {
+	it('says a Guard is deferring a whole-yard Task', async () => {
 		renderSheet(figPlant, { rules, artifact: held });
 		await settled();
 
-		const guard = within(section('Guards that can hold it back or add a note')).getAllByRole('listitem').find(row => row.textContent?.includes(ruleFixtures.find(rule => rule.id === 'rain-expected')?.name ?? 'rain-expected'));
-		expect(guard?.textContent).toContain('Acting on this week\'s ticket');
+		const guard = within(section('Guards that can defer its work or add a note')).getAllByRole('listitem').find(row => row.textContent?.includes(ruleFixtures.find(rule => rule.id === 'rain-expected')?.name ?? 'rain-expected'));
+		expect(guard?.textContent).toContain('Deferring:');
 	});
 
 	it('gives a whole-yard Rule on the ticket no waiting line', async () => {
