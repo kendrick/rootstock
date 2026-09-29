@@ -116,6 +116,14 @@ describe('standingFor, waiting', () => {
 
 		expect(standing.waitingOn).toBe('Every 28–35 days; not due as of April 10');
 	});
+
+	// A follow-up counts from the Rule it follows (CONTEXT.md's Anchor), so it
+	// isn't due every so many days and the line doesn't say it is.
+	it('gives an in-season follow-up no "Every" of its own', () => {
+		const standing = standingFor(seedRule('spring-pre-emergent-follow-up'), plan('2026-04-10'));
+
+		expect(standing.waitingOn).toBe('Not due as of April 10');
+	});
 });
 
 // ADR 0002 gives a Guard two effects, and CONTEXT.md's GuardVerdict three

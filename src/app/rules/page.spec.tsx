@@ -162,6 +162,19 @@ describe('rules page', () => {
 		expect(statusOf('Water in after application')).toContain('Annotating:Apply fall pre-emergent to the front lawn');
 	});
 
+	// The index is built apart from the list, so it's checked against the bands
+	// the list actually drew.
+	it('indexes exactly the bands it draws, in order', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: okStatus });
+
+		render(<RulesPage />);
+
+		const index = within(screen.getByRole('navigation', { name: 'On this page' })).getAllByRole('link');
+		const bands = screen.getAllByRole('heading', { level: 2 });
+		expect(index.map(link => link.textContent)).toEqual(bands.map(heading => heading.textContent));
+		expect(index.map(link => link.getAttribute('href'))).toEqual(bands.map(heading => `#${heading.id}`));
+	});
+
 	// `output: 'export'` prerenders this route in Node at build time. A timestamp
 	// in that markup would be the build machine's instant, and the browser would
 	// contradict it on hydration.
