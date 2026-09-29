@@ -115,6 +115,35 @@ describe('seed loading', () => {
 		expect(seedRules.filter(candidate => candidate.tags.includes('before-germination')).map(candidate => candidate.id)).toEqual(['spring-pre-emergent']);
 	});
 
+	// #48's reproduction: in 2026 the 6 cm soil rose from 48.4°F on Feb 5 to hold 55°F or more from Feb 6, and the old Threshold Rule fired on Feb 8, after germination had begun. The Window Rule is on the list from Feb 1 and cites its window, never that crossing.
+	it('lists the spring pre-emergent from February 1, citing its window and not the February 2026 crossing', () => {
+		const observed = (date: string, value: number) => Array.from({ length: 24 }, (_, hour) => ({
+			observedAt: `${date}T${String(hour).padStart(2, '0')}:00:00Z`,
+			variable: 'soil-temperature',
+			depthCm: 6,
+			value,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		}));
+		const february2026 = [...observed('2026-02-05', 48.4), ...observed('2026-02-06', 55.4), ...observed('2026-02-07', 57.1), ...observed('2026-02-08', 58.6)];
+		const springTask = (asOf: string) => plan(planInputSchema.parse({
+			asOf,
+			timeZone: 'UTC',
+			plants: seedPlants,
+			rules: seedRules,
+			observations: february2026,
+			occurrences: seedOccurrences,
+			tagPolicy: seedTagPolicy,
+		})).tasks.find(task => task.ruleId === 'spring-pre-emergent');
+
+		expect(springTask('2026-01-31')).toBeUndefined();
+		expect(springTask('2026-02-01')?.citation.kind).toBe('window');
+		expect(springTask('2026-02-08')?.citation.kind).toBe('window');
+	});
+
 	/**
 	 * The shipped seed driven through the real Planner. Soil in Southwest Fort Worth sits above 55°F all autumn, so the fall pre-emergent is the Task this note must never reach, and the two runs differ only in the month.
 	 */
