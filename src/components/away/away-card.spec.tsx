@@ -1,5 +1,6 @@
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
-import { render, screen } from '@testing-library/react';
+import type { Occurrence } from '@/planner/occurrence';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { AwayCard, partitionForCard } from './away-card';
@@ -13,6 +14,7 @@ import {
 	delegableUnnarratedTaskId,
 	failingAwayStatus,
 	nothingDelegableAwayArtifact,
+	recordedNitrogenOccurrence,
 	undelegableNoTagTaskId,
 	unnarratedAwayArtifact,
 } from './fixtures';
@@ -42,6 +44,11 @@ function task(id: string) {
 }
 
 const NARRATED_TEXT = awayArtifact.narration?.tasks.find(entry => entry.taskId === delegableNarratedTaskId)?.text ?? '';
+
+/** The instruction on each row, without the numeral and the deadline line printed around it. */
+function instructions(): string[] {
+	return screen.getAllByRole('listitem').map(item => item.querySelector('p')?.textContent ?? '');
+}
 const CHEMICAL_TEXT = awayArtifact.narration?.tasks.find(entry => entry.taskId === chemicalTaskId)?.text ?? '';
 
 /** The three ids the card withholds, each with the prose that must travel no further than the Plan. */
@@ -51,8 +58,13 @@ const WITHHELD = [
 	{ id: deferredDelegableTaskId, title: task(deferredDelegableTaskId).title },
 ];
 
-function renderCard(artifact: Artifact, status: StatusRecord, now: Date): HTMLElement {
-	const { container } = render(<AwayCard artifact={artifact} status={status} now={now} />);
+/**
+ * No Occurrences unless a test passes some, rather than the committed seed, so
+ * a line added to `src/seed/occurrences.json` can't quietly mark a fixture row
+ * as recorded.
+ */
+function renderCard(artifact: Artifact, status: StatusRecord, now: Date, occurrences: Occurrence[] = []): HTMLElement {
+	const { container } = render(<AwayCard artifact={artifact} status={status} now={now} occurrences={occurrences} />);
 	return container;
 }
 
@@ -90,6 +102,44 @@ describe('partitionForCard', () => {
 		expect(deferred.map(each => each.id)).toContain(deferredDelegableTaskId);
 	});
 
+	// Undelegable work is the owner's either way. Counted as held, it would tell
+	// the household it comes to them once conditions change.
+	it('counts an undelegable Task as the owner\'s even when a Guard held it back', () => {
+		const held = {
+			...task(chemicalTaskId),
+			status: 'deferred' as const,
+			deferrals: [{ guardId: 'rain-expected', releaseWhen: 'the rain passes' }],
+		};
+
+		const { ownerOnly, deferred } = partitionForCard([held]);
+
+		expect(ownerOnly.map(each => each.id)).toEqual([chemicalTaskId]);
+		expect(deferred).toEqual([]);
+	});
+
+	// The other half of the same Task. A Deferral stops everyone until
+	// conditions change, the owner included, so the count has to say so as
+	// well as saying whose the work is.
+	it('says the owner\'s held-back work waits on conditions, without handing it to the household', () => {
+		const heldChemical = {
+			...task(chemicalTaskId),
+			status: 'deferred' as const,
+			deferrals: [{ guardId: 'rain-expected', releaseWhen: 'the rain passes' }],
+		};
+		const artifact: Artifact = {
+			...awayArtifact,
+			plan: {
+				...awayArtifact.plan,
+				tasks: awayArtifact.plan.tasks.map(each => each.id === chemicalTaskId ? heldChemical : each),
+			},
+		};
+
+		const container = renderCard(artifact, awayStatus, FRESH);
+
+		expect(container.textContent).toContain('2 more tasks are the owner\'s to do, 1 of them once conditions change.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
+	});
+
 	// CONTEXT.md's Approaching Task entry: there is no work to do yet. Counting
 	// it as withheld would tell the household about work that does not exist.
 	it('leaves an approaching Task out of both withheld buckets', () => {
@@ -110,11 +160,7 @@ describe('awayCard', () => {
 	it('renders the delegable, fired Tasks and no others', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
-		const items = screen.getAllByRole('listitem');
-
-		expect(items).toHaveLength(2);
-		expect(items[0]?.textContent).toBe(NARRATED_TEXT);
-		expect(items[1]?.textContent).toBe(task(delegableUnnarratedTaskId).title);
+		expect(instructions()).toEqual([NARRATED_TEXT, task(delegableUnnarratedTaskId).title]);
 	});
 
 	/*
@@ -167,9 +213,9 @@ describe('awayCard', () => {
 	it('counts what it withheld, by reason, naming none of it', () => {
 		const container = renderCard(awayArtifact, awayStatus, FRESH);
 
-		expect(container.textContent).toContain('2 tasks are for the owner to do.');
-		expect(container.textContent).toContain('1 task is waiting for conditions to change.');
-		expect(container.textContent).toContain('The yard needs more this week than this page shows.');
+		expect(container.textContent).toContain('2 more tasks are the owner\'s to do.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
+		expect(container.textContent).toContain('This card isn\'t the whole week. The rest is the owner\'s to do or to decide.');
 
 		for (const { id, title } of WITHHELD) {
 			expect(container.textContent).not.toContain(title);
@@ -182,9 +228,7 @@ describe('awayCard', () => {
 	it('falls back to the mechanical title when the model did not run', () => {
 		const container = renderCard(unnarratedAwayArtifact, awayStatus, FRESH);
 
-		const items = screen.getAllByRole('listitem');
-
-		expect(items.map(item => item.textContent)).toEqual([
+		expect(instructions()).toEqual([
 			task(delegableNarratedTaskId).title,
 			task(delegableUnnarratedTaskId).title,
 		]);
@@ -217,27 +261,41 @@ describe('awayCard', () => {
 		}
 	});
 
-	it('names the yard rather than the reason anyone is reading this', () => {
+	// Dated by the Plan, not the reader's clock, so the sheet still says which
+	// week it was after days on a fridge. The fixture Plan is for 2026-09-11.
+	it('names the yard and the Plan\'s week rather than the reason anyone is reading this', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
-		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Yard tasks this week');
+		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Yard tasks, week of Sep 11');
+		expect(screen.getByText('No. 2026-254 · Stub')).toBeDefined();
 	});
 
 	/*
-	 * Scoped to the list on purpose. The staleness banner does print the
-	 * Artifact's generation time, and that is the age of the data rather than
-	 * anything about a trip, so the assertion that matters is that no date
-	 * reaches the work itself.
+	 * The only dates the list may carry are the work's own deadlines: a Window
+	 * Rule's last day, from the Rule and the Plan, and nothing else. A date that
+	 * came from anywhere else could be a trip date (ADR 0004). `last-nitrogen`
+	 * closes 10-01, a Thursday in 2026, and the fig's Cadence work has no last
+	 * day.
 	 */
-	it('puts no date in the list of tasks', () => {
+	it('dates each row by the work\'s own deadline and by nothing else', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
-		const text = screen.getByRole('list').textContent ?? '';
+		const rows = screen.getAllByRole('listitem').map(item => item.querySelectorAll('p')[1]?.textContent);
+		expect(rows).toEqual(['By Thu Oct 1', 'This week']);
 
+		const text = screen.getByRole('list').textContent ?? '';
+		expect(text.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/gi)).toEqual(['Oct']);
 		expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}/);
 		expect(text).not.toMatch(/\b\d{1,2}\/\d{1,2}\b/);
-		expect(text).not.toMatch(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/i);
-		expect(text).not.toMatch(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\b/i);
+	});
+
+	// The year is what a sheet found in a drawer next spring needs most.
+	it('prints the year on the line saying when the card was made', () => {
+		const container = renderCard(awayArtifact, awayStatus, FRESH);
+
+		const made = container.querySelector('time')?.parentElement?.textContent ?? '';
+		expect(made).toMatch(/^This card was made .*2026/);
+		expect(made).not.toContain('Generated');
 	});
 
 	// The only button on the card is the print trigger, and it is a control
@@ -260,12 +318,50 @@ describe('awayCard', () => {
 	it('draws an empty box beside every shown Task for a pen to fill in', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
-		const items = screen.getAllByRole('listitem');
-		for (const item of items) {
-			const box = item.querySelector('[aria-hidden="true"]');
-			expect(box).not.toBeNull();
-			expect(box?.textContent).toBe('');
+		for (const item of screen.getAllByRole('listitem')) {
+			expect(within(item).getByTestId('pen-box').childElementCount).toBe(0);
 		}
+	});
+
+	// The returned sheet is only worth something to the owner if it says who
+	// did the work and when, so every row keeps a blank cell for it.
+	it('numbers every row and leaves a write-in cell beside its box', () => {
+		renderCard(awayArtifact, awayStatus, FRESH);
+
+		const items = screen.getAllByRole('listitem');
+		expect(items.map(item => item.firstElementChild?.textContent)).toEqual(['01', '02']);
+		for (const item of items) {
+			const writeIn = item.lastElementChild;
+			expect(writeIn?.getAttribute('aria-hidden')).toBe('true');
+			expect(writeIn?.textContent).toBe('');
+			expect(writeIn?.classList.contains('print:block')).toBe(true);
+		}
+	});
+
+	// DESIGN.md's Type section: the instruction is prose, and prose is
+	// Assistant. The deadline under it is a reading, and readings are mono.
+	it('sets the instruction in the prose face and the deadline in mono', () => {
+		renderCard(awayArtifact, awayStatus, FRESH);
+
+		const [instruction, deadline] = screen.getAllByRole('listitem')[0]!.querySelectorAll('p');
+		expect(instruction?.classList.contains('font-mono')).toBe(false);
+		expect(instruction?.classList.contains('text-body')).toBe(true);
+		expect(deadline?.classList.contains('font-mono')).toBe(true);
+	});
+
+	// Safari drops list semantics once list-style is none, and Tailwind's
+	// preflight sets it.
+	it('keeps list semantics on the task list', () => {
+		renderCard(awayArtifact, awayStatus, FRESH);
+
+		expect(screen.getByRole('list').getAttribute('role')).toBe('list');
+	});
+
+	// 44px, the target size #50 set for the owner's own controls.
+	it('makes the print button at least 44px tall', () => {
+		renderCard(awayArtifact, awayStatus, FRESH);
+
+		expect(screen.getByRole('button', { name: /print/i }).classList.contains('min-h-11')).toBe(true);
 	});
 
 	// #63's fix: a printed sheet with no date is indistinguishable from one
@@ -324,10 +420,10 @@ describe('awayCard', () => {
 		const container = renderCard(nothingDelegableAwayArtifact, awayStatus, FRESH);
 
 		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
-		expect(container.textContent).not.toContain('Nothing in the yard needs doing');
-		expect(container.textContent).toContain('There is nothing here for you this week.');
-		expect(container.textContent).toContain('2 tasks are for the owner to do.');
-		expect(container.textContent).toContain('1 task is waiting for conditions to change.');
+		expect(container.textContent).not.toContain('The yard doesn\'t need anything');
+		expect(container.textContent).toContain('Nothing on this card for you this week.');
+		expect(container.textContent).toContain('2 more tasks are the owner\'s to do.');
+		expect(container.textContent).toContain('1 more task is held back until conditions change.');
 	});
 
 	// The closing sentence points at no list, because on the week above there is
@@ -337,7 +433,7 @@ describe('awayCard', () => {
 		const withoutList = renderCard(nothingDelegableAwayArtifact, awayStatus, FRESH);
 
 		for (const container of [withList, withoutList]) {
-			expect(container.textContent).toContain('The yard needs more this week than this page shows.');
+			expect(container.textContent).toContain('This card isn\'t the whole week.');
 			expect(container.textContent).not.toContain('list above');
 		}
 	});
@@ -364,20 +460,23 @@ describe('awayCard', () => {
 	it('says so plainly when the yard needs nothing, and counts nothing it is not withholding', () => {
 		const container = renderCard(approachingAwayArtifact, awayStatus, APPROACHING_FRESH);
 
-		expect(container.textContent).toContain('Nothing in the yard needs doing this week.');
+		expect(container.textContent).toContain('The yard doesn\'t need anything this week.');
 		expect(screen.queryAllByRole('listitem')).toHaveLength(0);
-		expect(container.textContent).not.toContain('for the owner to do');
-		expect(container.textContent).not.toContain('waiting for conditions to change');
-		expect(container.textContent).not.toContain('The yard needs more this week');
+		expect(container.textContent).not.toContain('the owner\'s to do');
+		expect(container.textContent).not.toContain('held back');
+		expect(container.textContent).not.toContain('isn\'t the whole week');
 	});
 
 	// The gate fails closed here for the same reason it does on every other
 	// route, and it matters more here: a half-rendered card is a list somebody
-	// works from.
-	it('renders the error state and no task at all when the Artifact will not parse', () => {
+	// works from. The household gets a step it can take, never the field path.
+	it('renders the household\'s error state and no task at all when the Artifact will not parse', () => {
 		const container = renderCard({ ...awayArtifact, generatedAt: 'yesterday' }, awayStatus, FRESH);
 
-		expect(screen.getByRole('alert').textContent).toContain('generatedAt');
+		const alert = screen.getByRole('alert');
+		expect(alert.textContent).toContain('Ask whoever gave it to you.');
+		expect(alert.textContent).not.toContain('generatedAt');
+		expect(alert.textContent).not.toContain('data/artifact.json');
 		expect(screen.queryByRole('list')).toBeNull();
 		expect(container.textContent).not.toContain(NARRATED_TEXT);
 		expect(container.textContent).not.toContain(task(delegableUnnarratedTaskId).title);
@@ -399,7 +498,8 @@ describe('awayCard', () => {
 		renderCard(awayArtifact, awayStatus, FRESH);
 
 		const heading = screen.getByRole('heading', { level: 1 });
-		const list = screen.getByRole('list');
+		// The border belongs to the ruled box around the heads and the rows.
+		const list = screen.getByRole('list').parentElement!;
 		const first = screen.getAllByRole('listitem')[0];
 
 		expect(heading.classList.contains('text-display')).toBe(true);
@@ -416,5 +516,37 @@ describe('awayCard', () => {
 		const container = renderCard(awayArtifact, awayStatus, FRESH);
 
 		expect(container.querySelector('.copy-sheet')).not.toBeNull();
+	});
+});
+
+/*
+ * The P1 from the 2026-09-28 critique. A Window Rule keeps firing until its
+ * window closes, recorded or not, so a card that never reads Occurrences
+ * hands the household work the owner already did. Asserted as the printed
+ * row reads: the words on it and whether its pen box is still empty.
+ */
+describe('recorded work on the card', () => {
+	function row(text: string): HTMLElement {
+		const item = screen.getAllByRole('listitem').find(candidate => candidate.textContent?.includes(text));
+		if (item === undefined) {
+			throw new Error(`no row carries '${text}'`);
+		}
+		return item;
+	}
+
+	it('prints recorded delegable work as recorded, not as an open box', () => {
+		render(<AwayCard artifact={awayArtifact} status={awayStatus} now={FRESH} occurrences={[recordedNitrogenOccurrence]} />);
+
+		const recorded = row(NARRATED_TEXT);
+		expect(recorded.textContent).toContain('Already recorded Sep 10');
+		expect(within(recorded).getByTestId('pen-box').childElementCount).toBeGreaterThan(0);
+	});
+
+	it('leaves work nobody recorded open', () => {
+		render(<AwayCard artifact={awayArtifact} status={awayStatus} now={FRESH} occurrences={[recordedNitrogenOccurrence]} />);
+
+		const open = row(task(delegableUnnarratedTaskId).title);
+		expect(open.textContent).not.toMatch(/recorded/i);
+		expect(within(open).getByTestId('pen-box').childElementCount).toBe(0);
 	});
 });

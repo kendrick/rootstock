@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactElement, ReactNode } from 'react';
+import type { ErrorAudience } from './artifact-error';
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
 import { seedPlannedFrom } from '@/artifact/planned-from';
@@ -31,16 +32,19 @@ interface Validated {
 export function ArtifactGate({
 	artifact,
 	status,
+	audience = 'owner',
 	children,
 }: {
 	artifact: unknown;
 	status: unknown;
+	/** Who reads the error state. See `ArtifactError`; the Away Card passes `household`. */
+	audience?: ErrorAudience;
 	children: (validated: Validated) => ReactNode;
 }): ReactElement {
 	const result = validate(artifact, status);
 
 	if (!result.ok) {
-		return <ArtifactError message={result.error} />;
+		return <ArtifactError message={result.error} audience={audience} />;
 	}
 
 	return (

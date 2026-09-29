@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OPEN_METEO_ATTRIBUTION } from '@/weather/open-meteo';
 import { Footer } from './footer';
+
+// usePathname wants a router jsdom can't provide, so the route is a value the
+// spec sets, the way nav.spec.tsx does it.
+const route = vi.hoisted(() => ({ current: '/' }));
+
+vi.mock('next/navigation', () => ({ usePathname: () => route.current }));
+
+beforeEach(() => {
+	route.current = '/';
+});
 
 describe('footer', () => {
 	it('renders the attribution Open-Meteo licences the data under', () => {
@@ -38,5 +48,16 @@ describe('footer', () => {
 		const attribution = screen.getByRole('contentinfo').textContent ?? '';
 		expect(attribution).toContain('Open-Meteo');
 		expect(attribution).toContain('CC BY 4.0');
+	});
+
+	// /about's nav reaches This Week, which names the Withheld work. SheetFrame
+	// hides the nav on the card for that reason, and a footer link would walk
+	// straight back round it. The licence line still has to be there.
+	it('keeps only the licence line on the Away Card', () => {
+		route.current = '/away/spec-only-route';
+		render(<Footer />);
+
+		expect(screen.queryByRole('link')).toBeNull();
+		expect(screen.getByRole('contentinfo').textContent).toBe(OPEN_METEO_ATTRIBUTION);
 	});
 });
