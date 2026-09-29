@@ -432,17 +432,77 @@ function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableT
 	});
 }
 
+/** Which series a threshold reads, reduction included, since a mean and a max of one series are read against different lines. */
+function thresholdKey(variable: string, depthCm: number | null, aggregate: string): string {
+	return `${variable}|${depthCm ?? ''}|${aggregate}`;
+}
+
 /**
- * Rounds `window` to `AGGREGATE_DECIMAL_PLACES` for the Plan it ships in.
+ * Every value a Rule or Guard compares a series against, keyed by series. A
+ * Guard condition is read by shape, not by kind: anything carrying `variable`,
+ * `aggregate` and `value` is a reading compared against a line, so a new
+ * reading-based condition is covered here without anyone remembering to add it.
+ */
+function thresholdsBySeries(rules: readonly Rule[]): Map<string, number[]> {
+	const thresholds = new Map<string, number[]>();
+	const add = (key: string, value: number): void => {
+		thresholds.set(key, [...(thresholds.get(key) ?? []), value]);
+	};
+
+	for (const rule of rules) {
+		if (rule.kind === 'threshold') {
+			add(thresholdKey(rule.variable, rule.depthCm, rule.aggregate), rule.value);
+		}
+		else if (rule.kind === 'guard') {
+			const condition: Record<string, unknown> = rule.condition;
+			if (condition.kind === 'no-rain-within' && typeof condition.probabilityAtLeast === 'number') {
+				add(thresholdKey('precipitation-probability', null, 'max'), condition.probabilityAtLeast);
+			}
+			else if (typeof condition.variable === 'string' && typeof condition.aggregate === 'string' && typeof condition.value === 'number') {
+				add(thresholdKey(condition.variable, typeof condition.depthCm === 'number' ? condition.depthCm : null, condition.aggregate), condition.value);
+			}
+		}
+	}
+
+	return thresholds;
+}
+
+/** Whether two readings sit on the same side of `line`, counting the line itself as its own side. */
+function sameSide(left: number, right: number, line: number): boolean {
+	return Math.sign(left - line) === Math.sign(right - line);
+}
+
+/**
+ * Rounds `window` to `AGGREGATE_DECIMAL_PLACES` for the Plan it ships in,
+ * except where rounding would move a value across a line a Rule or Guard reads.
  *
  * Only `plan()` calls this, and only on the copy it is about to return.
  * `createTasks` and `applyGuards` both read `window` first, at full
  * precision, because `evaluateThresholdRule` needs the exact reading a
- * Rule's `value` will be compared against—see `AGGREGATE_DECIMAL_PLACES`'s
+ * Rule's `value` will be compared against. See `AGGREGATE_DECIMAL_PLACES`'s
  * own comment in aggregate.ts for what rounding first would have cost.
+ *
+ * The exception is the evidence half of the same problem. A raw 54.96
+ * correctly doesn't fire `gte 55`, and a window that then shows 55.0 has the
+ * Rules page printing "Last read 55°F; needs at least 55°F" beside a Rule that
+ * didn't fire, and the sparkline plotting the point on the line. ADR 0003 says
+ * the window carries what the Rules evaluated. So a value near a line keeps
+ * the fewest extra decimals that leave it on its true side of every line its
+ * series is read against, and only if none does, its full precision.
  */
-function roundWindowForEmission(window: DailyAggregate[]): DailyAggregate[] {
-	return window.map(day => ({ ...day, value: Number(day.value.toFixed(AGGREGATE_DECIMAL_PLACES)) }));
+function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]): DailyAggregate[] {
+	const thresholds = thresholdsBySeries(rules);
+
+	return window.map((day) => {
+		const lines = thresholds.get(thresholdKey(day.variable, day.depthCm, day.aggregate)) ?? [];
+		for (let places = AGGREGATE_DECIMAL_PLACES; places <= AGGREGATE_DECIMAL_PLACES + 4; places++) {
+			const rounded = Number(day.value.toFixed(places));
+			if (lines.every(line => sameSide(day.value, rounded, line))) {
+				return { ...day, value: rounded };
+			}
+		}
+		return day;
+	});
 }
 
 /**
@@ -494,6 +554,6 @@ export function plan(input: PlanInput): Plan {
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window: roundWindowForEmission(window),
+		window: roundWindowForEmission(window, input.rules),
 	};
 }

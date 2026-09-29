@@ -239,7 +239,10 @@ describe('run', () => {
 		expect('artifact' in result).toBe(false);
 	});
 
-	it('publishes a window whose daily means never carry more than the named precision', async () => {
+	// Nothing in this fixture sits within a rounding step of a Rule's line, so
+	// every value ships at the named precision. Near a line `plan()` keeps a
+	// few more places on purpose (planner.spec.ts covers that case).
+	it('publishes a window whose daily means carry the named precision away from any line', async () => {
 		// The check the walk deliberately does not run: `findLongDecimals` in
 		// run.ts stays off the Artifact's own numbers because a raw
 		// DailyAggregate mean of a day's hourly readings is ordinarily long,

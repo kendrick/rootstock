@@ -844,12 +844,13 @@ describe('rounding the window plan() returns', () => {
 		});
 
 		// Every hour reads 54.96, so the raw daily mean is 54.96 too, by
-		// hand: under 55F on every one of the three deciding days, even
-		// though each one rounds to exactly 55.0 for the window.
+		// hand: under 55F on every one of the three deciding days. One decimal
+		// would print 55.0 beside a Rule that didn't fire, so the window keeps
+		// the second decimal that leaves each day under the line.
 		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 54.96)));
 
 		expect(result.tasks.some(task => task.ruleId === 'rising-boundary')).toBe(false);
-		expect(result.window.map(day => day.value)).toEqual([55, 55, 55]);
+		expect(result.window.map(day => day.value)).toEqual([54.96, 54.96, 54.96]);
 	});
 
 	it('does not fire an lte Rule on a raw mean that rounds down to its value', () => {
@@ -862,11 +863,31 @@ describe('rounding the window plan() returns', () => {
 		});
 
 		// Every hour reads 70.04, so the raw daily mean is 70.04 too, by
-		// hand: over 70F on every one of the three deciding days, even
-		// though each one rounds to exactly 70.0 for the window.
+		// hand: over 70F on every one of the three deciding days, and kept at
+		// 70.04 rather than printed as 70.0 on the line.
 		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 70.04)));
 
 		expect(result.tasks.some(task => task.ruleId === 'falling-boundary')).toBe(false);
-		expect(result.window.map(day => day.value)).toEqual([70, 70, 70]);
+		expect(result.window.map(day => day.value)).toEqual([70.04, 70.04, 70.04]);
+	});
+
+	it('still rounds a value no line is near', () => {
+		const rule = thresholdRule({ id: 'far-line', name: 'Far line', comparison: 'gte', value: 55, consecutiveDays: 3 });
+
+		// 60.04 rounds to 60.0 and sits nowhere near 55, so one decimal is enough.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 60.04)));
+
+		expect(result.window.map(day => day.value)).toEqual([60, 60, 60]);
+	});
+
+	it('keeps extra places only as far as the line needs', () => {
+		const rule = thresholdRule({ id: 'tight-line', name: 'Tight line', comparison: 'gte', value: 55, consecutiveDays: 3 });
+
+		// 54.996 rounds to 55.0 at one place and 55.00 at two; three places
+		// is the first that stays under the line.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 54.996)));
+
+		expect(result.tasks.some(task => task.ruleId === 'tight-line')).toBe(false);
+		expect(result.window.map(day => day.value)).toEqual([54.996, 54.996, 54.996]);
 	});
 });
