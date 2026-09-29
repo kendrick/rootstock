@@ -200,7 +200,11 @@ describe('rules page, how the last run\'s Narration went', () => {
 
 		render(<RulesPage />);
 
-		expect(screen.getByText(narrationLine).textContent).toMatch(/Narrator ran into a problem.*codex login status/s);
+		const line = screen.getByText(narrationLine).textContent;
+		// A failed run carries the outcome forward, so the line speaks of the run that made the ticket, never "the last run". The login check names the job's own CODEX_HOME, since an interactive shell's default can show a healthy login while the job's is expired.
+		expect(line).toMatch(/Narrator ran into a problem on the run that made this week's ticket/);
+		expect(line).not.toMatch(/last run/);
+		expect(line).toMatch(/codex login status.*job's own.*CODEX_HOME/s);
 	});
 
 	it('says so when Narration is switched off, naming the switch', () => {
@@ -208,7 +212,9 @@ describe('rules page, how the last run\'s Narration went', () => {
 
 		render(<RulesPage />);
 
-		expect(screen.getByText(narrationLine).textContent).toContain('ROOTSTOCK_NARRATION');
+		const line = screen.getByText(narrationLine).textContent;
+		expect(line).toContain('ROOTSTOCK_NARRATION');
+		expect(line).toMatch(/on the run that made this week's ticket/);
 	});
 
 	it('says nothing when Narration ran, or on a record that predates the field', () => {
