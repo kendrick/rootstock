@@ -90,6 +90,46 @@ export function findUnresolvedReferences(plants: Plant[], rules: Rule[], occurre
 }
 
 /**
+ * The tag counterpart of {@link findUnresolvedReferences}. Tags are free strings (plant.ts says why), so a Rule selecting `plantTags: ['lanw']` parses cleanly and never plans a Task. This covers the Rule's side of the match only: one Plant carrying the tag is enough to pass, so a second Plant with the tag misspelt goes unnoticed here. {@link findLawnTagMismatches} covers that side for lawns.
+ *
+ * A planned Plant counts as carrying its tags. `targets()` reaches only planted ones, but a Rule written ahead of a planned bed is deliberate, not a typo.
+ */
+export function findUnmatchedPlantTags(plants: Plant[], rules: Rule[]): string[] {
+	const carried = new Set(plants.flatMap(p => p.tags));
+	const problems: string[] = [];
+
+	for (const rule of rules) {
+		for (const tag of rule.appliesTo.plantTags ?? []) {
+			if (!carried.has(tag)) {
+				problems.push(`rule '${rule.id}' appliesTo.plantTags names tag '${tag}', which no plant carries`);
+			}
+		}
+	}
+
+	return problems;
+}
+
+/** The tag the lawn Rules select on. */
+export const LAWN_TAG = 'lawn';
+
+/**
+ * The lawn Rules reach Plants by the `lawn` tag alone, so the tag and `kind: 'lawn'` have to agree both ways. A lawn without the tag gets no lawn Tasks, and {@link findUnmatchedPlantTags} can't see it once any other lawn carries the tag. A non-lawn Plant with the tag gets every lawn Task, pre-emergent herbicide included. The check keys on `kind`, which the schema already ties to lawn detail.
+ */
+export function findLawnTagMismatches(plants: Plant[]): string[] {
+	return plants.flatMap((plant) => {
+		const isLawn = plant.kind === 'lawn';
+		const tagged = plant.tags.includes(LAWN_TAG);
+		if (isLawn && !tagged) {
+			return [`plant '${plant.id}' is a lawn but lacks the '${LAWN_TAG}' tag the lawn Rules select on`];
+		}
+		if (!isLawn && tagged) {
+			return [`plant '${plant.id}' carries the '${LAWN_TAG}' tag but is a ${plant.kind}, so every lawn Rule would reach it`];
+		}
+		return [];
+	});
+}
+
+/**
  * `appliesToSchema` stores a Guard's `ruleTags` as a plain string array, and a
  * Zod refine sees only the one Rule object it is validating—the same limit
  * {@link findUnresolvedReferences} names above, applied to a tag instead of
