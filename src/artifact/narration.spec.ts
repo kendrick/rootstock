@@ -1,3 +1,4 @@
+import type { JsonSchema } from '@/validation/json-schema';
 import { describe, expect, it } from 'vitest';
 import { nodes } from '@/validation/json-schema';
 import { narrationJsonSchema, parseNarration } from './narration';
@@ -19,6 +20,11 @@ const validNarration = {
 		{ text: 'The crape myrtle on the north fence is dropping leaves early, which is worth a look next week.' },
 	],
 };
+
+function descriptionOf(field: string): unknown {
+	const properties = narrationJsonSchema().properties as Record<string, JsonSchema | undefined>;
+	return properties[field]?.description;
+}
 
 describe('narrationJsonSchema', () => {
 	it('emits only keywords strict structured-output mode accepts', () => {
@@ -54,6 +60,18 @@ describe('narrationJsonSchema', () => {
 				`${path} must require every property it declares`,
 			).toEqual(Object.keys(node.properties as Record<string, unknown>));
 		}
+	});
+
+	// #66's rules live in the brief and in these descriptions, which codex reads through
+	// --output-schema. These pin the emitted JSON Schema, since that file is what codex opens.
+	it('tells the model the summary names every deferred task and what would release it', () => {
+		expect(descriptionOf('summary')).toMatch(/every task whose status is deferred/i);
+		expect(descriptionOf('summary')).toMatch(/release/i);
+	});
+
+	it('tells the model an advisory never repeats an annotation', () => {
+		expect(descriptionOf('advisories')).toMatch(/no rule/i);
+		expect(descriptionOf('advisories')).toMatch(/never repeat a task's annotation/i);
 	});
 
 	it('carries a non-empty description on every field the model has to fill', () => {

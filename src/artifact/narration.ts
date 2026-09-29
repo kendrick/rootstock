@@ -36,7 +36,7 @@ import { parseWith } from '@/validation/parse';
 export const narrationSchema = z.strictObject({
 	summary: z
 		.string()
-		.describe('A few sentences about the week in the yard as a whole, read before any individual task.'),
+		.describe('A few sentences about the week in the yard as a whole, read before any individual task. Name every task whose status is deferred, and what would release it.'),
 	tasks: z
 		.array(
 			z.strictObject({
@@ -57,7 +57,7 @@ export const narrationSchema = z.strictObject({
 					.describe('Something you noticed that no rule produced, in a sentence or two.'),
 			}),
 		)
-		.describe('Observations the plan did not cover. An empty array is a normal answer.'),
+		.describe('Observations no rule in the plan produced. Never repeat a task\'s annotation here, because the reader already sees it on the task. An empty array is a normal answer.'),
 });
 
 export type Narration = z.infer<typeof narrationSchema>;
