@@ -287,6 +287,7 @@ export const okStatus: StatusRecord = {
 	error: null,
 	artifactGeneratedAt: unnarratedArtifact.generatedAt,
 	consecutiveFailures: 0,
+	narration: null,
 };
 
 /**
@@ -304,4 +305,5 @@ export const failingStatus: StatusRecord = {
 	error: 'open-meteo: 503 Service Unavailable after 3 attempts',
 	artifactGeneratedAt: unnarratedArtifact.generatedAt,
 	consecutiveFailures: 3,
+	narration: null,
 };

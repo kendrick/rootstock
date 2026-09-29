@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeNarrator } from '../src/generation/narrator';
-import { DEFAULT_STATUS, EXIT_SKIPPED, generate, readPreviousStatus } from './generate';
+import { DEFAULT_STATUS, EXIT_SKIPPED, generate, narratorFromEnv, readPreviousStatus } from './generate';
 
 const DATA_DIR = path.resolve(import.meta.dirname, '../data');
 
@@ -23,6 +23,7 @@ const PREVIOUS_STATUS = {
 	error: null,
 	artifactGeneratedAt: '2026-09-10T11:04:09Z',
 	consecutiveFailures: 0,
+	narration: { outcome: 'ran', error: null },
 };
 
 const FAILURE = { stage: 'weather', message: 'Open-Meteo answered HTTP 503.' };
@@ -185,8 +186,12 @@ describe('readPreviousStatus', () => {
 		expect(readPreviousStatus(statusFile)).toEqual(PREVIOUS_STATUS);
 	});
 
-	it('reads the committed placeholder', () => {
-		expect(readPreviousStatus(path.join(DATA_DIR, 'status.json'))).toEqual(JSON.parse(COMMITTED_STATUS));
+	// #77: the committed record predates the narration field, and the run reads it every night. Falling back to DEFAULT_STATUS here would reset the failure count and forget which Artifact is published.
+	it('reads the committed placeholder, filling the narration field it predates', () => {
+		const read = readPreviousStatus(path.join(DATA_DIR, 'status.json'));
+
+		expect(read).not.toEqual(DEFAULT_STATUS);
+		expect(read).toEqual({ narration: null, ...JSON.parse(COMMITTED_STATUS) });
 	});
 
 	// A first run on a fresh checkout. Refusing to start because there is no history yet would mean
@@ -218,6 +223,25 @@ describe('readPreviousStatus', () => {
 
 // `scripts/daily-run.sh` branches on this number by hand, because bash cannot import it. Nothing
 // else in the repo would notice it changing, so this is the whole contract between the two files.
+// ADR 0001's switch, read from the env file daily-run.sh sources. A value the run doesn't know stops it rather than guessing, the way a missing ROOTSTOCK_TIME_ZONE does.
+describe('narratorFromEnv', () => {
+	const narrator = fakeNarrator(new Error('unused'));
+	const create = () => narrator;
+
+	it('hands the run a Narrator when ROOTSTOCK_NARRATION is unset or on', () => {
+		expect(narratorFromEnv({}, create)).toBe(narrator);
+		expect(narratorFromEnv({ ROOTSTOCK_NARRATION: 'on' }, create)).toBe(narrator);
+	});
+
+	it('hands the run none when ROOTSTOCK_NARRATION is off', () => {
+		expect(narratorFromEnv({ ROOTSTOCK_NARRATION: 'off' }, create)).toBeNull();
+	});
+
+	it('refuses any other value, naming the variable', () => {
+		expect(() => narratorFromEnv({ ROOTSTOCK_NARRATION: 'Off' }, create)).toThrow(/ROOTSTOCK_NARRATION/);
+	});
+});
+
 describe('the skipped exit code', () => {
 	it('is 3, which scripts/daily-run.sh branches on', () => {
 		expect(EXIT_SKIPPED).toBe(3);

@@ -56,12 +56,30 @@ export type Artifact = z.infer<typeof artifactSchema>;
  *
  * It lives beside the Artifact rather than in a module of its own because the Artifact gate parses both at one boundary before anything below it renders, and a reader asks one question of the pair: how old this data is, and whether the run that should have replaced it got that far. Two modules would split a boundary whose whole value is being a single one.
  */
+/**
+ * What a failed Narration leaves in the public status record, in place of the Narrator's own error. The record is committed to a public repository and served on a public site, and codex's stderr can say anything, so the full text goes to the machine's log and the record carries only this.
+ */
+export const NARRATION_FAILED_MESSAGE = 'The Narrator ran into a problem.';
+
+/**
+ * How Narration went on the run that produced the published Artifact. `off` is the switch ADR 0001 describes, set on purpose, and reads apart from `failed`, which is a Narrator that threw or answered with something `validateNarration` refused. Either way the run published the Planner's own wording.
+ */
+const narrationOutcomeSchema = z.strictObject({
+	outcome: z.enum(['ran', 'off', 'failed']),
+	error: z.string().nullable(),
+}).refine(
+	narration => (narration.outcome === 'failed') === (narration.error !== null),
+	{ message: 'narration.error must be present if and only if narration.outcome is \'failed\'', path: ['error'] },
+);
+
 export const statusRecordSchema = z.strictObject({
 	attemptedAt: z.iso.datetime(),
 	ok: z.boolean(),
 	error: z.string().nullable(),
 	artifactGeneratedAt: z.iso.datetime().nullable(),
 	consecutiveFailures: z.number().int().min(0),
+	// Describes the Artifact being served, like `artifactGeneratedAt`, so a run that fails before Narration carries it forward. Null on a record written before #77, or when no run has published yet.
+	narration: narrationOutcomeSchema.nullable(),
 }).refine(
 	status => status.ok === (status.error === null),
 	{ message: 'error must be present if and only if ok is false', path: ['error'] },
@@ -107,5 +125,12 @@ export const parseArtifact = (value: unknown): Artifact => parseCurrentArtifact(
 /** The same parse returned as a value, for the browser: it has to render an error state, not crash the page. */
 export const safeParseArtifact = (value: unknown): ReturnType<typeof safeParseCurrentArtifact> => safeParseCurrentArtifact(withNewerKeys(value));
 
+/** Fills `narration` with the `null` its absence means on a record written before #77, for the reason `withNewerKeys` gives for the Artifact. */
+function withNewerStatusKeys(value: unknown): unknown {
+	return typeof value === 'object' && value !== null && !('narration' in value) ? { ...value, narration: null } : value;
+}
+
+const parseCurrentStatusRecord = parseWith(statusRecordSchema, 'status record');
+
 /** Parses a status record, throwing on a bad one. */
-export const parseStatusRecord = parseWith(statusRecordSchema, 'status record');
+export const parseStatusRecord = (value: unknown): StatusRecord => parseCurrentStatusRecord(withNewerStatusKeys(value));

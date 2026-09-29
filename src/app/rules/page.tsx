@@ -5,6 +5,7 @@ import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
 import { BandIndex } from '@/components/rules/band-index';
 import { drawnBands } from '@/components/rules/bands';
+import { NarrationLine } from '@/components/rules/narration-line';
 import { RuleList } from '@/components/rules/rule-list';
 import { rankRules } from '@/components/rules/waiting';
 import { StalenessBanner } from '@/components/staleness-banner';
@@ -38,6 +39,8 @@ export default function RulesPage(): ReactElement {
 						generatedAt={validated.artifact.generatedAt}
 						status={validated.status}
 					/>
+
+					<NarrationLine status={validated.status} />
 
 					<RuleList rules={seedRules} plan={validated.artifact.plan} />
 				</div>

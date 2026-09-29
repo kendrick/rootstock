@@ -2,7 +2,7 @@ import type { JsonSchema } from '@/validation/json-schema';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { nodes, walkSchema } from '@/validation/json-schema';
-import { artifactSchema, parseArtifact, parseStatusRecord, safeParseArtifact } from './artifact';
+import { artifactSchema, NARRATION_FAILED_MESSAGE, parseArtifact, parseStatusRecord, safeParseArtifact } from './artifact';
 import { narratedArtifact, unnarratedArtifact } from './fixtures';
 
 function isRecord(value: unknown): value is JsonSchema {
@@ -93,7 +93,22 @@ describe('parseStatusRecord', () => {
 		error: 'open-meteo returned 503',
 		artifactGeneratedAt: '2026-09-10T11:03:58Z',
 		consecutiveFailures: 4,
+		narration: { outcome: 'failed', error: NARRATION_FAILED_MESSAGE },
 	};
+
+	// #77: `data/status.json` keeps its older shape until the next daily run rewrites it, and a strict parse of it would put every route into its error state for the rest of that day.
+	it('fills narration with null on a record written before the field existed', () => {
+		const { narration: _narration, ...older } = failedRun;
+
+		expect(parseStatusRecord(older)).toEqual({ ...older, narration: null });
+	});
+
+	it('rejects a failed Narration with no message, and one that ran carrying a message', () => {
+		expect(() => parseStatusRecord({ ...failedRun, narration: { outcome: 'failed', error: null } }))
+			.toThrow(/narration\.error must be present if and only if narration\.outcome is 'failed'/);
+		expect(() => parseStatusRecord({ ...failedRun, narration: { outcome: 'ran', error: NARRATION_FAILED_MESSAGE } }))
+			.toThrow(/narration\.error must be present if and only if narration\.outcome is 'failed'/);
+	});
 
 	it('round-trips a failed run that still has yesterday\'s artifact published', () => {
 		expect(parseStatusRecord(failedRun)).toEqual(failedRun);

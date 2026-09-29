@@ -178,6 +178,8 @@ These are the names the env file carries, and `pnpm schedule` will tell you whic
 
 `ROOTSTOCK_DEPLOY_KEY` is optional and points at the SSH private key the push uses. It defaults to `~/.ssh/rootstock_deploy`.
 
+`ROOTSTOCK_NARRATION` is optional. Set it to `off` to run without the Narrator on purpose. The ticket then goes out in the Planner's own wording, and the status record says Narration was `off`, which reads apart from a failure. Blank or `on` runs the Narrator. Any other value stops the run before it plans anything, because a typo that quietly kept the Narrator on would look like the switch working.
+
 Git also needs a committer in the job's clone, or every run dies at the first commit. Set `user.name` and `user.email` there, not with `--global`.
 
 ## Why the Flags Are There
@@ -208,11 +210,15 @@ A deploy key, and not a token. A personal access token is scoped to an account, 
 
 ## When the Credential Expires
 
-The codex token in `$CODEX_HOME` does not last forever. When it expires, the run stays green. `narrate` in `src/generation/run.ts` catches every way the Narrator can fail and returns no Narration, which ADR 0001 treats as a complete run. The run publishes the Plan with `narration: null` and `narrated: false`. `data/status.json` reads `ok: true` with `consecutiveFailures: 0`, so the staleness banner renders nothing.
+The codex token in `$CODEX_HOME` does not last forever. When it expires, the run stays green. `narrate` in `src/generation/run.ts` catches every way the Narrator can fail and returns no Narration, which ADR 0001 treats as a complete run. The run publishes the Plan with `narration: null` and `narrated: false`, and `data/status.json` reads `ok: true` with `consecutiveFailures: 0`, so the staleness banner renders nothing. The Task list stays correct, because the Planner builds it before the model sees anything, so only the prose changes.
 
-Nothing on the site flags an un-narrated run yet, and [#77](https://github.com/kendrick/rootstock/issues/77) is open to decide what should. Until it lands, the site can serve un-narrated Plans for weeks. The Task list stays correct, because the Planner builds it before the model sees anything, so only the prose changes.
+Three places do say it. The status record's `narration` field reads `{ "outcome": "failed", "error": "The Narrator ran into a problem." }`, and the Rules page shows one line saying this week's ticket is in the Planner's own wording. The job's log carries the real error, which the status record leaves out because it's public:
 
-The launchd log won't show it either. `narrate` discards the Narrator's error message, so a run that lost its prose logs the same lines as one that kept it. Look here instead:
+```text
+narration failed, so the Planner's wording was published: <the Narrator's error>
+```
+
+Check these too:
 
 - `data/artifact.json` on `main` has `"narrated": false`.
 - This Week has no "The week in the yard" or "Also observed" section, and every row reads in the Planner's short mechanical wording.
@@ -220,7 +226,7 @@ The launchd log won't show it either. `narrate` discards the Narrator's error me
 
 To date when the prose stopped, run `git log -S'"narrated": false' --oneline -- data/artifact.json`. It lists the commits where `narrated` flipped, in either direction.
 
-An expired token isn't the only cause. A model the account can't reach, a `codex` binary missing from the job's `PATH`, and a Narration citing a Task the Plan never held all end the same way. To see the error the run threw away, make the same kind of call by hand on the box. Set `-m` to the model `CODEX_MODEL` pins in `scripts/codex-narrator.ts`:
+An expired token isn't the only cause. A model the account can't reach, a `codex` binary missing from the job's `PATH`, and a Narration citing a Task the Plan never held all end the same way. The log line names which one. To reproduce it by hand, make the same kind of call on the box. Set `-m` to the model `CODEX_MODEL` pins in `scripts/codex-narrator.ts`:
 
 ```sh
 codex exec --ephemeral --skip-git-repo-check -s read-only -m gpt-5.6-terra 'Reply with ok.' < /dev/null
@@ -243,4 +249,4 @@ CODEX_HOME=/home/rootstock/.codex codex login status
 
 Drop the `CODEX_HOME=` prefix if that shell already exports the same path. An interactive shell often does not, and a login under the wrong `CODEX_HOME` writes a token the scheduled run never reads. Where forwarding a port is not an option, `printenv OPENAI_API_KEY | codex login --with-api-key` gets there without a browser.
 
-The next run is the confirmation. `data/status.json` reads `ok: true` either way, so check the Artifact instead: `narrated` goes back to `true` in `data/artifact.json`, and This Week shows the Narrator's sentences again.
+The next run is the confirmation. `narration.outcome` in `data/status.json` goes back to `ran`, the Rules page line goes away, and This Week shows the Narrator's sentences again.

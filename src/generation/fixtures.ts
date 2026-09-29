@@ -8,6 +8,7 @@ import type { Location } from '@/weather/location';
 import type { Observation } from '@/weather/observation';
 import type { Plant, Yard } from '@/yard/plant';
 import { z } from 'zod';
+import { NARRATION_FAILED_MESSAGE } from '@/artifact/artifact';
 import { localDate } from '@/planner/dates';
 import { occurrenceSchema } from '@/planner/occurrence';
 import { plan } from '@/planner/planner';
@@ -284,6 +285,7 @@ export const fixturePreviousStatus: StatusRecord = {
 	error: 'open-meteo: request timed out after 3 attempts',
 	artifactGeneratedAt: '2026-09-09T11:04:07Z',
 	consecutiveFailures: 2,
+	narration: { outcome: 'failed', error: NARRATION_FAILED_MESSAGE },
 };
 
 const fixtureInput: PlanInput = {

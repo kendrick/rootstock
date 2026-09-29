@@ -1,5 +1,7 @@
 # The planner authors every task, and the model only chooses the words
 
+> **Amendment, 2026-09-29.** "The property that proves it" below describes a switch nothing implemented. The only way to run without the model was to break it, and a broken Narrator looked like a narrated run everywhere except `narrated` in the Artifact. #77 makes the switch real: `ROOTSTOCK_NARRATION=off` in the run's env file hands the run no Narrator. The status record's `narration` field now says whether Narration `ran`, was `off`, or `failed`. A failed Narrator is still not a failed run. The record carries a fixed message instead of the Narrator's own error, because the record is public, and the full error goes to the machine's log.
+
 A deterministic function decides what the yard needs. The model receives a finished Plan and may select from it, order it, and write its prose. It may not add a Task, remove one, or change a date. Validation rejects any narration referencing a rule ID that was not in the Plan it was handed.
 
 This is the decision the rest of the project hangs off, and it is the one that is invisible in a screenshot.

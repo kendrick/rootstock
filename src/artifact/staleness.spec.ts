@@ -17,6 +17,7 @@ function status(consecutiveFailures: number): StatusRecord {
 		error: null,
 		artifactGeneratedAt: NOW.toISOString(),
 		consecutiveFailures,
+		narration: null,
 	};
 }
 
