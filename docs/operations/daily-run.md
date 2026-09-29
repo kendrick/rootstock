@@ -208,7 +208,25 @@ A deploy key, and not a token. A personal access token is scoped to an account, 
 
 ## When the Credential Expires
 
-The codex token in `$CODEX_HOME` does not last forever. When it goes, the generation fails at the Narration step and the run turns red. The message lands in `error` in `data/status.json`, which the script commits and pushes, so the site says so too.
+The codex token in `$CODEX_HOME` does not last forever. When it expires, the run stays green. `narrate` in `src/generation/run.ts` catches every way the Narrator can fail and returns no Narration, which ADR 0001 treats as a complete run. The run publishes the Plan with `narration: null` and `narrated: false`. `data/status.json` reads `ok: true` with `consecutiveFailures: 0`, so the staleness banner renders nothing.
+
+Nothing on the site flags an un-narrated run yet, and [#77](https://github.com/kendrick/rootstock/issues/77) is open to decide what should. Until it lands, the site can serve un-narrated Plans for weeks. The Task list stays correct, because the Planner builds it before the model sees anything, so only the prose changes.
+
+The launchd log won't show it either. `narrate` discards the Narrator's error message, so a run that lost its prose logs the same lines as one that kept it. Look here instead:
+
+- `data/artifact.json` on `main` has `"narrated": false`.
+- This Week has no "The week in the yard" or "Also observed" section, and every row reads in the Planner's short mechanical wording.
+- `codex login status` on the box, under the job's `CODEX_HOME`, reports no login. A reported login proves less, since it may reflect only the credential on disk. The `codex exec` call below is the surer test.
+
+To date when the prose stopped, run `git log -S'"narrated": false' --oneline -- data/artifact.json`. It lists the commits where `narrated` flipped, in either direction.
+
+An expired token isn't the only cause. A model the account can't reach, a `codex` binary missing from the job's `PATH`, and a Narration citing a Task the Plan never held all end the same way. To see the error the run threw away, make the same kind of call by hand on the box. Set `-m` to the model `CODEX_MODEL` pins in `scripts/codex-narrator.ts`:
+
+```sh
+codex exec --ephemeral --skip-git-repo-check -s read-only -m gpt-5.6-terra 'Reply with ok.' < /dev/null
+```
+
+Ignore the exit code, because codex exits 0 even after rejecting a model. Look for `ok` as the last line on stdout, and for the reason on stderr when it's missing. If `ok` comes back, the credential and the model are fine. Check the job's `PATH` and the Narration itself next.
 
 `codex login` finishes in a browser, against a listener on the box's port 1455. Forward that port on the way in:
 
@@ -225,4 +243,4 @@ CODEX_HOME=/home/rootstock/.codex codex login status
 
 Drop the `CODEX_HOME=` prefix if that shell already exports the same path. An interactive shell often does not, and a login under the wrong `CODEX_HOME` writes a token the scheduled run never reads. Where forwarding a port is not an option, `printenv OPENAI_API_KEY | codex login --with-api-key` gets there without a browser.
 
-The next run is the confirmation. `ok` goes back to `true` in `data/status.json` and `consecutiveFailures` resets to zero.
+The next run is the confirmation. `data/status.json` reads `ok: true` either way, so check the Artifact instead: `narrated` goes back to `true` in `data/artifact.json`, and This Week shows the Narrator's sentences again.
