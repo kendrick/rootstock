@@ -10,7 +10,7 @@ import {
 	findCoordinatePairs,
 	findDormantGuards,
 	findDuplicateIds,
-	findLawnsMissingLawnTag,
+	findLawnTagMismatches,
 	findLongDecimals,
 	findRulesPastWindow,
 	findUnmatchedPlantTags,
@@ -215,7 +215,7 @@ describe('rules that select plants by tag', () => {
 	});
 
 	it('finds every lawn in the real seed carrying the lawn tag', () => {
-		expect(findLawnsMissingLawnTag(seedPlants)).toEqual([]);
+		expect(findLawnTagMismatches(seedPlants)).toEqual([]);
 	});
 
 	// The typo findUnmatchedPlantTags can't see: the front lawn still carries `lawn`, so every lawn Rule's tag is matched while the new lawn reaches none of them.
@@ -224,8 +224,17 @@ describe('rules that select plants by tag', () => {
 		const plants = [...seedPlants, backLawn];
 
 		expect(findUnmatchedPlantTags(plants, seedRules)).toEqual([]);
-		expect(findLawnsMissingLawnTag(plants)).toEqual(['plant \'back-lawn\' is a lawn but lacks the \'lawn\' tag the lawn Rules select on']);
-		expect(findLawnsMissingLawnTag([...seedPlants, { ...backLawn, tags: ['lawn'] }])).toEqual([]);
+		expect(findLawnTagMismatches(plants)).toEqual(['plant \'back-lawn\' is a lawn but lacks the \'lawn\' tag the lawn Rules select on']);
+		expect(findLawnTagMismatches([...seedPlants, { ...backLawn, tags: ['lawn'] }])).toEqual([]);
+	});
+
+	// The reverse typo: every lawn Rule's tag is still matched, and targets() hands the lawn's herbicide to a hibiscus.
+	it('reports a non-lawn Plant carrying the lawn tag', () => {
+		const hibiscus = seedPlants.find(p => p.id === 'hibiscus-luna-white')!;
+		const plants = [...seedPlants.filter(p => p.id !== hibiscus.id), { ...hibiscus, tags: [...hibiscus.tags, 'lawn'] }];
+
+		expect(findUnmatchedPlantTags(plants, seedRules)).toEqual([]);
+		expect(findLawnTagMismatches(plants)).toEqual(['plant \'hibiscus-luna-white\' carries the \'lawn\' tag but is a container, so every lawn Rule would reach it']);
 	});
 
 	// #52's point: a Plant added to plants.json reaches the Rules its tags imply with no edit to rules.json.
