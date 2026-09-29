@@ -76,7 +76,7 @@ export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 # `IdentityAgent=none` is the one that took a real run to find. `IdentitiesOnly=yes` restricts ssh to
 # identities named on the command line *and in ssh_config*, so a `Host github.com` block carrying an
 # `IdentityFile` still gets offered first. On the owner's Mac that block names a work key, so every
-# run presented a Slalom identity to a personal repository and only reached the deploy key because
+# run presented the work identity to a personal repository and only reached the deploy key because
 # the agent refused. Cutting the agent out entirely leaves exactly the key named above.
 #
 # Built up here rather than beside the push, because the fetch below needs it too.
