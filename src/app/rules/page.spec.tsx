@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { failingStatus, narratedArtifact, okStatus } from '@/artifact/fixtures';
+import { NARRATION_FAILED_MESSAGE } from '@/artifact/artifact';
+import { failingStatus, narratedArtifact, okStatus, unnarratedArtifact } from '@/artifact/fixtures';
 import { loadArtifact } from '@/artifact/load';
 import { seedRules } from '@/seed';
 import RulesPage from './page';
@@ -187,5 +188,40 @@ describe('rules page', () => {
 		expect(markup).not.toContain(narratedArtifact.generatedAt);
 		expect(markup).not.toContain('runs failed');
 		expect(markup).not.toContain('role="status"');
+	});
+});
+
+// #77: the owner's one sign that the ticket went out in the Planner's own wording. It sits on the Rules page and nowhere the household reads first, and it says nothing on a narrated night or on a record from before the field existed.
+describe('rules page, how the last run\'s Narration went', () => {
+	const narrationLine = /Planner's own wording/;
+
+	it('says so when the Narrator failed, and where to look', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: unnarratedArtifact, status: { ...okStatus, narration: { outcome: 'failed', error: NARRATION_FAILED_MESSAGE } } });
+
+		render(<RulesPage />);
+
+		expect(screen.getByText(narrationLine).textContent).toMatch(/Narrator ran into a problem.*codex login status/s);
+	});
+
+	it('says so when Narration is switched off, naming the switch', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: unnarratedArtifact, status: { ...okStatus, narration: { outcome: 'off', error: null } } });
+
+		render(<RulesPage />);
+
+		expect(screen.getByText(narrationLine).textContent).toContain('ROOTSTOCK_NARRATION');
+	});
+
+	it('says nothing when Narration ran, or on a record that predates the field', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: { ...okStatus, narration: { outcome: 'ran', error: null } } });
+		const { unmount } = render(<RulesPage />);
+		expect(screen.queryByText(narrationLine)).toBeNull();
+		unmount();
+
+		// The shape of the committed data/status.json today, with no narration key at all, so this also exercises the fill ArtifactGate's parse does.
+		const { narration: _narration, ...predatesNarration } = okStatus;
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: unnarratedArtifact, status: predatesNarration });
+		render(<RulesPage />);
+		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Rules');
+		expect(screen.queryByText(narrationLine)).toBeNull();
 	});
 });

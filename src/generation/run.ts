@@ -7,7 +7,7 @@ import type { SeedData } from '@/store/store';
 import type { Location } from '@/weather/location';
 import type { Observation } from '@/weather/observation';
 import type { fetchObservations } from '@/weather/open-meteo';
-import { parseArtifact } from '@/artifact/artifact';
+import { NARRATION_FAILED_MESSAGE, parseArtifact } from '@/artifact/artifact';
 import { plannedFrom } from '@/artifact/planned-from';
 import { localDate } from '@/planner/dates';
 import { plan } from '@/planner/planner';
@@ -30,7 +30,8 @@ type FetchObservations = typeof fetchObservations;
  */
 export interface GenerationRunOptions {
 	fetchObservations: FetchObservations;
-	narrator: Narrator;
+	/** Null is ADR 0001's switch: the run publishes the Planner's wording and records Narration as `off`. */
+	narrator: Narrator | null;
 	now: Date;
 	location: Location;
 	seed: SeedData;
@@ -49,7 +50,7 @@ export interface GenerationRunOptions {
  * site has no way to tell a stalled runner from a quiet week in the yard.
  */
 export type GenerationResult
-	= | { artifact: Artifact; status: StatusRecord }
+	= | { artifact: Artifact; status: StatusRecord; narrationError: string | null }
 		| { failure: GenerationFailure; status: StatusRecord };
 
 /*
@@ -128,21 +129,34 @@ function assertNoCoordinates(artifact: Artifact): void {
 	}
 }
 
+/** What Narration came to on one run, with the Narrator's own error kept for the machine's log and never for the status record. */
+interface NarrationAttempt {
+	narration: Narration | null;
+	outcome: NonNullable<StatusRecord['narration']>['outcome'];
+	error: string | null;
+}
+
 /**
- * Runs the narrator and answers with null for every way it can go wrong: a
+ * Runs the narrator and answers with no Narration for every way it can go wrong: a
  * throw, a rejection, and a Narration citing a Task the Plan never contained
  * all land here. ADR 0001 makes the Planner's mechanical title the thing the
  * interface renders by default, so a run with no prose is a complete run rather
  * than a broken one. The caller gets the same successful result either way.
+ *
+ * The caught message comes back for the caller to log. Dropped, it leaves an expired codex credential looking like a narrated night everywhere except `narrated` in the Artifact.
  */
-async function narrate(planned: Plan, narrator: Narrator): Promise<Narration | null> {
+async function narrate(planned: Plan, narrator: Narrator | null): Promise<NarrationAttempt> {
+	if (narrator === null) {
+		return { narration: null, outcome: 'off', error: null };
+	}
+
 	try {
 		const narration = await narrator(planned);
 		validateNarration(narration, planned);
-		return narration;
+		return { narration, outcome: 'ran', error: null };
 	}
-	catch {
-		return null;
+	catch (cause) {
+		return { narration: null, outcome: 'failed', error: cause instanceof Error ? cause.message : String(cause) };
 	}
 }
 
@@ -163,6 +177,7 @@ function failureResult(failure: GenerationFailure, options: GenerationRunOptions
 			error: `generation failed at the ${failure.stage} stage: ${failure.message}`,
 			artifactGeneratedAt: options.previousStatus.artifactGeneratedAt,
 			consecutiveFailures: options.previousStatus.consecutiveFailures + 1,
+			narration: options.previousStatus.narration,
 		},
 	};
 }
@@ -175,7 +190,7 @@ function failureResult(failure: GenerationFailure, options: GenerationRunOptions
  * write are read side by side, and neither drifts into disagreeing with the
  * other about what `attemptedAt` means.
  */
-function publishedResult(artifact: Artifact, options: GenerationRunOptions): GenerationResult {
+function publishedResult(artifact: Artifact, options: GenerationRunOptions, attempt: NarrationAttempt): GenerationResult {
 	return {
 		artifact,
 		status: {
@@ -184,7 +199,9 @@ function publishedResult(artifact: Artifact, options: GenerationRunOptions): Gen
 			error: null,
 			artifactGeneratedAt: artifact.generatedAt,
 			consecutiveFailures: 0,
+			narration: { outcome: attempt.outcome, error: attempt.outcome === 'failed' ? NARRATION_FAILED_MESSAGE : null },
 		},
+		narrationError: attempt.error,
 	};
 }
 
@@ -244,7 +261,8 @@ export async function run(options: GenerationRunOptions): Promise<GenerationResu
 		return failureResult(toGenerationFailure('plan', cause), options);
 	}
 
-	const narration = await narrate(planned, options.narrator);
+	const attempt = await narrate(planned, options.narrator);
+	const { narration } = attempt;
 
 	// `plan.window` goes out exactly as the Planner returned it. ADR 0003 puts
 	// the window on the Plan because only the run that produced a Plan knows
@@ -267,5 +285,5 @@ export async function run(options: GenerationRunOptions): Promise<GenerationResu
 		return failureResult(toGenerationFailure('validate', cause), options);
 	}
 
-	return publishedResult(artifact, options);
+	return publishedResult(artifact, options, attempt);
 }

@@ -5,6 +5,7 @@ import type { Narration } from '@/artifact/narration';
 import type { Rule } from '@/rules/rule';
 import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
+import { NARRATION_FAILED_MESSAGE } from '@/artifact/artifact';
 import { AGGREGATE_DECIMAL_PLACES } from '@/planner/aggregate';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { fakeObservations } from '@/weather/fake-adapter';
@@ -273,7 +274,35 @@ describe('run', () => {
 			error: null,
 			artifactGeneratedAt: artifactOf(result).generatedAt,
 			consecutiveFailures: 0,
+			narration: { outcome: 'ran', error: null },
 		});
+	});
+
+	// #77: a Narrator that fails still publishes (ADR 0001), and the status record says so. The public file carries a fixed message, because codex's own output can say anything, and the real one goes to the caller for the machine's log.
+	it('records a failed Narration with a fixed message, and hands the real error to the caller', async () => {
+		const result = await run(options({ narrator: fakeNarrator(new Error('codex: not logged in (token expired 2026-09-20)')) }));
+
+		expect(artifactOf(result).narrated).toBe(false);
+		expect(result.status).toMatchObject({ ok: true, narration: { outcome: 'failed', error: NARRATION_FAILED_MESSAGE } });
+		expect(JSON.stringify(result.status)).not.toContain('token expired');
+		expect('artifact' in result && result.narrationError).toBe('codex: not logged in (token expired 2026-09-20)');
+	});
+
+	it('records a Narration naming a Task the Plan lacks as failed too', async () => {
+		const invented: Narration = { ...narration, tasks: [{ taskId: 'no-such-task', text: 'Invented.' }] };
+		const result = await run(options({ narrator: fakeNarrator(invented) }));
+
+		expect(result.status.narration).toEqual({ outcome: 'failed', error: NARRATION_FAILED_MESSAGE });
+		expect('artifact' in result && result.narrationError).toMatch(/no-such-task/);
+	});
+
+	// ADR 0001's switch: a run with no Narrator publishes the Planner's wording and says Narration was off, which reads apart from a failure.
+	it('records Narration as off when the run is handed no Narrator', async () => {
+		const result = await run(options({ narrator: null }));
+
+		expect(artifactOf(result).narrated).toBe(false);
+		expect(result.status.narration).toEqual({ outcome: 'off', error: null });
+		expect('artifact' in result && result.narrationError).toBeNull();
 	});
 
 	it('carries the previous artifact forward and counts the failure on', async () => {
@@ -292,6 +321,7 @@ describe('run', () => {
 			error: 'generation failed at the weather stage: Open-Meteo answered HTTP 503.',
 			artifactGeneratedAt: fixturePreviousStatus.artifactGeneratedAt,
 			consecutiveFailures: fixturePreviousStatus.consecutiveFailures + 1,
+			narration: fixturePreviousStatus.narration,
 		});
 	});
 

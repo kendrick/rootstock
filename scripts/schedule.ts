@@ -358,6 +358,9 @@ CODEX_HOME=
 # The SSH private key the push uses. Defaults to ~/.ssh/rootstock_deploy in the script. It has to be
 # a real file: the 1Password agent wants an approval prompt, and the push runs under BatchMode=yes.
 ROOTSTOCK_DEPLOY_KEY=
+
+# Blank or on runs the Narrator. off runs without it on purpose, per ADR 0001.
+ROOTSTOCK_NARRATION=
 `;
 }
 

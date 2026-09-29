@@ -40,7 +40,7 @@ import { todaysRun } from './todays-run';
 export interface GenerateOptions {
 	run: typeof run;
 	fetchObservations: typeof fetchObservations;
-	narrator: Narrator;
+	narrator: Narrator | null;
 	seed: SeedData;
 	location: Location;
 	previousStatus: StatusRecord;
@@ -64,6 +64,7 @@ export const DEFAULT_STATUS: StatusRecord = {
 	error: null,
 	artifactGeneratedAt: null,
 	consecutiveFailures: 0,
+	narration: null,
 };
 
 /**
@@ -73,6 +74,20 @@ export const DEFAULT_STATUS: StatusRecord = {
  */
 function writeJson(file: string, value: unknown): void {
 	writeFileSync(file, `${JSON.stringify(value, null, '\t')}\n`);
+}
+
+/**
+ * The Narrator tonight's run gets, or null when `ROOTSTOCK_NARRATION=off` in the env file `daily-run.sh` sources. That's the switch ADR 0001 describes, a standing mode rather than a flag on one run. Any value other than `on` or `off` throws, the way a missing `ROOTSTOCK_TIME_ZONE` does, because a typo that quietly kept the Narrator on would look exactly like the switch working.
+ */
+export function narratorFromEnv(env: Readonly<Record<string, string | undefined>>, create: () => Narrator = createCodexNarrator): Narrator | null {
+	const value = env.ROOTSTOCK_NARRATION;
+	if (value === undefined || value === '' || value === 'on') {
+		return create();
+	}
+	if (value === 'off') {
+		return null;
+	}
+	throw new Error(`ROOTSTOCK_NARRATION is '${value}'; set it to 'on' or 'off', or leave it unset for on.`);
 }
 
 /**
@@ -214,7 +229,7 @@ async function main(argv: readonly string[]): Promise<number> {
 	const result = await generate({
 		run,
 		fetchObservations,
-		narrator: createCodexNarrator(),
+		narrator: narratorFromEnv(process.env),
 		seed: {
 			yard: seedYard,
 			plants: seedPlants,
@@ -233,6 +248,10 @@ async function main(argv: readonly string[]): Promise<number> {
 
 	if ('artifact' in result) {
 		console.log(`artifact: ${artifactFile}`);
+		// The status record carries only NARRATION_FAILED_MESSAGE, since it's public. This line is the one place the Narrator's real error lands, in the launchd log on this machine.
+		if (result.narrationError !== null) {
+			console.error(`narration failed, so the Planner's wording was published: ${result.narrationError}`);
+		}
 		return 0;
 	}
 
