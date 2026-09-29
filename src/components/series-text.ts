@@ -11,6 +11,7 @@ export const VARIABLE_TEXT: Record<Variable, string> = {
 	'soil-temperature': 'soil temperature',
 	'precipitation': 'rainfall',
 	'precipitation-probability': 'chance of rain',
+	'air-temperature': 'air temperature',
 };
 
 export const AGGREGATE_TEXT: Record<Aggregate, string> = {

@@ -1,7 +1,7 @@
 import type { Location } from './location';
 import type { Observation, Unit, Variable } from './observation';
 import { z } from 'zod';
-import { observationSchema } from './observation';
+import { FORECAST_DAYS, observationSchema } from './observation';
 
 /**
  * Open-Meteo publishes under CC BY 4.0, and the licence requires attribution
@@ -25,7 +25,7 @@ export class OpenMeteoError extends Error {
 const HISTORICAL_FORECAST_ENDPOINT = 'https://historical-forecast-api.open-meteo.com/v1/forecast';
 
 /**
- * Both counts were measured against the live API and are load-bearing.
+ * Both counts were measured against the live API and are load-bearing. `FORECAST_DAYS` is defined in observation.ts, where rule.ts reads it too, and the note on it lives here with the measurement.
  *
  * 92 past days go to the historical-forecast endpoint rather than
  * `api.open-meteo.com/v1/forecast`, which keeps only about 57 past days of
@@ -47,7 +47,6 @@ const HISTORICAL_FORECAST_ENDPOINT = 'https://historical-forecast-api.open-meteo
  * the window the Rules evaluated, is untouched.
  */
 const PAST_DAYS = 92;
-const FORECAST_DAYS = 7;
 
 interface Series {
 	/** What Open-Meteo calls the series, in the `hourly=` parameter and in the response body. */
@@ -63,7 +62,7 @@ interface Series {
  * Where the API's names meet ours. The `hourly=` parameter is built from this
  * list, so what is requested and what is mapped cannot drift apart.
  *
- * A fourth series is two edits, not one: this array and `responseSchema`
+ * Each new series is two edits, not one: this array and `responseSchema`
  * below, which names the same keys so the parse can stay statically typed.
  * Forgetting the second is a compile error rather than a silent gap, because
  * indexing `payload.hourly` by an apiName the schema does not carry fails
@@ -73,6 +72,7 @@ const SERIES = [
 	{ apiName: 'soil_temperature_6cm', variable: 'soil-temperature', depthCm: 6, unit: 'F', reportedUnit: '°F' },
 	{ apiName: 'precipitation', variable: 'precipitation', depthCm: null, unit: 'mm', reportedUnit: 'mm' },
 	{ apiName: 'precipitation_probability', variable: 'precipitation-probability', depthCm: null, unit: 'percent', reportedUnit: '%' },
+	{ apiName: 'temperature_2m', variable: 'air-temperature', depthCm: null, unit: 'F', reportedUnit: '°F' },
 ] as const satisfies readonly Series[];
 
 const hourlySeriesSchema = z.array(z.number().nullable());
@@ -89,6 +89,7 @@ const responseSchema = z.object({
 		soil_temperature_6cm: hourlySeriesSchema,
 		precipitation: hourlySeriesSchema,
 		precipitation_probability: hourlySeriesSchema,
+		temperature_2m: hourlySeriesSchema,
 	}),
 });
 
@@ -164,7 +165,7 @@ function buildUrl(location: Location): string {
  * screen: a watered lawn in a Texas July runs cooler than the model's bare dirt.
  *
  * The two day counts in the query are measured values with their own note at
- * `PAST_DAYS` and `FORECAST_DAYS` above, including why seven forecast days
+ * `PAST_DAYS` above, including why seven forecast days
  * rather than ADR 0003's fortnight.
  */
 export async function fetchObservations({

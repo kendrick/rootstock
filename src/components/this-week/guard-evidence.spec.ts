@@ -1,4 +1,5 @@
 import type { DailyAggregate } from '@/planner/plan';
+import type { Rule } from '@/rules/rule';
 import { describe, expect, it } from 'vitest';
 import { seedRules } from '@/seed';
 import { guardEvidence, rainBefore } from './guard-evidence';
@@ -31,6 +32,29 @@ describe('guardEvidence', () => {
 
 	it('says nothing when the window holds none of the Guard\'s days', () => {
 		expect(guardEvidence(rainExpected, [rain('2026-09-20', 8)], '2026-09-28')).toBeNull();
+	});
+});
+
+describe('guardEvidence, forecast-reaches', () => {
+	function airHigh(date: string, value: number, overrides: Partial<DailyAggregate> = {}): DailyAggregate {
+		return { date, variable: 'air-temperature', depthCm: null, aggregate: 'max', value, unit: 'F', basis: 'forecast', provenance: 'modeled', source: 'open-meteo', ...overrides };
+	}
+
+	const heatLimit = {
+		...waterIn!,
+		id: 'heat-limit',
+		condition: { kind: 'forecast-reaches', variable: 'air-temperature', depthCm: null, aggregate: 'max', comparison: 'gte', value: 90, unit: 'F', consecutiveDays: 2 },
+	} as Rule;
+
+	it('prints the forecast reading for each day the Guard reads, and no other', () => {
+		const window = [airHigh('2026-05-19', 99), airHigh('2026-05-20', 94.6), airHigh('2026-05-21', 91.24), airHigh('2026-05-22', 97)];
+
+		expect(guardEvidence(heatLimit, window, '2026-05-20')).toBe('Forecast maximum air temperature May 20 94.6°F / May 21 91.2°F');
+	});
+
+	// #59: a day forecast at 89.96 didn't reach 90, so it can't print as 90.
+	it('keeps a reading on its side of the Guard\'s value', () => {
+		expect(guardEvidence(heatLimit, [airHigh('2026-05-20', 89.96)], '2026-05-20')).toBe('Forecast maximum air temperature May 20 89.96°F');
 	});
 });
 

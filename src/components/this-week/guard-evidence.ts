@@ -1,6 +1,8 @@
 import type { DailyAggregate } from '@/planner/plan';
 import type { Rule } from '@/rules/rule';
-import { rainChanceDays } from '@/planner/guard-conditions';
+import { AGGREGATE_TEXT, formatValue, VARIABLE_TEXT } from '@/components/series-text';
+import { roundKeepingSide } from '@/planner/aggregate';
+import { forecastDays, rainChanceDays } from '@/planner/guard-conditions';
 import { dayOfMonth } from './citation-line';
 
 /**
@@ -15,6 +17,18 @@ import { dayOfMonth } from './citation-line';
  * since the Plan was made, ArtifactGate already says so above the ticket.
  */
 export function guardEvidence(guard: Rule | undefined, window: readonly DailyAggregate[], asOf: string): string | null {
+	if (guard?.kind === 'guard' && guard.condition.kind === 'forecast-reaches') {
+		const { condition } = guard;
+		const days = forecastDays(condition, [...window], asOf);
+		if (days.length === 0) {
+			return null;
+		}
+
+		// Kept on its side of the Guard's value, so a forecast of 89.96 under a 90°F hold doesn't print as the line itself.
+		const readings = days.map(day => `${dayOfMonth(day.date)} ${formatValue(roundKeepingSide(day.value, [condition.value]), day.unit)}`);
+		return `Forecast ${AGGREGATE_TEXT[condition.aggregate]} ${VARIABLE_TEXT[condition.variable]} ${readings.join(' / ')}`;
+	}
+
 	if (guard?.kind !== 'guard' || guard.condition.kind !== 'no-rain-within') {
 		return null;
 	}

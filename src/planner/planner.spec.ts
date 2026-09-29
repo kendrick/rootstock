@@ -781,6 +781,197 @@ describe('plan window', () => {
 });
 
 /*
+ * The owner's heat limit end to end, from hourly Observations through the window to the deferral. Every Task comes from one year-round Window Rule, so whatever holds it back is the heat Guard and nothing else. The instants are written in UTC for Central daylight time: 12:00Z is 7am and 21:00Z is 4pm.
+ */
+describe('plan under a forecast-reaches guard', () => {
+	const work = windowRule({ id: 'broadcast-herbicide', name: 'Broadcast herbicide', start: '01-01', end: '12-31' });
+	const heatRelease = 'Held until the forecast high for the day drops under 90°F.';
+	const heatGuard = guardRule({
+		id: 'heat-limit',
+		name: 'No broadcast herbicide above 90°F',
+		condition: {
+			kind: 'forecast-reaches',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			comparison: 'gte',
+			value: 90,
+			unit: 'F',
+			consecutiveDays: 1,
+		},
+		release: heatRelease,
+	});
+
+	function airForecast(observedAt: string, value: number): Observation {
+		return observationSchema.parse({
+			observedAt,
+			variable: 'air-temperature',
+			depthCm: null,
+			value,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		});
+	}
+
+	const hotMay = [airForecast('2026-05-20T12:00:00Z', 72), airForecast('2026-05-20T21:00:00Z', 95)];
+	const mildAugust = [airForecast('2026-08-14T12:00:00Z', 70), airForecast('2026-08-14T21:00:00Z', 78)];
+	const morningProbe = observationSchema.parse({
+		observedAt: '2026-05-20T14:00:00Z',
+		variable: 'air-temperature',
+		depthCm: null,
+		value: 75,
+		unit: 'F',
+		basis: 'observed',
+		provenance: 'measured',
+		source: 'manual',
+		station: 'backyard-thermometer',
+	});
+
+	it('defers the work on a 95°F day in May, keeping its rule and citation and naming the guard', () => {
+		const unguarded = plan(inputWith({ asOf: '2026-05-20', rules: [work], observations: hotMay }));
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: hotMay }));
+		const before = unguarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(before).toBeDefined();
+		expect(held?.status).toBe('deferred');
+		expect(held?.citation).toEqual(before?.citation);
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+	});
+
+	// A probe reading beats a modeled one inside `toDailyAggregates`, which is right for a day that happened and wrong for one that hasn't. A 9am reading of 75°F says nothing about a 4pm forecast of 95°F.
+	it('defers on the modeled forecast high when a cooler manual reading sits on the same day', () => {
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: [...hotMay, morningProbe] }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
+	// ADR 0002: a Guard creates no work. `ruleSetSchema` rejects this Rule set, so the Guard is added after parsing, and `plan()` itself still can't let a Guard author a Task by changing a Threshold Rule's evidence.
+	it('leaves a Threshold Rule on the same series reading the measured day, and authoring what it authored alone', () => {
+		const hotDay = thresholdRule({ id: 'hot-day', name: 'Hot day', variable: 'air-temperature', depthCm: null, aggregate: 'max', comparison: 'gte', value: 90, consecutiveDays: 1 });
+		const alone = inputWith({ asOf: '2026-05-20', rules: [hotDay], observations: [...hotMay, morningProbe] });
+
+		expect(() => inputWith({ ...alone, rules: [hotDay, heatGuard] })).toThrow(/heat-limit/);
+		expect(plan(alone).tasks).toEqual([]);
+		expect(plan({ ...alone, rules: [hotDay, heatGuard] }).tasks).toEqual([]);
+	});
+
+	// The adapter marks an hour observed once it has passed, whatever its provenance, so on a 06:00 run the modeled 05:00 low is already an observed hour. It's still the model's reading of the day, and a frost limit that skipped it would read only the warm afternoon. November is Central standard time, so 11:00Z is 5am and 20:00Z is 2pm.
+	it('reads a modeled low from before the run as part of the day\'s forecast', () => {
+		const frostRelease = 'Held until the forecast low for the day stays above 36°F.';
+		const frostGuard = guardRule({
+			id: 'frost-limit',
+			name: 'Frost limit',
+			condition: {
+				kind: 'forecast-reaches',
+				variable: 'air-temperature',
+				depthCm: null,
+				aggregate: 'min',
+				comparison: 'lte',
+				value: 36,
+				unit: 'F',
+				consecutiveDays: 1,
+			},
+			release: frostRelease,
+		});
+		const coldMorning = [
+			observationSchema.parse({ ...airForecast('2026-11-10T11:00:00Z', 33), basis: 'observed' }),
+			airForecast('2026-11-10T20:00:00Z', 55),
+		];
+		const guarded = plan(inputWith({ asOf: '2026-11-10', rules: [work, frostGuard], observations: coldMorning }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'frost-limit', releaseWhen: frostRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-11-10',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'min',
+			value: 33,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
+	// launchd and systemd run a missed job on wake, so a run can start after 23:00 local, when the adapter has marked every hour of the planned day observed. The model's day is still the evidence the Guard wants.
+	it('reads the planned day\'s modeled high when a late run has marked every hour observed', () => {
+		const lateRun = hotMay.map(observation => observationSchema.parse({ ...observation, basis: 'observed' }));
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: lateRun }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
+	it('lets the work go ahead on a 78°F day in August', () => {
+		const guarded = plan(inputWith({ asOf: '2026-08-14', rules: [work, heatGuard], observations: mildAugust }));
+		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');
+
+		expect(task?.status).toBe('fired');
+		expect(task?.deferrals).toEqual([]);
+		expect(task?.annotations).toEqual([]);
+	});
+
+	it('annotates rather than defers when no air temperature was fetched', () => {
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: [] }));
+		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');
+
+		expect(task?.deferrals).toEqual([]);
+		expect(task?.annotations).toContainEqual({ guardId: 'heat-limit', text: FORECAST_UNAVAILABLE_TEXT });
+	});
+
+	it('carries the day\'s forecast high in the window', () => {
+		const window = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: hotMay })).window;
+
+		expect(() => z.array(dailyAggregateSchema).parse(window)).not.toThrow();
+		expect(window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
+	it('carries no air temperature when no guard asks for it', () => {
+		const window = plan(inputWith({ asOf: '2026-05-20', rules: [work], observations: hotMay })).window;
+
+		expect(window).toEqual([]);
+	});
+});
+
+/*
  * #59: `plan()` rounds `Plan.window` to `AGGREGATE_DECIMAL_PLACES` in the
  * object it returns, after every Rule and Guard has already read the window
  * at full precision. These pin that split at the one place it can go wrong:

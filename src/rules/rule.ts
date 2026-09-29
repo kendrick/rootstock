@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { kebabIdSchema } from '@/validation/ids';
-import { aggregateSchema, unitSchema, variableSchema } from '@/weather/observation';
+import { aggregateSchema, FORECAST_DAYS, unitSchema, variableSchema } from '@/weather/observation';
 import { regionSchema } from '@/yard/plant';
 
 /**
@@ -149,6 +149,8 @@ export const windowRuleSchema = z.strictObject({
 
 export type WindowRule = z.infer<typeof windowRuleSchema>;
 
+const comparisonSchema = z.enum(['gte', 'lte']);
+
 /**
  * Fires when a series holds at or past a value for a run of consecutive days.
  * `published` carries the range the extension service actually printed,
@@ -176,7 +178,7 @@ export const thresholdRuleSchema = z.strictObject({
 	variable: variableSchema,
 	depthCm: z.number().nullable().default(null),
 	aggregate: aggregateSchema,
-	comparison: z.enum(['gte', 'lte']),
+	comparison: comparisonSchema,
 	value: z.number(),
 	unit: unitSchema,
 	consecutiveDays: z.number().int().min(1),
@@ -256,6 +258,10 @@ export type CadenceRule = z.infer<typeof cadenceRuleSchema>;
  * rule rather than a reading. `within-window` carries `negate` so one shape
  * covers both "only during" and "not until", which is what the fig needs: hold
  * fertilizer whenever the date falls outside spring.
+ *
+ * `forecast-reaches` takes the seven reading fields of a Threshold Rule, so "a reading crossed a value" has one vocabulary whichever kind of Rule asks. It exists for the owner's heat limit on broadcast herbicide. A calendar fence can't express that, since North Texas runs 78F days in August and 95F days in May. `depthCm` has no default here, unlike on the Threshold Rule, because a condition missing any of the seven is an authoring slip worth failing on.
+ *
+ * It reads forecast rows only, which is the reverse of a Threshold Rule and the same call `rainChanceDays` in guard-conditions.ts makes. A Threshold Rule reads observed days so a fired Task can't un-fire when the forecast is revised. A Guard holds work rather than creating it, and a revised forecast releasing its Deferral is what the owner wants. The question is about the day the work would happen, which hasn't happened yet, and only a forecast speaks to that.
  */
 export const guardConditionSchema = z.discriminatedUnion('kind', [
 	z.strictObject({ kind: z.literal('always') }),
@@ -269,6 +275,19 @@ export const guardConditionSchema = z.discriminatedUnion('kind', [
 		start: monthDaySchema,
 		end: monthDaySchema,
 		negate: z.boolean(),
+	}),
+	z.strictObject({
+		kind: z.literal('forecast-reaches'),
+		variable: variableSchema,
+		depthCm: z.number().nullable(),
+		aggregate: aggregateSchema,
+		comparison: comparisonSchema,
+		value: z.number(),
+		unit: unitSchema,
+		// A Threshold Rule's run has no ceiling (ADR 0003 widens the window instead), but this run reads ahead, and no Rule can widen a forecast Open-Meteo doesn't publish. A longer run would answer 'unavailable' every day.
+		consecutiveDays: z.number().int().min(1).max(FORECAST_DAYS, {
+			message: `a forecast-reaches run can't outlast the ${FORECAST_DAYS}-day forecast the daily run fetches`,
+		}),
 	}),
 ]);
 
@@ -328,3 +347,27 @@ export const ruleSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type Rule = z.infer<typeof ruleSchema>;
+
+/**
+ * A Rule set, checked as a whole. A `forecast-reaches` Guard may not read the series and reduction a Threshold Rule reads.
+ *
+ * The Guard reads that series' forecast days from the model alone, and the Threshold Rule reads them measured-first. `Plan.window` holds one row per series and day, so the Artifact couldn't carry the reading behind both verdicts, and one of them would be published without its evidence (ADR 0003).
+ */
+export const ruleSetSchema = z.array(ruleSchema).superRefine((rules, context) => {
+	const thresholds = rules.filter(rule => rule.kind === 'threshold');
+
+	for (const guard of rules) {
+		if (guard.kind !== 'guard' || guard.condition.kind !== 'forecast-reaches') {
+			continue;
+		}
+
+		const { variable, depthCm, aggregate } = guard.condition;
+		const shared = thresholds.find(rule => rule.variable === variable && rule.depthCm === depthCm && rule.aggregate === aggregate);
+		if (shared !== undefined) {
+			context.addIssue({
+				code: 'custom',
+				message: `Guard '${guard.id}' reads the ${aggregate} of ${variable} that Threshold Rule '${shared.id}' reads, and the Artifact's window can carry only one of their readings for a day; read another reduction or series`,
+			});
+		}
+	}
+});

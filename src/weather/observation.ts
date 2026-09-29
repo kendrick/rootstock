@@ -5,8 +5,13 @@ import { z } from 'zod';
  * Threshold Rule can pattern-match on it exhaustively: adding a new series is a
  * schema change, not a typo waiting to slip past validation.
  */
-export const variableSchema = z.enum(['soil-temperature', 'precipitation', 'precipitation-probability']);
+export const variableSchema = z.enum(['soil-temperature', 'precipitation', 'precipitation-probability', 'air-temperature']);
 export type Variable = z.infer<typeof variableSchema>;
+
+/**
+ * How many days of forecast the daily run fetches, counting the day it runs. The measurement behind the number sits in open-meteo.ts, which requests it. It lives here because a Rule has to be checked against it too, and the Rule schema shouldn't depend on a provider's adapter to learn how far ahead a forecast reaches.
+ */
+export const FORECAST_DAYS = 7;
 
 /**
  * The unit a value is expressed in. One enum per project rather than per
