@@ -27,7 +27,17 @@ const GENERATION_TIME = new Intl.DateTimeFormat('en-US', {
  * makes the count the thing worth saying, since "the last four runs failed"
  * sends a reader to the box and "this data is old" does not.
  */
-function failureSentence(consecutiveFailures: number): string {
+function failureSentence(consecutiveFailures: number, prominent: boolean): string {
+	// The Away Card's reader can't go and look at the computer, and "runs" is
+	// the owner's word. What they can do is tell the person who handed it over.
+	if (prominent) {
+		const updates = consecutiveFailures === 1
+			? 'The last update to this card'
+			: `The last ${consecutiveFailures} updates to this card`;
+
+		return `${updates} didn't go through, so it may be out of date. Let whoever gave it to you know.`;
+	}
+
 	const runs = consecutiveFailures === 1
 		? 'The last run'
 		: `The last ${consecutiveFailures} runs`;
@@ -53,7 +63,8 @@ export interface StalenessBannerProps {
 	/**
 	 * The Away Card's variant. That view is printed and carried around the yard,
 	 * so its reader cannot glance at the site to check whether anything moved;
-	 * the warning has to survive being on paper in someone else's hand.
+	 * the warning has to survive being on paper in someone else's hand. It also
+	 * speaks to that reader, not the owner, about a failed run.
 	 */
 	prominent?: boolean;
 }
@@ -162,7 +173,7 @@ export function StalenessBanner({
 							: '. Nothing newer has come in since.'}
 					</p>
 				)}
-				{hasFailures && <p>{failureSentence(consecutiveFailures)}</p>}
+				{hasFailures && <p>{failureSentence(consecutiveFailures, prominent)}</p>}
 			</div>
 		</div>
 	);

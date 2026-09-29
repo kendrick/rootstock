@@ -46,3 +46,13 @@ describe('artifactError', () => {
 		expect(screen.getByRole('alert').textContent).toContain('data/artifact.json');
 	});
 });
+
+describe('artifactError, for the household', () => {
+	it('gives the page its heading and one step the reader can take', () => {
+		render(<ArtifactError message={FAILURE} audience="household" />);
+
+		const alert = screen.getByRole('alert');
+		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This card couldn’t be put together today');
+		expect(alert.textContent).toBe('This card couldn’t be put together todayAsk whoever gave it to you.');
+	});
+});

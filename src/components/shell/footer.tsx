@@ -1,5 +1,8 @@
+'use client';
+
 import type { ReactElement } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { OPEN_METEO_ATTRIBUTION } from '@/weather/open-meteo';
@@ -12,6 +15,12 @@ import { OPEN_METEO_ATTRIBUTION } from '@/weather/open-meteo';
  * copy here would drift from the one the licence requires.
  */
 export function Footer(): ReactElement {
+	// The Away Card keeps the licence line and nothing else. /about's nav
+	// reaches This Week, which names the Withheld work, so a link there undoes
+	// what SheetFrame hides the nav on this route to prevent. Same pathname
+	// test as SheetFrame, so the two can't disagree about which route it is.
+	const isAwayCard = usePathname().startsWith('/away/');
+
 	return (
 		<footer className="border-t-2 border-rule bg-background">
 			<div className="mx-auto w-full max-w-7xl px-6 py-4">
@@ -26,12 +35,14 @@ export function Footer(): ReactElement {
 					    dismissed it, or who arrived on a second device, with no route back
 					    to the explanation. It is not in the nav because the nav is the
 					    owner's route list and they never need this. */}
-					<Link
-						href="/about"
-						className={cn('font-display text-label font-extrabold tracking-widest text-muted uppercase underline underline-offset-4 print:hidden', FOCUS_RING)}
-					>
-						How this works
-					</Link>
+					{!isAwayCard && (
+						<Link
+							href="/about"
+							className={cn('font-display text-label font-extrabold tracking-widest text-muted uppercase underline underline-offset-4 print:hidden', FOCUS_RING)}
+						>
+							How this works
+						</Link>
+					)}
 				</div>
 			</div>
 		</footer>

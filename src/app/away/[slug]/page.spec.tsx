@@ -78,7 +78,7 @@ describe('away page', () => {
 
 		render(<AwayPage />);
 
-		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Yard tasks this week');
+		expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Yard tasks, week of Sep 11');
 		expect(screen.getByText(NARRATED_TEXT)).toBeDefined();
 	});
 

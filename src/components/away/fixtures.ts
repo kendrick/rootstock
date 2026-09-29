@@ -1,4 +1,5 @@
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
+import type { Occurrence } from '@/planner/occurrence';
 import type { Rule, TagPolicy } from '@/rules/rule';
 import { approachingArtifact, failingStatus, narratedArtifact, okStatus } from '@/artifact/fixtures';
 import { isDelegable } from '@/planner/delegation';
@@ -257,4 +258,20 @@ export const awayStatus: StatusRecord = {
 export const failingAwayStatus: StatusRecord = {
 	...failingStatus,
 	artifactGeneratedAt: awayArtifact.generatedAt,
+};
+
+/**
+ * Shaped like a line in `src/seed/occurrences.json`: `source: 'seed'`, filed
+ * under the Task's own `(ruleId, plantId)`, and dated inside the current pass
+ * through `last-nitrogen`'s window, so `isCompleted` accepts it. The Rule
+ * fires until its window closes whether or not the work was done, which is
+ * how a second round of fertilizer ends up on the lawn.
+ */
+export const recordedNitrogenOccurrence: Occurrence = {
+	id: 'last-nitrogen-front-lawn-2026-09-10',
+	ruleId: 'last-nitrogen',
+	plantId: 'front-lawn',
+	completedAt: '2026-09-10T15:00:00Z',
+	recordedAt: '2026-09-10T18:00:00Z',
+	source: 'seed',
 };
