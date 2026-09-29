@@ -67,6 +67,19 @@ export function onlyArg(argv: string[]): string | null {
 	return flag === -1 ? null : argv[flag + 1] ?? null;
 }
 
+/**
+ * Which Plants the photo draws and which the session asks about. `--only` narrows the questions and never the photo: a new Plant has no Pin yet, and the photo still needs every other Pin on it to place the new one against.
+ */
+export function sitingPlan<T extends { id: string }>(plants: T[], only: string | null): { onPage: T[]; toSite: T[] } {
+	const toSite = only === null ? plants : plants.filter(plant => plant.id === only);
+
+	if (toSite.length === 0) {
+		throw new Error(`no Plant with id '${only}' in plants.json`);
+	}
+
+	return { onPage: plants, toSite };
+}
+
 /** The page the siting session runs in: the photo at its own aspect, with every Pin drawn on it. */
 export function sitingPage(photoDataUrl: string, plants: { id: string; name: string; position: { x: number; y: number } | null }[]): string {
 	const pins = plants
@@ -110,15 +123,16 @@ export function sitingPage(photoDataUrl: string, plants: { id: string; name: str
 async function siteEach(
 	browser: Browser,
 	photoDataUrl: string,
-	plants: { id: string; name: string; position: { x: number; y: number } | null }[],
+	onPage: { id: string; name: string; position: { x: number; y: number } | null }[],
+	toSite: { id: string; name: string; position: { x: number; y: number } | null }[],
 ): Promise<Siting[]> {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-	await page.setContent(sitingPage(photoDataUrl, plants));
+	await page.setContent(sitingPage(photoDataUrl, onPage));
 
 	const ask = createInterface({ input: process.stdin, output: process.stdout });
 	const sitings: Siting[] = [];
 
-	for (const plant of plants) {
+	for (const plant of toSite) {
 		const had = plant.position === null ? 'not sited yet' : `now at ${plant.position.x}, ${plant.position.y}`;
 		await page.evaluate(text => window.__say(text), `Click where ${plant.name} belongs`);
 
@@ -158,12 +172,7 @@ async function siteEach(
 async function main(): Promise<void> {
 	const plantsSource = readFileSync(PLANTS, 'utf8');
 	const everyPlant = JSON.parse(plantsSource) as { id: string; name: string; position: { x: number; y: number } | null }[];
-	const only = onlyArg(process.argv.slice(2));
-	const plants = only === null ? everyPlant : everyPlant.filter(plant => plant.id === only);
-
-	if (plants.length === 0) {
-		throw new Error(`no Plant with id '${only}' in plants.json`);
-	}
+	const { onPage, toSite } = sitingPlan(everyPlant, onlyArg(process.argv.slice(2)));
 	const yard = JSON.parse(readFileSync(YARD, 'utf8')) as { photo: { path: string } | null };
 
 	if (yard.photo === null) {
@@ -175,12 +184,12 @@ async function main(): Promise<void> {
 	const photoPath = path.join(ROOT, 'public', yard.photo.path.replace(/^\//, ''));
 	const photoDataUrl = `data:image/jpeg;base64,${readFileSync(photoPath).toString('base64')}`;
 
-	console.log(`\n  ${plants.length} Plants. The browser window shows the photo with every Pin on it.\n`);
+	console.log(`\n  ${toSite.length} of ${onPage.length} Plants to site. The browser window shows the photo with every Pin on it.\n`);
 
 	const browser = await chromium.launch({ headless: false });
 
 	try {
-		const sitings = await siteEach(browser, photoDataUrl, plants);
+		const sitings = await siteEach(browser, photoDataUrl, onPage, toSite);
 
 		if (sitings.length === 0) {
 			console.log('\n  nothing changed\n');
