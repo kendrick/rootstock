@@ -1,7 +1,7 @@
 import type { Artifact } from '@/artifact/artifact';
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { approachingArtifact, deferredTaskId, narratedArtifact, okStatus } from '@/artifact/fixtures';
+import { approachingArtifact, deferredTaskId, failingStatus, narratedArtifact, okStatus } from '@/artifact/fixtures';
 import { loadArtifact } from '@/artifact/load';
 import AboutPage from './page';
 
@@ -21,6 +21,8 @@ afterEach(() => {
 
 const SPECIMEN_INTRO = /Here is one real Task from the current ticket/u;
 const UNREADABLE = /The current ticket couldn.t be read/u;
+const READOUT_CAPTION = /The lines under steps 1 to 5 are what each step did on the run that made the current ticket/u;
+const publishedStatus = { ...okStatus, attemptedAt: narratedArtifact.generatedAt, artifactGeneratedAt: narratedArtifact.generatedAt };
 
 function withTasks(artifact: Artifact, keep: (id: string) => boolean): Artifact {
 	return { ...artifact, plan: { ...artifact.plan, tasks: artifact.plan.tasks.filter(task => keep(task.id)) } };
@@ -39,6 +41,43 @@ describe('about page', () => {
 		expect(screen.queryByText(SPECIMEN_INTRO)).toBeNull();
 	});
 
+	it('dates the ticket apart from a later attempt that failed', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: failingStatus });
+
+		render(<AboutPage />);
+
+		expect(screen.getByText(/under step 6 is the latest attempt/u)).toBeDefined();
+		expect(screen.getByText('Latest attempt Mon Sep 14, 11:03 UTC: failed / 3 failures in a row / ticket from Fri Sep 11, 11:04 UTC')).toBeDefined();
+	});
+
+	it('puts what each step did on the ticket\'s run under that step', () => {
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: publishedStatus });
+
+		render(<AboutPage />);
+
+		expect(screen.getByText(READOUT_CAPTION)).toBeDefined();
+		const steps = screen.getAllByRole('listitem').filter(item => /^0[1-6]/u.test(item.textContent));
+		expect(steps.map(step => step.querySelector('.font-mono')?.textContent)).toEqual([
+			'32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
+			'9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
+			'Water in after application: annotated 1 / Rain expected: deferred 1',
+			'Narrator wrote 2 of 3 Task sentences / 1 Advisory',
+			'Generated Fri Sep 11, 11:04 UTC',
+			'Last run Fri Sep 11, 11:04 UTC: published / 0 failures in a row',
+		]);
+	});
+
+	it('prints no run figures when the status record will not parse', () => {
+		// The figures would be the one part of the page still vouching for a run
+		// the site can't say anything true about.
+		vi.mocked(loadArtifact).mockReturnValue({ artifact: narratedArtifact, status: { ok: 'maybe' } });
+
+		render(<AboutPage />);
+
+		expect(screen.queryByText(READOUT_CAPTION)).toBeNull();
+		expect(screen.queryByText(/^Generated /u)).toBeNull();
+	});
+
 	it('calls a Plan with no Tasks a quiet week, not an unreadable ticket', () => {
 		const empty: Artifact = {
 			...withTasks(narratedArtifact, () => false),
@@ -50,6 +89,7 @@ describe('about page', () => {
 
 		expect(screen.getByText(/The current ticket has no Tasks/u)).toBeDefined();
 		expect(screen.queryByText(UNREADABLE)).toBeNull();
+		expect(screen.getByText('9 Rules held / No Tasks written')).toBeDefined();
 	});
 
 	it('does not say a narrated ticket went out without the Narrator', () => {
