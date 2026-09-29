@@ -54,8 +54,8 @@ const IRRIGATION_SOURCE_TEXT: Record<Irrigation['source'], string> = {
  */
 const GUARD_EFFECT_TEXT: Record<GuardRule['effect'], string> = {
 	// "Can", because the list says what a Guard is able to do here, not what
-	// it is doing today. Whether it holds anything this week is on the ticket.
-	defer: 'Guard · can hold work back',
+	// it is doing today. What it concluded this week is on the line under it.
+	defer: 'Guard · can defer work',
 	annotate: 'Guard · can add a note',
 };
 
@@ -334,13 +334,15 @@ function WaitingLine({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement |
 	return standing.band === 'waiting' ? <p className="text-note text-muted">{standing.waitingOn}</p> : null;
 }
 
-/** Whether a Guard is holding or marking this Plant's work on this week's ticket. `plan` is narrowed to the open Plant's Tasks. */
+/**
+ * What a Guard concluded on each of this Plant's Tasks this week, in the Rules
+ * page's own verdicts ("Deferring:", "Let through:"). `standingFor` reads them
+ * off `Task.guardChecks`, so a Guard that checked the work and found it clear
+ * no longer reads the same as one that reached nothing. CONTEXT.md puts "hold"
+ * on Deferral's _Avoid_ line. `plan` is narrowed to the open Plant's Tasks.
+ */
 function GuardToday({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement {
-	return (
-		<p className="text-note text-muted">
-			{standingFor(rule, plan).inCurrentPlan ? 'Acting on this week\'s ticket' : 'Holding nothing this week'}
-		</p>
-	);
+	return <p className="text-note text-muted">{standingFor(rule, plan).waitingOn}</p>;
 }
 
 /**
@@ -575,7 +577,7 @@ export function PlantSheet({
 						</section>
 
 						{/*
-							Rules that ask for work and Guards that can hold it back are
+							Rules that ask for work and Guards that can defer it are
 							different news, so they are listed apart. With no work Rule,
 							the section above has already said why.
 						*/}
@@ -610,7 +612,7 @@ export function PlantSheet({
 
 						{guards.length > 0 && (
 							<section className="space-y-3">
-								<SectionHead>Guards that can hold it back or add a note</SectionHead>
+								<SectionHead>Guards that can defer its work or add a note</SectionHead>
 								<p className="text-note text-muted">
 									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
 								</p>
