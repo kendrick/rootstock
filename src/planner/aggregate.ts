@@ -69,6 +69,22 @@ function reduce(values: number[], aggregate: Aggregate): number {
 export const AGGREGATE_DECIMAL_PLACES = 1;
 
 /**
+ * Rounds `value` to `AGGREGATE_DECIMAL_PLACES`, adding decimals wherever rounding would move it onto or across one of `lines`. Returns `value` unrounded if four extra places still would.
+ *
+ * A raw 54.96 correctly doesn't fire `gte 55`, and a 55.0 printed beside that Rule tells the reader the line was reached. ADR 0003 says the window carries what the Rules evaluated, so the Planner emitting the window and every view printing a reading against a line round through here, and a view can't undo the Planner's care by re-rounding.
+ */
+export function roundKeepingSide(value: number, lines: readonly number[]): number {
+	for (let places = AGGREGATE_DECIMAL_PLACES; places <= AGGREGATE_DECIMAL_PLACES + 4; places++) {
+		const rounded = Number(value.toFixed(places));
+		if (lines.every(line => Math.sign(value - line) === Math.sign(rounded - line))) {
+			return rounded;
+		}
+	}
+
+	return value;
+}
+
+/**
  * Every `Group` is seeded with the Observation that created it, so `used`
  * (a filter of a group, or the group itself) can never be empty in practice.
  * `noUncheckedIndexedAccess` can't see that invariant, though, so this makes

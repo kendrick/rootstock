@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
-import { AGGREGATE_DECIMAL_PLACES, toDailyAggregates } from './aggregate';
+import { roundKeepingSide, toDailyAggregates } from './aggregate';
 import { evaluateCadenceRule } from './cadence-rule';
 import { daysBetween } from './dates';
 import { isDelegable } from './delegation';
@@ -467,42 +467,22 @@ function thresholdsBySeries(rules: readonly Rule[]): Map<string, number[]> {
 	return thresholds;
 }
 
-/** Whether two readings sit on the same side of `line`, counting the line itself as its own side. */
-function sameSide(left: number, right: number, line: number): boolean {
-	return Math.sign(left - line) === Math.sign(right - line);
-}
-
 /**
- * Rounds `window` to `AGGREGATE_DECIMAL_PLACES` for the Plan it ships in,
- * except where rounding would move a value across a line a Rule or Guard reads.
+ * Rounds `window` for the Plan it ships in, keeping each value on its side of every line a Rule or Guard reads its series against.
  *
  * Only `plan()` calls this, and only on the copy it is about to return.
  * `createTasks` and `applyGuards` both read `window` first, at full
  * precision, because `evaluateThresholdRule` needs the exact reading a
  * Rule's `value` will be compared against. See `AGGREGATE_DECIMAL_PLACES`'s
  * own comment in aggregate.ts for what rounding first would have cost.
- *
- * The exception is the evidence half of the same problem. A raw 54.96
- * correctly doesn't fire `gte 55`, and a window that then shows 55.0 has the
- * Rules page printing "Last read 55°F; needs at least 55°F" beside a Rule that
- * didn't fire, and the sparkline plotting the point on the line. ADR 0003 says
- * the window carries what the Rules evaluated. So a value near a line keeps
- * the fewest extra decimals that leave it on its true side of every line its
- * series is read against, and only if none does, its full precision.
  */
 function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]): DailyAggregate[] {
 	const thresholds = thresholdsBySeries(rules);
 
-	return window.map((day) => {
-		const lines = thresholds.get(thresholdKey(day.variable, day.depthCm, day.aggregate)) ?? [];
-		for (let places = AGGREGATE_DECIMAL_PLACES; places <= AGGREGATE_DECIMAL_PLACES + 4; places++) {
-			const rounded = Number(day.value.toFixed(places));
-			if (lines.every(line => sameSide(day.value, rounded, line))) {
-				return { ...day, value: rounded };
-			}
-		}
-		return day;
-	});
+	return window.map(day => ({
+		...day,
+		value: roundKeepingSide(day.value, thresholds.get(thresholdKey(day.variable, day.depthCm, day.aggregate)) ?? []),
+	}));
 }
 
 /**

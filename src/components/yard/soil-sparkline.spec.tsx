@@ -246,6 +246,15 @@ describe('soilSparkline', () => {
 		expect(rows[0]!.textContent).toContain('Observed');
 	});
 
+	// #59: a day that read 54.96 sits under a 55°F line, so its row can't say 55.
+	it('prints a reading near the threshold on the side of it the reading is on', () => {
+		const nearLine = soilDays.map((day, index) => index === 0 ? { ...day, value: 54.96 } : day);
+		const { container } = render(<SoilSparkline window={nearLine} rule={thresholdRule} citation={null} />);
+
+		expect(container.querySelector('tbody tr')!.textContent).toContain('54.96°F');
+		expect(container.querySelector('tbody tr')!.textContent).not.toContain('55.0°F');
+	});
+
 	it('describes itself with a real title and desc rather than an aria-label', () => {
 		const { container } = render(<SoilSparkline window={planWindow} rule={thresholdRule} citation={projection} />);
 
