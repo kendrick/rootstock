@@ -138,6 +138,25 @@ describe('declutteredPositions', () => {
 		}
 	});
 
+	// #53 grows the inventory to 20-40 Plants on one photo. Shaped like that yard: a patio of containers a few percent apart, a front bed of natives packed tighter, and singles spread across the rest.
+	it('keeps forty callouts 28px apart and on the plate at the phone width', () => {
+		const patio = Array.from({ length: 10 }, (_, index) => sitedPlant(`patio-${index}`, 0.62 + (index % 5) * 0.02, 0.1 + Math.floor(index / 5) * 0.03));
+		const frontBed = Array.from({ length: 16 }, (_, index) => sitedPlant(`bed-${index}`, 0.08 + (index % 8) * 0.015, 0.8 + Math.floor(index / 8) * 0.02));
+		const singles = Array.from({ length: 14 }, (_, index) => sitedPlant(`single-${index}`, 0.05 + index * 0.066, 0.35 + (index % 3) * 0.15));
+		const plants = [...patio, ...frontBed, ...singles];
+		const height = MOBILE_BOX_WIDTH_PX * BOX_ASPECT;
+		const points = [...declutteredPositions(plants, BOX_ASPECT).values()].map(placement => ({ x: placement.x * MOBILE_BOX_WIDTH_PX, y: placement.y * height }));
+
+		expect(points).toHaveLength(40);
+		for (let i = 0; i < points.length; i++) {
+			expect(points[i]!.x).toBeGreaterThanOrEqual(12 - 0.01);
+			expect(points[i]!.x).toBeLessThanOrEqual(MOBILE_BOX_WIDTH_PX - 12 + 0.01);
+			for (let j = i + 1; j < points.length; j++) {
+				expect(Math.hypot(points[i]!.x - points[j]!.x, points[i]!.y - points[j]!.y)).toBeGreaterThanOrEqual(MIN_CENTER_DISTANCE_PX - 0.01);
+			}
+		}
+	});
+
 	// A crowded callout leaves the photo for the band on its own side, like a
 	// parts plate's margin callout, so it never lands on another Plant's spot.
 	it('keeps every callout across the photo\'s width and within one band of it', () => {

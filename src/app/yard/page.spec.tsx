@@ -17,7 +17,8 @@ vi.mock('@/artifact/load', () => ({ loadArtifact: vi.fn() }));
 // suite happens to run.
 const STALE_INSTANT = new Date('2026-09-13T02:00:00Z');
 
-const firstSeedPlant = seedPlants[0]!;
+// By id, not by index: an inventory that grows at the top would otherwise change this spec's subject without failing it.
+const firstSeedPlant = seedPlants.find(plant => plant.id === 'front-lawn')!;
 
 beforeEach(() => {
 	vi.useFakeTimers({ toFake: ['Date'] });

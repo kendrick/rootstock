@@ -3,6 +3,7 @@ import type { Coverage } from './applicable-rules';
 import type { TicketLine } from './week-work';
 import type { Plant } from '@/yard/plant';
 import { cn } from '@/lib/utils';
+import { bySite } from './by-site';
 import { KIND_TEXT } from './kind-text';
 import { ticketLabel } from './week-work';
 
@@ -133,6 +134,14 @@ const WEEK_GROUPS: { standing: Coverage | 'work'; head: string }[] = [
 ];
 
 /**
+ * The inventory view's groups: one per site, headed by it. A single group gets no head, since a head over the whole list says nothing a reader can use.
+ */
+function inventoryGroups(plants: Plant[]): { standing: 'work'; head: string | null; members: Plant[] }[] {
+	const sites = bySite(plants);
+	return sites.map(({ site, members }) => ({ standing: 'work' as const, head: sites.length === 1 ? null : site ?? 'No site given', members }));
+}
+
+/**
  * The list is the equivalent path to every Plant for anyone not using the
  * photo: assistive technology, a keyboard, and the planned Plants that carry
  * no `position` and so have no pin to click. Rendering every Plant here,
@@ -156,7 +165,7 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect, 
 	const groupOf = (plant: Plant): Coverage | 'work' => (lines.get(plant.id)?.length ?? 0) > 0 ? 'work' : standingOf(plant);
 	const groups = view === 'week'
 		? WEEK_GROUPS.map(group => ({ ...group, members: plants.filter(plant => groupOf(plant) === group.standing) })).filter(group => group.members.length > 0)
-		: [{ standing: 'work' as const, head: null, members: plants }];
+		: inventoryGroups(plants);
 
 	const row = (plant: Plant): ReactElement => (
 		<PlantRow
@@ -187,17 +196,17 @@ export function PlantList({ plants, ordinals, hovered, onHoverChange, onSelect, 
 			</div>
 
 			{/*
-			 * The week view sorts the Plants by what they need, under ruled heads.
-			 * Numbers don't change: a Plant keeps its number in both views, so a
-			 * callout never renumbers under the reader. The heads are aria-hidden,
-			 * so a screen reader counts Plants, and each row carries its reason in
-			 * words instead.
+			 * The week view sorts the Plants by what they need, under ruled heads,
+			 * and the inventory view by site. Numbers don't change: a Plant keeps its
+			 * number in both views, so a callout never renumbers under the reader.
+			 * The heads are aria-hidden, so a screen reader counts Plants, and each
+			 * row carries its reason and its site in words instead.
 			 */}
 			<ul aria-label="Plants" className="flex flex-col">
 				{groups.map(group => [
 					group.head !== null && (
 						<li
-							key={`head-${group.standing}`}
+							key={`head-${group.standing}-${group.head}`}
 							aria-hidden="true"
 							className={cn(
 								'border-b-2 border-rule bg-rule-faint/40 px-3 py-1.5 font-display text-label font-extrabold tracking-widest uppercase',
