@@ -18,7 +18,7 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { findUnmatchedPlantTags, seedOccurrences, seedRules } from '../src/seed';
+import { findLawnTagMismatches, findUnmatchedPlantTags, seedOccurrences, seedRules } from '../src/seed';
 import { parseWith } from '../src/validation/parse';
 import { authoringVocabulary, draftToPlant, insertPlant, plantDraftSchema, previewReach } from '../src/yard/authoring';
 import { plantSchema } from '../src/yard/plant';
@@ -104,7 +104,7 @@ export function checkReport(plants: Plant[], rules: Rule[]): { lines: string[]; 
 		}
 	}
 
-	for (const problem of findUnmatchedPlantTags(plants, rules)) {
+	for (const problem of [...findUnmatchedPlantTags(plants, rules), ...findLawnTagMismatches(plants)]) {
 		lines.push(`! ${problem}`);
 		problems += 1;
 	}

@@ -74,6 +74,17 @@ describe('checkReport', () => {
 		expect(checkReport([...seedPlants, { ...unsited, notes: 'Behind the house, off the photo' }], seedRules).problems).toBe(0);
 	});
 
+	// The lawn Rules include a pre-emergent herbicide, so a `lawn` tag on anything else is the costliest typo the inventory can carry.
+	it('flags the lawn tag on a Plant that isn\'t a lawn, and a lawn without it', () => {
+		const hibiscus = { ...seedPlants.find(plant => plant.id === 'hibiscus-luna-white'), tags: ['container', 'lawn'] };
+		const bareLawn = { ...seedPlants.find(plant => plant.id === 'front-lawn'), id: 'back-lawn', tags: ['turf'] };
+		const { lines, problems } = checkReport([...seedPlants.filter(plant => plant.id !== hibiscus.id), hibiscus, bareLawn], seedRules);
+
+		expect(problems).toBe(2);
+		expect(lines).toContain('! plant \'hibiscus-luna-white\' carries the \'lawn\' tag but is a container, so every lawn Rule would reach it');
+		expect(lines).toContain('! plant \'back-lawn\' is a lawn but lacks the \'lawn\' tag the lawn Rules select on');
+	});
+
 	it('flags a Rule selecting a tag no Plant carries', () => {
 		const lawnless = seedPlants.filter(plant => !plant.tags.includes('lawn'));
 
