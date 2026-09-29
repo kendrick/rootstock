@@ -19,7 +19,7 @@ import { seedPlannedFrom } from './planned-from';
  *
  * The approaching case cannot join that Plan. Its Citation is a projection,
  * ADR 0003 makes the window the evidence behind a Citation, and the September
- * window already sits above the threshold `spring-pre-emergent` is waiting
+ * window already sits above the threshold `soilThresholdRule` is waiting
  * for. A threshold line drawn under every point in a window says the work has
  * fired, whatever the status field claims. So `approachingArtifact` is a
  * second Plan on a spring date with its own rising window, which is what
@@ -72,10 +72,11 @@ const windowFixture: DailyAggregate[] = [
 	soilTemperature(shiftDate(ASOF, 2), 64.1, 'forecast'),
 ];
 
-// The seed's `spring-pre-emergent` restated, because the window below has to be
-// built against the same two numbers the Planner would read off the Rule.
-const SPRING_THRESHOLD_F = 55;
-const SPRING_CONSECUTIVE_DAYS = 3;
+// Read off `soilThresholdRule`, the Rule the approaching Task cites, because the
+// window below has to be built against the same two numbers the Planner would
+// read off that Rule.
+const SPRING_THRESHOLD_F = soilThresholdRule.value;
+const SPRING_CONSECUTIVE_DAYS = soilThresholdRule.consecutiveDays;
 
 /*
  * The September window's mirror: same length, travelling the other way. Every
@@ -239,7 +240,7 @@ export const unnarratedArtifact: Artifact = {
 
 /**
  * The spring run, which is where {@link approachingTaskId} belongs.
- * `spring-pre-emergent` is in season on this date, the window climbs toward the
+ * `soilThresholdRule` is in season on this date, the window climbs toward the
  * threshold rather than away from it, and the projected day is a forecast day a
  * reader can find in that window.
  */

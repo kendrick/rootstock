@@ -56,10 +56,9 @@ export const ownerSourceRule: Rule = cadenceRule;
 export const chemicalRule: Rule = windowRule;
 
 /**
- * The threshold rule that ships with a published extension range. Aliased from
+ * The Threshold fixture with a published extension range. Aliased from
  * `thresholdRule` so specs can import the name that describes the case rather
- * than reconstructing the knowledge that spring-pre-emergent is the one with
- * the range.
+ * than reconstructing which fixture carries the range.
  */
 export const thresholdWithPublishedRange: Rule = thresholdRule;
 

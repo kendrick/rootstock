@@ -126,7 +126,7 @@ describe('ruleSummary', () => {
 	it('badges a published range from another authority in full', () => {
 		const rule = soilThresholdRule;
 		if (rule.kind !== 'threshold' || rule.published === null) {
-			throw new Error('spring-pre-emergent no longer carries a published range');
+			throw new Error('soilThresholdRule no longer carries a published range');
 		}
 		const elsewhere = { ...rule, published: { ...rule.published, source: { kind: 'extension' as const, label: 'Dallas County Master Gardeners', url: null } } };
 		render(<RuleSummary rule={elsewhere} />);
@@ -313,9 +313,8 @@ describe('ruleSummary', () => {
 	});
 
 	// The regression gate for ADR 0005: a Rule naming neither field renders the
-	// sentence and the rows main renders today. Not `spring-pre-emergent`—the
-	// seed set already gives that one both—so this reaches for the one
-	// seed-shaped fixture that still names neither.
+	// sentence and the rows main renders today. `soilThresholdRule` names both,
+	// so this reaches for the one seed-shaped fixture that still names neither.
 	it('renders the undirected sentence and no Season row when both fields are null', () => {
 		render(<RuleSummary rule={bareThreshold} />);
 

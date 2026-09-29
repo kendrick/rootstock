@@ -25,7 +25,7 @@ describe('ticketLines', () => {
 			task('b', 'deferred', 'deep-water-fig', 'fig-1'),
 			task('c', 'fired', 'yard-cleanup', null),
 			task('d', 'fired', 'esperanza-feeding', 'esperanza-1'),
-			task('e', 'approaching', 'spring-pre-emergent', 'front-lawn'),
+			task('e', 'approaching', 'soil-threshold-pre-emergent', 'front-lawn'),
 		]);
 
 		expect(lines.get('front-lawn')?.map(ticketLabel)).toEqual(['Ready now 01', 'Approaching 01']);

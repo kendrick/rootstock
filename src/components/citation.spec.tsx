@@ -31,7 +31,7 @@ const projectionTask = fixtureTask(approachingTaskId);
  * Every Citation in `src/artifact/fixtures.ts` is a window, a cadence, or a
  * projection. The September run fired on dates and the spring run had not
  * crossed the threshold yet, so nothing in the tree carries a satisfied
- * threshold run. Authored against `spring-pre-emergent`'s own variable, depth
+ * threshold run. Authored against the soil Threshold Rule's own variable, depth
  * and aggregate, so what renders is a run that Rule could really have produced
  * rather than a shape invented to reach a branch.
  */
@@ -59,7 +59,7 @@ const rainfallCitation: Citation = {
  * rather than a series authored here. ADR 0003 puts the readings on
  * `Plan.window` so a Citation is evidence somebody can look at, and a Citation
  * pointing at days no window holds would prove the opposite. Three days because
- * that is what `spring-pre-emergent` asks for.
+ * that is what the soil Threshold Rule asks for.
  */
 function citedRun(): DailyAggregate[] {
 	const observed = combinedNarratedArtifact.plan.window
