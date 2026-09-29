@@ -56,7 +56,7 @@ Four things have to be true on the machine before the first scheduled run, and n
 
 - A deploy key as a **file**, registered on the repository with write access, with `ROOTSTOCK_DEPLOY_KEY` pointing at it. The owner's own git identity lives in the 1Password SSH agent, and an agent that wants an approval prompt cannot serve a run under `BatchMode=yes`. Those two cannot coexist, which is why the file is not optional.
 - `codex login` completed under this machine's `CODEX_HOME`, confirmed by `codex login status`.
-- `git config user.name` and `user.email`, or every run dies at the first commit.
+- `user.name` and `user.email` set in the job's clone, or every run dies at the first commit. Setting them with `--global` instead commits each day under the identity the machine uses for its other repositories.
 - The three `ROOTSTOCK_` values in the env file.
 
 ### Two macOS Details
@@ -118,12 +118,12 @@ $EDITOR ~/.config/rootstock/env
 
 It needs `ROOTSTOCK_LATITUDE`, `ROOTSTOCK_LONGITUDE`, and `ROOTSTOCK_TIME_ZONE`. Type them in. Do not sync this file between machines, and do not put it anywhere a backup will carry it off the box, which is what ADR 0004 is about. Skipping this step is survivable: `pnpm schedule` writes the file blank and then names what is still missing.
 
-Sign in to codex and set a committer, both per machine:
+Sign in to codex, then set a committer on the job's clone. Both are per machine. A global committer would stamp each day's commits with the identity this machine uses for its other repositories.
 
 ```sh
 codex login && codex login status
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
+git -C ~/.local/share/rootstock-daily config user.name "Your Name"
+git -C ~/.local/share/rootstock-daily config user.email "you@example.com"
 ```
 
 Schedule it at a time no other machine is using:
@@ -178,7 +178,7 @@ These are the names the env file carries, and `pnpm schedule` will tell you whic
 
 `ROOTSTOCK_DEPLOY_KEY` is optional and points at the SSH private key the push uses. It defaults to `~/.ssh/rootstock_deploy`.
 
-Git also needs a committer on the box, `git config user.name` and `user.email`, or every run dies at the first commit.
+Git also needs a committer in the job's clone, or every run dies at the first commit. Set `user.name` and `user.email` there, not with `--global`.
 
 ## Why the Flags Are There
 
