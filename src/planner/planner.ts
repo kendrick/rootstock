@@ -265,17 +265,18 @@ function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
 		/*
 		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series a `forecast-reaches` Guard reads gets its forecast days from modeled Observations alone, and its observed days as usual.
 		 *
-		 * Modeled, not forecast-basis. The adapter marks every elapsed hour observed, so a forecast-basis filter on a 06:00 run drops the model's 05:00 low, and a frost limit reads only the warm afternoon. The modeled pass marks a day forecast wherever the regular pass does, since every forecast hour is modeled, so the swap leaves no gap and no duplicate.
+		 * Modeled, not forecast-basis. The adapter marks every elapsed hour observed, so a forecast-basis filter on a 06:00 run drops the model's 05:00 low, and a frost limit reads only the warm afternoon.
+		 *
+		 * The planned date is swapped whatever its basis. A missed run that catches up after 23:00 local finds every hour of `asOf` already observed, and dropping that day would leave the Guard 'unavailable' with the model's whole day on hand. Later days carry forecast hours anyway. The modeled pass yields a row for every date it takes over, since every forecast hour is modeled, so the swap leaves no gap and no duplicate.
 		 */
 		const readAhead = forecastRead.get(aggregate) ?? new Set<string>();
-		const readsAhead = (day: DailyAggregate): boolean => readAhead.has(seriesKey(day.variable, day.depthCm));
+		const guardDay = (day: DailyAggregate): boolean =>
+			readAhead.has(seriesKey(day.variable, day.depthCm)) && (day.basis === 'forecast' || day.date === input.asOf);
 		const days = [
-			...toDailyAggregates(input.observations, input.timeZone, aggregate)
-				.filter(day => day.basis !== 'forecast' || !readsAhead(day)),
+			...toDailyAggregates(input.observations, input.timeZone, aggregate).filter(day => !guardDay(day)),
 			...(readAhead.size === 0
 				? []
-				: toDailyAggregates(modeledObservations, input.timeZone, aggregate)
-						.filter(day => day.basis === 'forecast' && readsAhead(day))),
+				: toDailyAggregates(modeledObservations, input.timeZone, aggregate).filter(guardDay)),
 		];
 
 		for (const day of days) {

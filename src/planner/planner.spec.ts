@@ -900,6 +900,26 @@ describe('plan under a forecast-reaches guard', () => {
 		}]);
 	});
 
+	// launchd and systemd run a missed job on wake, so a run can start after 23:00 local, when the adapter has marked every hour of the planned day observed. The model's day is still the evidence the Guard wants.
+	it('reads the planned day\'s modeled high when a late run has marked every hour observed', () => {
+		const lateRun = hotMay.map(observation => observationSchema.parse({ ...observation, basis: 'observed' }));
+		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: lateRun }));
+		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
+
+		expect(held?.deferrals).toEqual([{ guardId: 'heat-limit', releaseWhen: heatRelease }]);
+		expect(guarded.window).toEqual([{
+			date: '2026-05-20',
+			variable: 'air-temperature',
+			depthCm: null,
+			aggregate: 'max',
+			value: 95,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'modeled',
+			source: 'open-meteo',
+		}]);
+	});
+
 	it('lets the work go ahead on a 78°F day in August', () => {
 		const guarded = plan(inputWith({ asOf: '2026-08-14', rules: [work, heatGuard], observations: mildAugust }));
 		const task = guarded.tasks.find(candidate => candidate.ruleId === 'broadcast-herbicide');

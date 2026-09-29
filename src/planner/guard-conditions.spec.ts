@@ -330,8 +330,21 @@ describe('evaluateGuardCondition', () => {
 			expect(evaluateGuardCondition(heatLimit(), window, asOf)).toBe('unavailable');
 		});
 
-		it('is unavailable when the row on hand is observed rather than forecast', () => {
-			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 95, { basis: 'observed' })], asOf)).toBe('unavailable');
+		it('reads the planned date\'s modeled row after a late run has marked it observed', () => {
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 95, { basis: 'observed' })], asOf)).toBe('met');
+		});
+
+		it('is unavailable when the planned date\'s row is a measured reading', () => {
+			const measured = { basis: 'observed', provenance: 'measured', source: 'manual' } as const;
+
+			expect(evaluateGuardCondition(heatLimit(), [airHigh(asOf, 95, measured)], asOf)).toBe('unavailable');
+		});
+
+		it('reads an observed row on the planned date only, never on a later day', () => {
+			// A day after `asOf` is observed only when the run plans a date already past. The exception covers the planned date alone, so tomorrow still needs a forecast row.
+			const window = [airHigh(asOf, 95), airHigh(tomorrow, 95, { basis: 'observed' })];
+
+			expect(evaluateGuardCondition(heatLimit(2), window, asOf)).toBe('unavailable');
 		});
 
 		it('is unavailable when the row on hand is a mean rather than a maximum', () => {
