@@ -21,8 +21,8 @@
 		"delegable": false,
 		"priority": 10,
 		"appliesTo": {
-			"plantIds": ["front-lawn"],
-			"plantTags": null,
+			"plantIds": null,
+			"plantTags": ["lawn"],
 			"ruleTags": null
 		}
 	},
@@ -46,8 +46,8 @@
 		"delegable": true,
 		"priority": 20,
 		"appliesTo": {
-			"plantIds": ["front-lawn"],
-			"plantTags": null,
+			"plantIds": null,
+			"plantTags": ["lawn"],
 			"ruleTags": null
 		}
 	},
@@ -73,8 +73,8 @@
 		"delegable": false,
 		"priority": 10,
 		"appliesTo": {
-			"plantIds": ["front-lawn"],
-			"plantTags": null,
+			"plantIds": null,
+			"plantTags": ["lawn"],
 			"ruleTags": null
 		}
 	},
@@ -109,8 +109,8 @@
 		"delegable": false,
 		"priority": 11,
 		"appliesTo": {
-			"plantIds": ["front-lawn"],
-			"plantTags": null,
+			"plantIds": null,
+			"plantTags": ["lawn"],
 			"ruleTags": null
 		}
 	},

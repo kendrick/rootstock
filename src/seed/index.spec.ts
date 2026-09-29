@@ -12,6 +12,7 @@ import {
 	findDuplicateIds,
 	findLongDecimals,
 	findRulesPastWindow,
+	findUnmatchedPlantTags,
 	findUnresolvedReferences,
 	seedOccurrences,
 	seedPlants,
@@ -186,6 +187,52 @@ describe('id uniqueness across plants, rules, and occurrences', () => {
 		const rules = [thresholdRule({ id: 'shared-id' })];
 
 		expect(findDuplicateIds(plants, rules, [])).toEqual(['shared-id']);
+	});
+});
+
+describe('rules that select plants by tag', () => {
+	const planSeed = (asOf: string, plants: Plant[]) => plan(planInputSchema.parse({
+		asOf,
+		timeZone: 'UTC',
+		plants,
+		rules: seedRules,
+		observations: [],
+		occurrences: seedOccurrences,
+		tagPolicy: seedTagPolicy,
+	}));
+
+	it('finds no plantTags value in the real seed that no plant carries', () => {
+		expect(findUnmatchedPlantTags(seedPlants, seedRules)).toEqual([]);
+	});
+
+	it('reports a rule whose appliesTo.plantTags names a tag no plant carries', () => {
+		const rules = [thresholdRule({ appliesTo: { ...WHOLE_YARD, plantTags: ['lanw'] } })];
+
+		expect(findUnmatchedPlantTags([plant({ tags: ['lawn'] })], rules)).toEqual([
+			'rule \'test-threshold\' appliesTo.plantTags names tag \'lanw\', which no plant carries',
+		]);
+	});
+
+	// #52's point: a Plant added to plants.json reaches the Rules its tags imply with no edit to rules.json.
+	it('plans lawn work for a second lawn with no edit to the rules', () => {
+		const backLawn = plant({ id: 'back-lawn', name: 'Back lawn', kind: 'lawn', tags: ['lawn', 'turf'], lawn: seedPlants.find(p => p.id === 'front-lawn')!.lawn });
+		const lawnTasks = (plants: Plant[]) => planSeed('2026-09-15', plants).tasks.filter(task => task.ruleId === 'fall-pre-emergent' || task.ruleId === 'last-nitrogen').map(task => `${task.ruleId}/${task.plantId}`).sort();
+
+		expect(lawnTasks([...seedPlants, backLawn])).toEqual([
+			'fall-pre-emergent/back-lawn',
+			'fall-pre-emergent/front-lawn',
+			'last-nitrogen/back-lawn',
+			'last-nitrogen/front-lawn',
+		]);
+	});
+
+	// Selecting by tag drops a Rule from specificity 3 to 2 (CONTEXT.md, Specificity). The pre-emergents are `chemical`, so safety still leads them; the last nitrogen is the one Task that moves, and #52 accepted it sorting below the Esperanza's feeding when both are due.
+	it('orders mid-September\'s Plan with the Esperanza\'s feeding above the lawn\'s last nitrogen', () => {
+		expect(planSeed('2026-09-15', seedPlants).tasks.map(task => task.ruleId)).toEqual([
+			'fall-pre-emergent',
+			'esperanza-feeding',
+			'last-nitrogen',
+		]);
 	});
 });
 

@@ -90,6 +90,26 @@ export function findUnresolvedReferences(plants: Plant[], rules: Rule[], occurre
 }
 
 /**
+ * The tag counterpart of {@link findUnresolvedReferences}. Tags are free strings (plant.ts says why), so a Rule selecting `plantTags: ['lanw']` parses cleanly and never plans a Task. The lawn Rules select by tag so a new lawn reaches them without an edit, and this check keeps a typo on either side of that match from costing a season.
+ *
+ * A planned Plant counts as carrying its tags. `targets()` reaches only planted ones, but a Rule written ahead of a planned bed is deliberate, not a typo.
+ */
+export function findUnmatchedPlantTags(plants: Plant[], rules: Rule[]): string[] {
+	const carried = new Set(plants.flatMap(p => p.tags));
+	const problems: string[] = [];
+
+	for (const rule of rules) {
+		for (const tag of rule.appliesTo.plantTags ?? []) {
+			if (!carried.has(tag)) {
+				problems.push(`rule '${rule.id}' appliesTo.plantTags names tag '${tag}', which no plant carries`);
+			}
+		}
+	}
+
+	return problems;
+}
+
+/**
  * `appliesToSchema` stores a Guard's `ruleTags` as a plain string array, and a
  * Zod refine sees only the one Rule object it is validating—the same limit
  * {@link findUnresolvedReferences} names above, applied to a tag instead of
