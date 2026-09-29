@@ -45,6 +45,46 @@ function reduce(values: number[], aggregate: Aggregate): number {
 }
 
 /**
+ * Decimal places `plan()` in `planner.ts` rounds `Plan.window` to, right
+ * before it returns—not a precision this file applies.
+ *
+ * `toDailyAggregates` reduces to a raw value on purpose. Every Rule and
+ * Guard reads its output before anything rounds, and `meetsThreshold`
+ * compares that raw value against a Rule's `value` with an inclusive
+ * gte/lte. Rounding here instead would settle that comparison on a
+ * reading no longer exact: a raw 54.996 would round to 55.0 and fire
+ * `gte 55` a day before the yard actually crossed it, which is the
+ * defect #59's own notes name as the one to avoid. `Plan.window` carries
+ * no such risk—nothing reads it again for a verdict—so this precision
+ * applies there instead, after every Rule and Guard already has the raw
+ * number.
+ *
+ * Soil temperature is compared against a Rule's `value` in whole
+ * degrees, and precipitation probability compares in whole percentage
+ * points, so a tenth is one digit more than either needs. Full float
+ * precision buys nothing past that: the extra digits are what's left
+ * over from dividing by twenty-four hourly readings, and they are what
+ * churned `daily-run.sh`'s commit every morning.
+ */
+export const AGGREGATE_DECIMAL_PLACES = 1;
+
+/**
+ * Rounds `value` to `AGGREGATE_DECIMAL_PLACES`, adding decimals wherever rounding would move it onto or across one of `lines`. Returns `value` unrounded if four extra places still would.
+ *
+ * A raw 54.96 correctly doesn't fire `gte 55`, and a 55.0 printed beside that Rule tells the reader the line was reached. ADR 0003 says the window carries what the Rules evaluated, so the Planner emitting the window and every view printing a reading against a line round through here, and a view can't undo the Planner's care by re-rounding.
+ */
+export function roundKeepingSide(value: number, lines: readonly number[]): number {
+	for (let places = AGGREGATE_DECIMAL_PLACES; places <= AGGREGATE_DECIMAL_PLACES + 4; places++) {
+		const rounded = Number(value.toFixed(places));
+		if (lines.every(line => Math.sign(value - line) === Math.sign(rounded - line))) {
+			return rounded;
+		}
+	}
+
+	return value;
+}
+
+/**
  * Every `Group` is seeded with the Observation that created it, so `used`
  * (a filter of a group, or the group itself) can never be empty in practice.
  * `noUncheckedIndexedAccess` can't see that invariant, though, so this makes

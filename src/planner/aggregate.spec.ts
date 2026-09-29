@@ -1,7 +1,7 @@
 import type { DailyAggregate } from './plan';
 import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
-import { toDailyAggregates } from './aggregate';
+import { roundKeepingSide, toDailyAggregates } from './aggregate';
 import { observations as fixtureObservations, timeZone as fixtureTimeZone } from './fixtures';
 import { dailyAggregateSchema } from './plan';
 
@@ -231,5 +231,28 @@ describe('toDailyAggregates', () => {
 		// is still one bucket rather than split at the transition.
 		expect(result.map(record => record.date)).toEqual(['2026-03-07', '2026-03-08', '2026-03-09']);
 		expect(result.map(record => record.value)).toEqual([15, 51, 25]);
+	});
+});
+
+describe('roundKeepingSide', () => {
+	it('rounds to one decimal where that leaves the value on its side of every line', () => {
+		expect(roundKeepingSide(48.04, [55])).toBe(48);
+		expect(roundKeepingSide(88.79583333333335, [])).toBe(88.8);
+	});
+
+	// A reading that sat on the line stays on it.
+	it('keeps a value that sits exactly on a line there', () => {
+		expect(roundKeepingSide(55, [55])).toBe(55);
+	});
+
+	it('adds decimals until rounding stops moving the value onto or across a line', () => {
+		expect(roundKeepingSide(54.96, [55])).toBe(54.96);
+		expect(roundKeepingSide(55.04, [55])).toBe(55.04);
+		expect(roundKeepingSide(54.996, [55])).toBe(54.996);
+		expect(roundKeepingSide(54.96, [40, 55])).toBe(54.96);
+	});
+
+	it('gives up and returns the raw value when no precision short of it holds the side', () => {
+		expect(roundKeepingSide(54.9999996, [55])).toBe(54.9999996);
 	});
 });

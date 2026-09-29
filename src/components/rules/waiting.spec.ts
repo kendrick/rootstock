@@ -104,6 +104,15 @@ describe('standingFor, waiting', () => {
 		expect(standing.waitingOn).toBe('Last read 48°F; needs a rise through 55°F');
 	});
 
+	// #59: a raw 54.96 hasn't risen through 55, so the line can't print it as 55.
+	it('keeps the decimals that leave a reading on its own side of the Rule\'s value', () => {
+		const below = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 54.96)]));
+		const above = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 55.04)]));
+
+		expect(below.waitingOn).toBe('Last read 54.96°F; needs a rise through 55°F');
+		expect(above.waitingOn).toBe('Last read 55.04°F; needs a rise through 55°F');
+	});
+
 	it('gives an out-of-season Cadence Rule its opening day', () => {
 		const standing = standingFor(seedRule('fig-spring-nitrogen'), plan('2026-09-26'));
 
