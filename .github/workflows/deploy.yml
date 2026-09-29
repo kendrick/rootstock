@@ -1,9 +1,7 @@
 # Publishes the static export to GitHub Pages. Pages must be configured with
 # "GitHub Actions" as its source in repo settings; this workflow cannot enable it.
 #
-# Deploys on push to main without re-running the suite. ci.yml has already run
-# against the same commit, so gating this on a second full run would double the
-# wait to publish something already known to be green.
+# Deploys on push to main without re-running the full suite. ci.yml runs it against the same commit, and a second full run here would double the wait to publish. The one spec this workflow does run is the committed-Artifact check in the build job, for the reason given there.
 name: Deploy to GitHub Pages
 
 on:
@@ -37,6 +35,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # The daily run pushes straight to main, so ci.yml and this workflow start on the same push and nothing here waits for CI. A malformed `data/artifact.json` doesn't fail `pnpm build`, because the Artifact gate parses it in the browser and renders its error state. Without this step, Pages would publish that error page. Failing here leaves Pages on the last good build.
+      - name: Validate the committed Artifact
+        run: pnpm exec vitest run --coverage.enabled=false src/artifact/committed-artifact.spec.ts
 
       # No base path to pass: next.config.ts sets it, so this is the same build
       # the suite already exercised.

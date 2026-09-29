@@ -83,7 +83,8 @@ function fixtureGuardRule(overrides: Partial<GuardRule> = {}): GuardRule {
  * but never the file `data/artifact.json` and `data/status.json` the site
  * actually serves. A malformed one does not fail the build, because the
  * Artifact gate parses it client-side and renders the error state instead.
- * This is the one place that catches a bad publish before a reader does.
+ * deploy.yml runs this spec before it builds, because the daily run pushes
+ * straight to main and CI failing beside the deploy would stop nothing.
  */
 
 const DATA_DIR = join(import.meta.dirname, '..', '..', 'data');
