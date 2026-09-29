@@ -347,3 +347,27 @@ export const ruleSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type Rule = z.infer<typeof ruleSchema>;
+
+/**
+ * A Rule set, checked as a whole. A `forecast-reaches` Guard may not read the series and reduction a Threshold Rule reads.
+ *
+ * The Guard reads that series' forecast days from the model alone, and the Threshold Rule reads them measured-first. `Plan.window` holds one row per series and day, so the Artifact couldn't carry the reading behind both verdicts, and one of them would be published without its evidence (ADR 0003).
+ */
+export const ruleSetSchema = z.array(ruleSchema).superRefine((rules, context) => {
+	const thresholds = rules.filter(rule => rule.kind === 'threshold');
+
+	for (const guard of rules) {
+		if (guard.kind !== 'guard' || guard.condition.kind !== 'forecast-reaches') {
+			continue;
+		}
+
+		const { variable, depthCm, aggregate } = guard.condition;
+		const shared = thresholds.find(rule => rule.variable === variable && rule.depthCm === depthCm && rule.aggregate === aggregate);
+		if (shared !== undefined) {
+			context.addIssue({
+				code: 'custom',
+				message: `Guard '${guard.id}' reads the ${aggregate} of ${variable} that Threshold Rule '${shared.id}' reads, and the Artifact's window can carry only one of their readings for a day; read another reduction or series`,
+			});
+		}
+	}
+});

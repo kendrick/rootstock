@@ -861,16 +861,14 @@ describe('plan under a forecast-reaches guard', () => {
 		}]);
 	});
 
-	// ADR 0002: a Guard creates no work. A Threshold Rule on the Guard's own series has to read the day it read before the Guard existed, or adding the Guard could author a Task by changing that Rule's evidence.
+	// ADR 0002: a Guard creates no work. `ruleSetSchema` rejects this Rule set, so the Guard is added after parsing, and `plan()` itself still can't let a Guard author a Task by changing a Threshold Rule's evidence.
 	it('leaves a Threshold Rule on the same series reading the measured day, and authoring what it authored alone', () => {
 		const hotDay = thresholdRule({ id: 'hot-day', name: 'Hot day', variable: 'air-temperature', depthCm: null, aggregate: 'max', comparison: 'gte', value: 90, consecutiveDays: 1 });
-		const day = { asOf: '2026-05-20', observations: [...hotMay, morningProbe] };
-		const alone = plan(inputWith({ ...day, rules: [hotDay] }));
-		const withGuard = plan(inputWith({ ...day, rules: [hotDay, heatGuard] }));
+		const alone = inputWith({ asOf: '2026-05-20', rules: [hotDay], observations: [...hotMay, morningProbe] });
 
-		expect(alone.tasks).toEqual([]);
-		expect(withGuard.tasks).toEqual(alone.tasks);
-		expect(withGuard.window).toEqual(alone.window);
+		expect(() => inputWith({ ...alone, rules: [hotDay, heatGuard] })).toThrow(/heat-limit/);
+		expect(plan(alone).tasks).toEqual([]);
+		expect(plan({ ...alone, rules: [hotDay, heatGuard] }).tasks).toEqual([]);
 	});
 
 	// The adapter marks an hour observed once it has passed, whatever its provenance, so on a 06:00 run the modeled 05:00 low is already an observed hour. It's still the model's reading of the day, and a frost limit that skipped it would read only the warm afternoon. November is Central standard time, so 11:00Z is 5am and 20:00Z is 2pm.

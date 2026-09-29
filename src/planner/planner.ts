@@ -5,7 +5,7 @@ import type { CadenceRule, GuardCondition, Rule, TagPolicy, ThresholdRule, Windo
 import type { Aggregate, Variable } from '@/weather/observation';
 import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
-import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
+import { ruleSetSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
 import { roundKeepingSide, toDailyAggregates } from './aggregate';
@@ -64,7 +64,7 @@ export const planInputSchema = z.strictObject({
 	asOf: z.iso.date(),
 	timeZone: timeZoneSchema,
 	plants: z.array(plantSchema),
-	rules: z.array(ruleSchema),
+	rules: ruleSetSchema,
 	observations: z.array(observationSchema),
 	occurrences: z.array(occurrenceSchema),
 	tagPolicy: tagPolicySchema,
@@ -221,19 +221,6 @@ function forecastGuardSeries(rules: Rule[]): Map<Aggregate, Set<string>> {
 	}
 
 	return wanted;
-}
-
-/** `series` minus every series a Threshold Rule reads with the same reduction. */
-function withoutThresholdSeries(series: Map<Aggregate, Set<string>>, rules: Rule[]): Map<Aggregate, Set<string>> {
-	const remaining = new Map([...series].map(([aggregate, keys]) => [aggregate, new Set(keys)]));
-
-	for (const rule of rules) {
-		if (rule.kind === 'threshold') {
-			remaining.get(rule.aggregate)?.delete(seriesKey(rule.variable, rule.depthCm));
-		}
-	}
-
-	return remaining;
 }
 
 function compareDepth(left: number | null, right: number | null): number {
@@ -578,15 +565,14 @@ function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]
  */
 export function plan(input: PlanInput): Plan {
 	/*
-	 * One view per reader, because a Guard creates no work (ADR 0002). A Threshold Rule reads measured-first days, as it did before any Guard read ahead, and only the Guard pass sees a series' forecast days rebuilt from the model. Sharing one view let a heat Guard on a Threshold Rule's series swap a measured 75°F for a modeled 95°F and author a Task.
+	 * Two views, because a Guard creates no work (ADR 0002). A Threshold Rule reads measured-first days, as it did before any Guard read ahead, and only the Guard pass sees a series' forecast days rebuilt from the model. Sharing one view let a heat Guard on a Threshold Rule's series swap a measured 75°F for a modeled 95°F and author a Task.
 	 *
-	 * The Artifact carries the Threshold Rule's view wherever the two share a series, since that's the reading a Task's Citation points into. A series only a Guard reads carries the Guard's view.
+	 * The Artifact carries the Guard's view. `ruleSetSchema` rejects a Rule set where a `forecast-reaches` Guard and a Threshold Rule share a series, so the two views differ only on series no Threshold Rule reads, and the window holds the reading behind every verdict.
 	 */
 	const span = windowSpan(input.rules);
 	const guardSeries = forecastGuardSeries(input.rules);
 	const ruleWindow = buildWindow(input, span, new Map());
 	const guardWindow = buildWindow(input, span, guardSeries);
-	const emittedWindow = buildWindow(input, span, withoutThresholdSeries(guardSeries, input.rules));
 	const orderables = createTasks(input, ruleWindow);
 
 	const authored = orderables.map(entry => entry.task);
@@ -596,6 +582,6 @@ export function plan(input: PlanInput): Plan {
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window: roundWindowForEmission(emittedWindow, input.rules),
+		window: roundWindowForEmission(guardWindow, input.rules),
 	};
 }

@@ -78,7 +78,7 @@ type ForecastCondition = Extract<GuardCondition, { kind: 'forecast-reaches' }>;
  *
  * `unit` is matched as well as the series. A row in another unit would compare as a plausible number and still be the wrong one.
  */
-function forecastDays(
+export function forecastDays(
 	condition: ForecastCondition,
 	window: DailyAggregate[],
 	asOf: string,
