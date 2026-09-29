@@ -4,6 +4,7 @@ import type { Rule } from '@/rules/rule';
 import { describe, expect, it } from 'vitest';
 import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
 import { taskId } from '@/planner/task';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedRules } from '@/seed';
 import { standingFor } from './waiting';
 
@@ -71,9 +72,9 @@ describe('standingFor, fired', () => {
 // needn't include the latest reading, so the line names the run the Task cites.
 describe('standingFor, a fired Threshold Rule with no season', () => {
 	it('names the run its Task cites', () => {
-		const threshold = seedRule('spring-pre-emergent');
+		const threshold = soilThresholdRule;
 		const unseasoned = { ...threshold, season: null } as Rule;
-		const task = firedTask('spring-pre-emergent', {
+		const task = firedTask(soilThresholdRule.id, {
 			citation: { kind: 'threshold', variable: 'soil-temperature', depthCm: 6, aggregate: 'mean', from: '2026-03-02', to: '2026-03-04' },
 		});
 
@@ -85,7 +86,7 @@ describe('standingFor, waiting', () => {
 	// A Threshold Rule's season is when its reading counts at all, so out of
 	// season the reading beside the value is noise that looks like a missed firing.
 	it('gives an out-of-season Threshold Rule its opening day rather than a reading', () => {
-		const standing = standingFor(seedRule('spring-pre-emergent'), plan('2026-09-26', [], [soilReading('2026-09-25', 88.79583333333335)]));
+		const standing = standingFor(soilThresholdRule, plan('2026-09-26', [], [soilReading('2026-09-25', 88.79583333333335)]));
 
 		expect(standing.waitingOn).toBe('Opens February 1');
 	});
@@ -93,21 +94,21 @@ describe('standingFor, waiting', () => {
 	// ADR 0005: a directed Rule fires on a Crossing, so a reading already above
 	// the value is not the condition met. The line names the Crossing.
 	it('names the Crossing a directed Threshold Rule needs, in season', () => {
-		const standing = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 58.24999)]));
+		const standing = standingFor(soilThresholdRule, plan('2026-03-10', [], [soilReading('2026-03-09', 58.24999)]));
 
 		expect(standing.waitingOn).toBe('Last read 58.2°F; needs a rise through 55°F');
 	});
 
 	it('rounds a reading to one decimal', () => {
-		const standing = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 48.04)]));
+		const standing = standingFor(soilThresholdRule, plan('2026-03-10', [], [soilReading('2026-03-09', 48.04)]));
 
 		expect(standing.waitingOn).toBe('Last read 48°F; needs a rise through 55°F');
 	});
 
 	// #59: a raw 54.96 hasn't risen through 55, so the line can't print it as 55.
 	it('keeps the decimals that leave a reading on its own side of the Rule\'s value', () => {
-		const below = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 54.96)]));
-		const above = standingFor(seedRule('spring-pre-emergent'), plan('2026-03-10', [], [soilReading('2026-03-09', 55.04)]));
+		const below = standingFor(soilThresholdRule, plan('2026-03-10', [], [soilReading('2026-03-09', 54.96)]));
+		const above = standingFor(soilThresholdRule, plan('2026-03-10', [], [soilReading('2026-03-09', 55.04)]));
 
 		expect(below.waitingOn).toBe('Last read 54.96°F; needs a rise through 55°F');
 		expect(above.waitingOn).toBe('Last read 55.04°F; needs a rise through 55°F');

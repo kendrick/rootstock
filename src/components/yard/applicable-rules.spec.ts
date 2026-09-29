@@ -49,9 +49,10 @@ const plannedCrossvine = seedPlants.find(plant => plant.id === 'crossvine-1')!;
 
 describe('rulesFor', () => {
 	it('reaches a lawn through the Rules that name it and the Guards that hold their work', () => {
-		// Four task-creating Rules name front-lawn by id. Both Guards join them
+		// Four task-creating Rules name front-lawn by id. Three Guards join them
 		// without naming any Plant of their own: three of those four Rules are
-		// tagged `chemical`, which is the tag both Guards' ruleTags select.
+		// tagged `chemical`, which two Guards' ruleTags select, and the spring
+		// pre-emergent alone is tagged `before-germination`, which the third selects.
 		expect(rulesFor(frontLawn, seedRules, seedPlants).map(rule => rule.id)).toEqual([
 			'fall-pre-emergent',
 			'last-nitrogen',
@@ -59,6 +60,7 @@ describe('rulesFor', () => {
 			'spring-pre-emergent-follow-up',
 			'rain-expected',
 			'water-in-after-application',
+			'soil-at-germination',
 		]);
 	});
 

@@ -3,8 +3,8 @@ import type { Plant } from '@/yard/plant';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { dailyAggregateSchema, PLAN_WINDOW_DAYS } from '@/planner/plan';
-import { evaluateThresholdRule } from '@/planner/threshold-rule';
+import { PLAN_WINDOW_DAYS } from '@/planner/plan';
+import { plan, planInputSchema } from '@/planner/planner';
 import {
 	findCoordinateKeys,
 	findCoordinatePairs,
@@ -107,49 +107,41 @@ describe('seed loading', () => {
 		expect(seedTagPolicy.neverDelegableTags).toContain('chemical');
 	});
 
-	// Spring pre-emergent goes down on a warming soil, not merely a warm one:
-	// the crossing is the agronomic event, which is why this rule is the one
-	// that should carry a direction and the season fencing it to spring.
-	it('ships spring-pre-emergent as a directed threshold rule fenced to a season', () => {
+	// #48: the Rule's own cited source puts germination at 55°F held three days, so a Rule firing on that crossing fires late. It's a Window Rule on AgriLife's calendar instead, and the soil reading moved to a Guard's note.
+	it('ships spring-pre-emergent as a Window Rule on the AgriLife calendar, the only Rule the soil Guard reaches', () => {
 		const rule = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
 
-		expect(rule?.kind).toBe('threshold');
-		expect(rule && rule.kind === 'threshold' ? rule.direction : null).toBe('rising');
-		expect(rule && rule.kind === 'threshold' ? rule.season : null).not.toBeNull();
+		expect(rule).toMatchObject({ kind: 'window', start: '02-01', end: '03-31' });
+		expect(seedRules.filter(candidate => candidate.tags.includes('before-germination')).map(candidate => candidate.id)).toEqual(['spring-pre-emergent']);
 	});
 
 	/**
-	 * The shipped Rule driven through the real evaluator, rather than a local
-	 * Rule that merely shares its shape. Soil in Southwest Fort Worth passes
-	 * 55F twice a year, so the October reading is the one a spring
-	 * pre-emergent must not answer, and the two series below differ only in
-	 * the month they carry.
+	 * The shipped seed driven through the real Planner. Soil in Southwest Fort Worth sits above 55°F all autumn, so the fall pre-emergent is the Task this note must never reach, and the two runs differ only in the month.
 	 */
-	it('does not fire the shipped spring-pre-emergent on an autumn crossing of the same shape', () => {
-		const springPreEmergent = seedRules.find(candidate => candidate.id === 'spring-pre-emergent');
-		if (springPreEmergent === undefined || springPreEmergent.kind !== 'threshold') {
-			throw new Error('rules.json no longer ships spring-pre-emergent as a Threshold Rule');
-		}
+	it('notes soil at germination on the spring pre-emergent in February and never on the fall one', () => {
+		const warmSoil = (dates: string[]) => dates.flatMap(date => Array.from({ length: 24 }, (_, hour) => ({
+			observedAt: `${date}T${String(hour).padStart(2, '0')}:00:00Z`,
+			variable: 'soil-temperature',
+			depthCm: 6,
+			value: 60,
+			unit: 'F',
+			basis: 'forecast',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		})));
+		const soilNotes = (asOf: string, dates: string[]) => plan(planInputSchema.parse({
+			asOf,
+			timeZone: 'UTC',
+			plants: seedPlants,
+			rules: seedRules,
+			observations: warmSoil(dates),
+			occurrences: seedOccurrences,
+			tagPolicy: seedTagPolicy,
+		})).tasks.filter(task => task.annotations.some(annotation => annotation.guardId === 'soil-at-germination')).map(task => task.ruleId);
 
-		// Arriving from below the value, so `direction` is satisfied and the
-		// season is the only thing left to reject it.
-		const crossing = (month: string): ReturnType<typeof dailyAggregateSchema.parse>[] =>
-			[52, 56, 57, 58].map((value, index) => dailyAggregateSchema.parse({
-				variable: 'soil-temperature',
-				depthCm: 6,
-				aggregate: 'mean',
-				unit: 'F',
-				basis: 'observed',
-				provenance: 'modeled',
-				source: 'open-meteo',
-				date: `2026-${month}-0${index + 5}`,
-				value,
-			}));
-
-		expect(evaluateThresholdRule(springPreEmergent, crossing('10'), '2026-10-08')).toEqual({ fires: false });
-
-		const spring = evaluateThresholdRule(springPreEmergent, crossing('03'), '2026-03-08');
-		expect(spring).toMatchObject({ fires: true, status: 'fired' });
+		expect(soilNotes('2026-02-10', ['2026-02-10', '2026-02-11', '2026-02-12'])).toEqual(['spring-pre-emergent']);
+		expect(soilNotes('2026-09-01', ['2026-09-01', '2026-09-02', '2026-09-03'])).toEqual([]);
 	});
 });
 

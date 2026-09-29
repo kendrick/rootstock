@@ -12,6 +12,7 @@ import {
 	plannedPlant,
 	plantFixtures,
 	ruleFixtures,
+	thresholdRule,
 	unplacedPlantedPlant,
 	yardArtifact,
 } from './fixtures';
@@ -46,6 +47,16 @@ function guardFixture(effect: GuardRule['effect']): GuardRule {
 const esperanzaPlant = plantFixture('esperanza-1');
 /** The one seed Plant carrying `notes`, which is otherwise null everywhere and would leave the field untested. */
 const notedPlant = plantFixture('hibiscus-watermelon-ruffles');
+
+/*
+ * The rule set the approaching Artifact was planned against: the lawn's pre-emergent as a soil Threshold Rule, under the id its Task cites. The seed made that Rule a Window Rule in #48, so the Threshold-path specs pass this set rather than the seed.
+ */
+const thresholdRules: Rule[] = ruleFixtures.map(rule => rule.id === 'spring-pre-emergent' ? { ...thresholdRule, id: 'spring-pre-emergent' } : rule);
+
+/** The Guard rows alone. A Guard row can hold a chart whose legend is a list of its own, so `getAllByRole('listitem')` would count the legend's entries as Guards. */
+function guardRows(): HTMLElement[] {
+	return within(section('Guards that can defer its work or add a note')).getAllByRole('listitem').filter(item => item.parentElement?.closest('li') === null);
+}
 
 function renderSheet(plant: Plant | null, overrides: {
 	rules?: Rule[];
@@ -403,10 +414,20 @@ describe('plantSheet', () => {
 	});
 
 	it('draws the series when a Threshold Rule reaches the Plant', async () => {
-		renderSheet(lawnPlant);
+		renderSheet(lawnPlant, { rules: thresholdRules });
 		await settled();
 
 		expect(screen.getByRole('img', { name: /threshold/i })).toBeDefined();
+	});
+
+	// #48: the seed's soil reading lives on a Guard's condition now, and the lawn still gets its chart from it, in the Guard's own row.
+	it('draws a forecast-reaches Guard\'s series in that Guard\'s row', async () => {
+		renderSheet(lawnPlant);
+		await settled();
+
+		const guardRow = screen.getByText('Soil warm enough for crabgrass').closest('li');
+		expect(guardRow).not.toBeNull();
+		expect(within(guardRow as HTMLElement).getByRole('img', { name: /55°F threshold/ })).toBeDefined();
 	});
 
 	// No Threshold Rule means no chart, not an empty one: the threshold line is
@@ -422,7 +443,7 @@ describe('plantSheet', () => {
 	// on `ruleId` alone would mark the lawn's crossing day on any Plant the same
 	// Rule reaches.
 	it('marks the day the Task for this Plant cites', async () => {
-		renderSheet(lawnPlant);
+		renderSheet(lawnPlant, { rules: thresholdRules });
 		await settled();
 
 		// The label reads "Projected" and then the day, in one text node.
@@ -438,7 +459,7 @@ describe('plantSheet', () => {
 			},
 		};
 
-		renderSheet(lawnPlant, { artifact: elsewhere });
+		renderSheet(lawnPlant, { rules: thresholdRules, artifact: elsewhere });
 		await settled();
 
 		expect(screen.getByRole('img', { name: /threshold/i })).toBeDefined();
@@ -506,7 +527,7 @@ describe('plantSheet, this week first', () => {
 	// Late September: the spring Rule can't fire, so its chart folds away behind
 	// the date it can, and the reader opens it only if they want the readings.
 	it('folds an out-of-season chart behind the day its season opens', async () => {
-		renderSheet(lawnPlant, { artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
+		renderSheet(lawnPlant, { rules: thresholdRules, artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
 		await settled();
 
 		const fold = screen.getByText(/Out of season until Feb 1/u, { selector: 'summary' }).closest('details');
@@ -566,7 +587,7 @@ describe('plantSheet, quiet Rules', () => {
 		renderSheet(lawnPlant);
 		await settled();
 
-		const guards = within(section('Guards that can defer its work or add a note')).getAllByRole('listitem');
+		const guards = guardRows();
 		for (const guard of guards) {
 			expect(guard.textContent).toMatch(/Deferring:|Annotating:|Let through|Reaches no Task this week|(Deferring|Annotating) nothing this week/u);
 		}
@@ -595,7 +616,7 @@ describe('plantSheet, standing scoped to the open Plant', () => {
 		renderSheet(lawnPlant, { artifact: elsewhere });
 		await settled();
 
-		const guards = within(section('Guards that can defer its work or add a note')).getAllByRole('listitem');
+		const guards = guardRows();
 		for (const guard of guards) {
 			expect(guard.textContent).toContain('Reaches no Task this week');
 		}

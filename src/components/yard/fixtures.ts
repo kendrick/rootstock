@@ -4,6 +4,7 @@ import type { Rule, ThresholdRule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant, Yard } from '@/yard/plant';
 import { approachingArtifact } from '@/artifact/fixtures';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedPlants, seedRules, seedTagPolicy, seedYard } from '@/seed';
 import { createFakeStore } from '@/store/fake-store';
 
@@ -93,19 +94,8 @@ export const plantFixtures: Plant[] = [...seedPlants, unplacedPlantedPlant, plan
 /** The seed's task-creating Rules and its Guards together, exactly as the Planner reads them. */
 export const ruleFixtures: Rule[] = seedRules;
 
-function findThresholdRule(id: string): ThresholdRule {
-	const rule = seedRules.find(candidate => candidate.id === id);
-	if (rule === undefined) {
-		throw new Error(`seed rules carry no rule '${id}': the threshold fixture has nothing to narrow.`);
-	}
-	if (rule.kind !== 'threshold') {
-		throw new Error(`seed rule '${id}' is a '${rule.kind}' rule, not a threshold rule: the threshold fixture has nothing to narrow.`);
-	}
-	return rule;
-}
-
-/** The seed's `spring-pre-emergent`, narrowed by id rather than cast, so a renamed or retyped seed rule fails here instead of downstream. */
-export const thresholdRule: ThresholdRule = findThresholdRule('spring-pre-emergent');
+/** A soil-temperature Threshold Rule for the sparkline and season specs. The seed has carried none since #48, so this one comes from `@/rules/fixtures` instead of the seed. */
+export const thresholdRule: ThresholdRule = soilThresholdRule;
 
 /*
  * Spread from `approachingArtifact`, never `narratedArtifact`. `narratedArtifact`

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactElement, ReactNode } from 'react';
+import type { SeriesLine } from './soil-sparkline';
 import type { TicketLine } from './week-work';
 import type { Artifact } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
@@ -346,6 +347,17 @@ function GuardToday({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement {
 }
 
 /**
+ * The line a `forecast-reaches` Guard reads, for the chart in its row, or null for a Guard that reads no series. Since #48 the lawn's soil reading comes off the soil Guard, and without this the sheet would lose its only soil chart along with the Threshold Rule.
+ */
+function guardLine(rule: Rule): SeriesLine | null {
+	if (rule.kind !== 'guard' || rule.condition.kind !== 'forecast-reaches') {
+		return null;
+	}
+
+	return { ...rule.condition, name: rule.name, direction: null, season: null };
+}
+
+/**
  * The Rule an Occurrence belongs to, by name where the Rule is still in the set
  * and by id where it is not. An Occurrence is append-only and outlives the Rule
  * that produced it, so a deleted Rule leaves the id as the only honest label.
@@ -616,7 +628,19 @@ export function PlantSheet({
 								<p className="text-note text-muted">
 									A Guard creates no work. It can hold a Task back until its condition clears, or add a note to one.
 								</p>
-								<RuleList rules={guards} tasks={plantTasks} renderExtra={rule => <GuardToday rule={rule} plan={plantPlan} />} />
+								<RuleList
+									rules={guards}
+									tasks={plantTasks}
+									renderExtra={(rule) => {
+										const line = guardLine(rule);
+										return (
+											<>
+												<GuardToday rule={rule} plan={plantPlan} />
+												{line !== null && <SoilSparkline window={artifact.plan.window} rule={line} citation={null} asOf={artifact.plan.asOf} />}
+											</>
+										);
+									}}
+								/>
 							</section>
 						)}
 

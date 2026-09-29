@@ -35,7 +35,7 @@ describe('runReadout', () => {
 	it('reads the September run the way a grader would off the file', () => {
 		expect(runReadout(narratedArtifact, publishedStatus, context)).toEqual({
 			weather: '32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
-			plan: '9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
+			plan: '10 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
 			// In the order the Plan's Tasks carry them: the pre-emergent Task's
 			// Annotation comes before the fig's Deferral.
 			guards: 'Water in after application: annotated 1 / Rain expected: deferred 1',
@@ -79,7 +79,7 @@ describe('runReadout', () => {
 		const quiet: Artifact = { ...withTasks(narratedArtifact, []), narration: { summary: 'A quiet week.', tasks: [], advisories: [] } };
 		const readout = runReadout(quiet, okStatus, context);
 
-		expect(readout.plan).toBe('9 Rules held / No Tasks written');
+		expect(readout.plan).toBe('10 Rules held / No Tasks written');
 		expect(readout.guards).toBe('No Tasks for a Guard to check');
 		expect(readout.narration).toBe('Narrator wrote the summary, no Task sentences / 0 Advisories');
 	});

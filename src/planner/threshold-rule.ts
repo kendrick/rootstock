@@ -10,7 +10,7 @@ interface Run {
 }
 
 /** Both comparisons include the boundary, so a Rule written at 70F counts the day soil temperature reads exactly 70. That is the off-by-one a reader is most likely to assume the other way round. */
-export function meetsThreshold(value: number, rule: ThresholdRule): boolean {
+export function meetsThreshold(value: number, rule: Pick<ThresholdRule, 'comparison' | 'value'>): boolean {
 	return rule.comparison === 'gte' ? value >= rule.value : value <= rule.value;
 }
 

@@ -1,6 +1,7 @@
 import type { Rule, TagPolicy } from '@/rules/rule';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedRules } from '@/seed';
 import { RuleSummary } from './rule-summary';
 
@@ -96,7 +97,7 @@ describe('ruleSummary', () => {
 	// for how long. Any one of those missing turns "55" into a number nobody can
 	// act on.
 	it('renders every part of a threshold Rule\'s condition', () => {
-		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+		render(<RuleSummary rule={soilThresholdRule} />);
 
 		expect(
 			screen.getByText('Daily mean soil temperature at 6 cm, rising through 55°F for 3 consecutive days'),
@@ -106,7 +107,7 @@ describe('ruleSummary', () => {
 	// rule.ts's reason for `published`: picking 55 out of a printed 50-to-55 is a
 	// local judgment, and the judgment only shows if both numbers are on screen.
 	it('shows the published range beside the value the yard acts on', () => {
-		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+		render(<RuleSummary rule={soilThresholdRule} />);
 
 		expect(screen.getByText('50 to 55°F')).toBeDefined();
 	});
@@ -115,7 +116,7 @@ describe('ruleSummary', () => {
 	// link. Its authority is the Rule's, which the badge by the name already
 	// prints, so the label isn't printed a second time.
 	it('links the published range\'s own sheet without repeating its authority', () => {
-		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+		render(<RuleSummary rule={soilThresholdRule} />);
 
 		expect(screen.getAllByText('· Texas A&M AgriLife Extension')).toHaveLength(1);
 		const link = screen.getByRole('link', { name: /^Source\s*for the published range \(opens in a new tab\)$/u });
@@ -123,7 +124,7 @@ describe('ruleSummary', () => {
 	});
 
 	it('badges a published range from another authority in full', () => {
-		const rule = seedRule('spring-pre-emergent');
+		const rule = soilThresholdRule;
 		if (rule.kind !== 'threshold' || rule.published === null) {
 			throw new Error('spring-pre-emergent no longer carries a published range');
 		}
@@ -285,7 +286,7 @@ describe('ruleSummary', () => {
 	// "at or above" has to leave rather than sit beside the new wording. Two
 	// sentences describing one Rule is the defect this replaced.
 	it('drops "at or above" once a Rule names a rising Crossing', () => {
-		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+		render(<RuleSummary rule={soilThresholdRule} />);
 
 		expect(screen.queryByText(/at or above/)).toBeNull();
 	});
@@ -305,7 +306,7 @@ describe('ruleSummary', () => {
 	// `dt` still matches the date string, and the term is the half a screen
 	// reader announces first.
 	it('renders a threshold Rule\'s season in the same form as a cadence Rule\'s', () => {
-		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
+		render(<RuleSummary rule={soilThresholdRule} />);
 
 		expect(screen.getByText('Season')).toBeDefined();
 		expect(screen.getByText('February 1 through April 30')).toBeDefined();
