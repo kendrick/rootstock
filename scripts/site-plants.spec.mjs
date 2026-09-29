@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { positionSchema } from '../src/yard/plant';
-import { applySitings } from './site-plants';
+import { applySitings, onlyArg } from './site-plants';
 
 const PLANTS = path.resolve(import.meta.dirname, '../src/seed/plants.json');
 
@@ -66,5 +66,13 @@ describe('applySitings', () => {
 		const updated = applySitings(source, [{ id: 'front-lawn', position: { x: 0.1, y: 0.2 } }]);
 
 		expect(() => JSON.parse(updated)).not.toThrow();
+	});
+});
+
+describe('onlyArg', () => {
+	it('names the one Plant to site, or none', () => {
+		expect(onlyArg(['--only', 'fig-1'])).toBe('fig-1');
+		expect(onlyArg([])).toBeNull();
+		expect(onlyArg(['--only'])).toBeNull();
 	});
 });

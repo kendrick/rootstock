@@ -26,12 +26,17 @@
  * opens a browser, reads the filesystem or writes to it.
  */
 import type { Browser } from '@playwright/test';
+import type { Siting } from '../src/yard/authoring';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import { applySitings } from '../src/yard/authoring';
+
+export { applySitings } from '../src/yard/authoring';
+export type { Siting } from '../src/yard/authoring';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLANTS = path.join(ROOT, 'src/seed/plants.json');
@@ -56,49 +61,10 @@ function roundFraction(value: number): number {
 	return Math.round(value * 100) / 100;
 }
 
-export interface Siting {
-	id: string;
-	position: { x: number; y: number } | null;
-}
-
-/**
- * Applies sitings to the plants file as text rather than through a parse and a
- * re-serialise.
- *
- * `plants.json` is hand-maintained seed data and the documented add-a-plant path
- * for this release, so its formatting is part of what a reader works with.
- * Round-tripping it through JSON.stringify would reflow every record in the file
- * to make one number move, and the diff would hide the change it was supposed to
- * show.
- */
-export function applySitings(source: string, sitings: Siting[]): string {
-	let updated = source;
-
-	for (const { id, position } of sitings) {
-		const idAnchor = `"id": "${id}"`;
-		const start = updated.indexOf(idAnchor);
-
-		if (start === -1) {
-			throw new Error(`no Plant with id '${id}' in plants.json`);
-		}
-
-		const positionKey = updated.indexOf('"position":', start);
-
-		if (positionKey === -1) {
-			throw new Error(`Plant '${id}' has no position field to write to`);
-		}
-
-		const lineEnd = updated.indexOf('\n', positionKey);
-		const line = updated.slice(positionKey, lineEnd);
-		const trailingComma = line.trimEnd().endsWith(',') ? ',' : '';
-		const next = position === null
-			? `"position": null${trailingComma}`
-			: `"position": { "x": ${position.x}, "y": ${position.y} }${trailingComma}`;
-
-		updated = updated.slice(0, positionKey) + next + updated.slice(lineEnd);
-	}
-
-	return updated;
+/** `--only <id>` sites one Plant, which is how `pnpm plant add` hands a new Plant straight to its Pin. */
+export function onlyArg(argv: string[]): string | null {
+	const flag = argv.indexOf('--only');
+	return flag === -1 ? null : argv[flag + 1] ?? null;
 }
 
 /** The page the siting session runs in: the photo at its own aspect, with every Pin drawn on it. */
@@ -191,7 +157,13 @@ async function siteEach(
 
 async function main(): Promise<void> {
 	const plantsSource = readFileSync(PLANTS, 'utf8');
-	const plants = JSON.parse(plantsSource) as { id: string; name: string; position: { x: number; y: number } | null }[];
+	const everyPlant = JSON.parse(plantsSource) as { id: string; name: string; position: { x: number; y: number } | null }[];
+	const only = onlyArg(process.argv.slice(2));
+	const plants = only === null ? everyPlant : everyPlant.filter(plant => plant.id === only);
+
+	if (plants.length === 0) {
+		throw new Error(`no Plant with id '${only}' in plants.json`);
+	}
 	const yard = JSON.parse(readFileSync(YARD, 'utf8')) as { photo: { path: string } | null };
 
 	if (yard.photo === null) {
