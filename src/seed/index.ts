@@ -90,7 +90,7 @@ export function findUnresolvedReferences(plants: Plant[], rules: Rule[], occurre
 }
 
 /**
- * The tag counterpart of {@link findUnresolvedReferences}. Tags are free strings (plant.ts says why), so a Rule selecting `plantTags: ['lanw']` parses cleanly and never plans a Task. The lawn Rules select by tag so a new lawn reaches them without an edit, and this check keeps a typo on either side of that match from costing a season.
+ * The tag counterpart of {@link findUnresolvedReferences}. Tags are free strings (plant.ts says why), so a Rule selecting `plantTags: ['lanw']` parses cleanly and never plans a Task. This covers the Rule's side of the match only: one Plant carrying the tag is enough to pass, so a second Plant with the tag misspelt goes unnoticed here. {@link findLawnsMissingLawnTag} covers that side for lawns.
  *
  * A planned Plant counts as carrying its tags. `targets()` reaches only planted ones, but a Rule written ahead of a planned bed is deliberate, not a typo.
  */
@@ -107,6 +107,18 @@ export function findUnmatchedPlantTags(plants: Plant[], rules: Rule[]): string[]
 	}
 
 	return problems;
+}
+
+/** The tag the lawn Rules select on. */
+export const LAWN_TAG = 'lawn';
+
+/**
+ * Every lawn Rule reaches its lawns by the `lawn` tag, so a `kind: 'lawn'` Plant without it gets no lawn Tasks, silently. {@link findUnmatchedPlantTags} can't see this once any other lawn carries the tag. The check keys on `kind`, which the schema already ties to lawn detail.
+ */
+export function findLawnsMissingLawnTag(plants: Plant[]): string[] {
+	return plants
+		.filter(plant => plant.kind === 'lawn' && !plant.tags.includes(LAWN_TAG))
+		.map(plant => `plant '${plant.id}' is a lawn but lacks the '${LAWN_TAG}' tag the lawn Rules select on`);
 }
 
 /**

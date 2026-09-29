@@ -10,6 +10,7 @@ import {
 	findCoordinatePairs,
 	findDormantGuards,
 	findDuplicateIds,
+	findLawnsMissingLawnTag,
 	findLongDecimals,
 	findRulesPastWindow,
 	findUnmatchedPlantTags,
@@ -211,6 +212,20 @@ describe('rules that select plants by tag', () => {
 		expect(findUnmatchedPlantTags([plant({ tags: ['lawn'] })], rules)).toEqual([
 			'rule \'test-threshold\' appliesTo.plantTags names tag \'lanw\', which no plant carries',
 		]);
+	});
+
+	it('finds every lawn in the real seed carrying the lawn tag', () => {
+		expect(findLawnsMissingLawnTag(seedPlants)).toEqual([]);
+	});
+
+	// The typo findUnmatchedPlantTags can't see: the front lawn still carries `lawn`, so every lawn Rule's tag is matched while the new lawn reaches none of them.
+	it('reports a second lawn whose tag is misspelt, which the rule-side check passes', () => {
+		const backLawn = plant({ id: 'back-lawn', kind: 'lawn', tags: ['lanw'], lawn: seedPlants.find(p => p.id === 'front-lawn')!.lawn });
+		const plants = [...seedPlants, backLawn];
+
+		expect(findUnmatchedPlantTags(plants, seedRules)).toEqual([]);
+		expect(findLawnsMissingLawnTag(plants)).toEqual(['plant \'back-lawn\' is a lawn but lacks the \'lawn\' tag the lawn Rules select on']);
+		expect(findLawnsMissingLawnTag([...seedPlants, { ...backLawn, tags: ['lawn'] }])).toEqual([]);
 	});
 
 	// #52's point: a Plant added to plants.json reaches the Rules its tags imply with no edit to rules.json.
