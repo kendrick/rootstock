@@ -62,7 +62,10 @@ describe('ruleList', () => {
 		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
 		// Each fixture carries a unique name; one query per rule confirms all four
-		// reached RuleSummary rather than one or two being silently dropped.
+		// reached RuleSummary rather than one or two being silently dropped. The
+		// kinds are asserted too, so a fixture whose Rule changed kind can't leave
+		// this passing with one path unexercised.
+		expect(new Set([windowRule, thresholdRule, cadenceRule, guardRule].map(rule => rule.kind))).toEqual(new Set(['window', 'threshold', 'cadence', 'guard']));
 		for (const rule of [windowRule, thresholdRule, cadenceRule, guardRule]) {
 			expect(screen.getByRole('heading', { level: 3, name: new RegExp(`^${rule.name},`, 'u') })).toBeDefined();
 		}

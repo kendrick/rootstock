@@ -430,6 +430,19 @@ describe('plantSheet', () => {
 		expect(within(guardRow as HTMLElement).getByRole('img', { name: /55°F threshold/ })).toBeDefined();
 	});
 
+	// The soil Guard only ever notes the spring pre-emergent, so September soil above its 55°F line would read as the danger zone being live. Outside the window of the Rule it reaches, the chart folds behind the day that window opens, as a Threshold Rule's does.
+	it('folds a forecast-reaches Guard\'s chart outside the window of the Rule it reaches', async () => {
+		renderSheet(lawnPlant, { artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
+		await settled();
+
+		const guardRow = screen.getByText('Soil warm enough for crabgrass').closest('li') as HTMLElement;
+		const fold = guardRow.querySelector('details');
+		expect(fold).not.toBeNull();
+		expect(fold?.open).toBe(false);
+		expect(within(guardRow).getByText(/^Out of season until Feb(ruary)? 1\b/)).toBeDefined();
+		expect(fold?.querySelector('[role="img"]')).not.toBeNull();
+	});
+
 	// No Threshold Rule means no chart, not an empty one: the threshold line is
 	// the only line on it that says anything, and there is none to draw.
 	it('draws nothing at all when no Threshold Rule reaches the Plant', async () => {

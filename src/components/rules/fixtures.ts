@@ -1,4 +1,5 @@
 import type { Rule } from '@/rules/rule';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedRules } from '@/seed';
 
 /**
@@ -22,12 +23,9 @@ function findSeedRule(id: string): Rule {
 export const windowRule: Rule = { ...findSeedRule('fall-pre-emergent') };
 
 /**
- * The spring pre-emergent threshold rule. This is the one seed rule that ships
- * with a published range (`published.low` / `published.high`) alongside the
- * single value the yard acts on—making it the right fixture for any spec that
- * exercises the range display path.
+ * A soil Threshold Rule with a published range (`published.low` / `published.high`) beside the single value the yard acts on, for any spec that exercises the range display path. The seed has carried no Threshold Rule since #48, so this is `@/rules/fixtures`'s copy of the shape `spring-pre-emergent` had before it. It keeps that id, because `cadenceRule` below follows it by `after.ruleId`.
  */
-export const thresholdRule: Rule = { ...findSeedRule('spring-pre-emergent') };
+export const thresholdRule: Rule = { ...soilThresholdRule, id: 'spring-pre-emergent' };
 
 /**
  * A cadence rule backed by an owner source. `spring-pre-emergent-follow-up`

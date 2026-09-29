@@ -347,14 +347,45 @@ function GuardToday({ rule, plan }: { rule: Rule; plan: Plan }): ReactElement {
 }
 
 /**
+ * The span of the one Rule a Guard reaches here, so the Guard's chart is in season exactly when that Rule can have a Task. The soil Guard only ever notes the spring pre-emergent, and September soil drawn over its 55°F line would read as the danger zone being live. Null when the Guard reaches several Rules, or one with no span, and the chart then stays unfolded.
+ */
+function reachedSpan(guard: GuardRule, rules: readonly Rule[]): SeriesLine['season'] {
+	const { ruleTags } = guard.appliesTo;
+	if (ruleTags === null) {
+		return null;
+	}
+
+	const reached = rules.filter(rule => rule.kind !== 'guard' && rule.tags.some(tag => ruleTags.includes(tag)));
+	const only = reached.length === 1 ? reached[0] : undefined;
+	if (only === undefined || only.kind === 'guard') {
+		return null;
+	}
+
+	return only.kind === 'window' ? { start: only.start, end: only.end } : only.season;
+}
+
+/**
  * The line a `forecast-reaches` Guard reads, for the chart in its row, or null for a Guard that reads no series. Since #48 the lawn's soil reading comes off the soil Guard, and without this the sheet would lose its only soil chart along with the Threshold Rule.
  */
-function guardLine(rule: Rule): SeriesLine | null {
+function guardLine(rule: Rule, rules: readonly Rule[]): SeriesLine | null {
 	if (rule.kind !== 'guard' || rule.condition.kind !== 'forecast-reaches') {
 		return null;
 	}
 
-	return { ...rule.condition, name: rule.name, direction: null, season: null };
+	return { ...rule.condition, name: rule.name, direction: null, season: reachedSpan(rule, rules) };
+}
+
+/** A chart folded behind the day its season opens, shared by a Threshold Rule's row and a Guard's. */
+function OutOfSeasonFold({ summary, children }: { summary: string; children: ReactElement }): ReactElement {
+	return (
+		<details className="group">
+			<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
+				<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
+				{summary}
+			</summary>
+			{children}
+		</details>
+	);
 }
 
 /**
@@ -609,13 +640,9 @@ export function PlantSheet({
 												seasonOpensOn === null
 													? <SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} />
 													: (
-															<details className="group">
-																<summary className={cn('flex min-h-11 list-none items-center gap-2 text-note text-muted', 'cursor-pointer [&::-webkit-details-marker]:hidden', FOCUS_RING)}>
-																	<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground transition-transform group-open:rotate-90" />
-																	{`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}
-																</summary>
+															<OutOfSeasonFold summary={`Out of season until ${seasonOpensOn}, so nothing can fire it. Show its soil readings.`}>
 																<SoilSparkline window={artifact.plan.window} rule={thresholdRule} citation={citation} asOf={artifact.plan.asOf} seasonSaid />
-															</details>
+															</OutOfSeasonFold>
 														)
 											)}
 								/>
@@ -632,11 +659,18 @@ export function PlantSheet({
 									rules={guards}
 									tasks={plantTasks}
 									renderExtra={(rule) => {
-										const line = guardLine(rule);
+										const line = guardLine(rule, workRules);
+										const lineOpensOn = line === null ? null : outOfSeasonUntil(artifact.plan.asOf, line);
 										return (
 											<>
 												<GuardToday rule={rule} plan={plantPlan} />
-												{line !== null && <SoilSparkline window={artifact.plan.window} rule={line} citation={null} asOf={artifact.plan.asOf} />}
+												{line !== null && (lineOpensOn === null
+													? <SoilSparkline window={artifact.plan.window} rule={line} citation={null} asOf={artifact.plan.asOf} />
+													: (
+															<OutOfSeasonFold summary={`Out of season until ${lineOpensOn}, when the Rule it notes can next have a Task. Show its soil readings.`}>
+																<SoilSparkline window={artifact.plan.window} rule={line} citation={null} asOf={artifact.plan.asOf} seasonSaid />
+															</OutOfSeasonFold>
+														))}
 											</>
 										);
 									}}
