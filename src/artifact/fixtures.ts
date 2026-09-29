@@ -2,6 +2,7 @@ import type { Artifact, StatusRecord } from './artifact';
 import type { DailyAggregate } from '@/planner/plan';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { taskId } from '@/planner/task';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedPlannedFrom } from './planned-from';
 
 /*
@@ -32,7 +33,8 @@ const SPRING_ASOF = '2026-03-02';
 /** Ids come from `taskId` rather than string literals: hand-written ones drift from the function the Planner and the store both key on. */
 export const firedTaskId = taskId('fall-pre-emergent', 'front-lawn');
 export const deferredTaskId = taskId('deep-water-fig', 'fig-1');
-export const approachingTaskId = taskId('spring-pre-emergent', 'front-lawn');
+// A projection only a Threshold Rule can author, so it cites `soilThresholdRule` under its own id. The seed's `spring-pre-emergent` has been a Window Rule since #48, and a projection under that id would pair a February window with a soil forecast the Planner could never have drawn.
+export const approachingTaskId = taskId(soilThresholdRule.id, 'front-lawn');
 /** Named for the flag rather than the Rule: what it is here to prove is that `delegable` is true on a Task that is otherwise the twin of {@link firedTaskId}. */
 export const delegableTaskId = taskId('last-nitrogen', 'front-lawn');
 
@@ -249,7 +251,7 @@ export const approachingArtifact: Artifact = {
 		tasks: [
 			{
 				id: approachingTaskId,
-				ruleId: 'spring-pre-emergent',
+				ruleId: soilThresholdRule.id,
 				plantId: 'front-lawn',
 				status: 'approaching',
 				citation: {

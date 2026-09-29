@@ -2,6 +2,7 @@ import type { DailyAggregate } from '@/planner/plan';
 import type { Citation, Task } from '@/planner/task';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { approachingTaskId } from '@/artifact/fixtures';
 import { CitationDisclosure } from '@/components/citation';
 import {
 	combinedNarratedArtifact,
@@ -24,7 +25,7 @@ function fixtureTask(id: string): Task {
 
 const windowTask = fixtureTask('fall-pre-emergent@front-lawn');
 const cadenceTask = fixtureTask('deep-water-fig@fig-1');
-const projectionTask = fixtureTask('spring-pre-emergent@front-lawn');
+const projectionTask = fixtureTask(approachingTaskId);
 
 /**
  * Every Citation in `src/artifact/fixtures.ts` is a window, a cadence, or a
@@ -192,7 +193,7 @@ describe('citationDisclosure', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={thresholdCitation}
-				rule={rulesById.get('spring-pre-emergent') ?? null}
+				rule={rulesById.get(projectionTask.ruleId) ?? null}
 			/>,
 		);
 
@@ -207,7 +208,7 @@ describe('citationDisclosure', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={windowedCitation}
-				rule={rulesById.get('spring-pre-emergent') ?? null}
+				rule={rulesById.get(projectionTask.ruleId) ?? null}
 				window={combinedNarratedArtifact.plan.window}
 			/>,
 		);
@@ -232,7 +233,7 @@ describe('citationDisclosure', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={windowedCitation}
-				rule={rulesById.get('spring-pre-emergent') ?? null}
+				rule={rulesById.get(projectionTask.ruleId) ?? null}
 				window={combinedNarratedArtifact.plan.window}
 			/>,
 		);
@@ -250,7 +251,7 @@ describe('citationDisclosure', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={windowedCitation}
-				rule={rulesById.get('spring-pre-emergent') ?? null}
+				rule={rulesById.get(projectionTask.ruleId) ?? null}
 			/>,
 		);
 
@@ -262,7 +263,7 @@ describe('citationDisclosure', () => {
 		const { container } = render(
 			<CitationDisclosure
 				citation={thresholdCitation}
-				rule={rulesById.get('spring-pre-emergent') ?? null}
+				rule={rulesById.get(projectionTask.ruleId) ?? null}
 				window={combinedNarratedArtifact.plan.window}
 			/>,
 		);

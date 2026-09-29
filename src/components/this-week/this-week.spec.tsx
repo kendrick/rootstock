@@ -340,7 +340,8 @@ describe('thisWeek', () => {
 			<ThisWeek artifact={combinedNarratedArtifact} status={okStatus} store={fakeStore()} />,
 		);
 
-		expect(screen.getByText(/not in the current rule set/)).toBeDefined();
+		// The fixture cites two Rules the seed doesn't hold, so defaulting to the seed leaves both unresolved: the fig's deep-water Rule and the soil Threshold Rule behind the approaching Task (the seed has none since #48).
+		expect(screen.getAllByText(/not in the current rule set/)).toHaveLength(2);
 	});
 
 	it('says so in words when the Plan holds no work at all', async () => {

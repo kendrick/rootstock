@@ -49,9 +49,14 @@ const esperanzaPlant = plantFixture('esperanza-1');
 const notedPlant = plantFixture('hibiscus-watermelon-ruffles');
 
 /*
- * The rule set the approaching Artifact was planned against: the lawn's pre-emergent as a soil Threshold Rule, under the id its Task cites. The seed made that Rule a Window Rule in #48, so the Threshold-path specs pass this set rather than the seed.
+ * The seed plus the soil Threshold Rule the approaching Artifact's Task cites. The seed has carried no Threshold Rule since #48, so the Threshold-path specs pass this set rather than the seed alone.
  */
-const thresholdRules: Rule[] = ruleFixtures.map(rule => rule.id === 'spring-pre-emergent' ? { ...thresholdRule, id: 'spring-pre-emergent' } : rule);
+const thresholdRules: Rule[] = [...ruleFixtures, thresholdRule];
+
+/** The Threshold Rule's own row. The soil Guard draws a chart of the same series in its row, so an unscoped query finds two. */
+function thresholdRow(): HTMLElement {
+	return within(section('Rules that ask for work here')).getByText(thresholdRule.name).closest('li') as HTMLElement;
+}
 
 /** The Guard rows alone. A Guard row can hold a chart whose legend is a list of its own, so `getAllByRole('listitem')` would count the legend's entries as Guards. */
 function guardRows(): HTMLElement[] {
@@ -417,7 +422,7 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant, { rules: thresholdRules });
 		await settled();
 
-		expect(screen.getByRole('img', { name: /threshold/i })).toBeDefined();
+		expect(within(thresholdRow()).getByRole('img', { name: /threshold/i })).toBeDefined();
 	});
 
 	// #48: the seed's soil reading lives on a Guard's condition now, and the lawn still gets its chart from it, in the Guard's own row.
@@ -460,7 +465,7 @@ describe('plantSheet', () => {
 		await settled();
 
 		// The label reads "Projected" and then the day, in one text node.
-		expect(screen.getByText(/^Projected /)).toBeDefined();
+		expect(within(thresholdRow()).getByText(/^Projected /)).toBeDefined();
 	});
 
 	it('marks no day when the citing Task names another Plant', async () => {
@@ -475,7 +480,7 @@ describe('plantSheet', () => {
 		renderSheet(lawnPlant, { rules: thresholdRules, artifact: elsewhere });
 		await settled();
 
-		expect(screen.getByRole('img', { name: /threshold/i })).toBeDefined();
+		expect(within(thresholdRow()).getByRole('img', { name: /threshold/i })).toBeDefined();
 		expect(screen.queryByText(/^Projected /)).toBeNull();
 	});
 });
@@ -486,8 +491,6 @@ describe('plantSheet', () => {
  * one Task, the spring pre-emergent approaching on the front lawn.
  */
 describe('plantSheet, this week first', () => {
-	const springName = ruleFixtures.find(rule => rule.id === 'spring-pre-emergent')?.name ?? 'spring-pre-emergent';
-
 	it('leads with this week and ends with the site', async () => {
 		renderSheet(lawnPlant);
 		await settled();
@@ -498,12 +501,12 @@ describe('plantSheet, this week first', () => {
 	});
 
 	it('links each of the Plant\'s ticket lines to that line on This Week', async () => {
-		renderSheet(lawnPlant);
+		renderSheet(lawnPlant, { rules: thresholdRules });
 		await settled();
 
 		const link = within(section('This week')).getByRole('link', { name: /Approaching 01/u });
 		expect(link.getAttribute('href')).toMatch(/#approaching-01$/u);
-		expect(link.textContent).toContain(springName);
+		expect(link.textContent).toContain(thresholdRule.name);
 	});
 
 	// A Guard holding the work today is the other half of "what does it need",
@@ -543,7 +546,7 @@ describe('plantSheet, this week first', () => {
 		renderSheet(lawnPlant, { rules: thresholdRules, artifact: { ...yardArtifact, plan: { ...yardArtifact.plan, asOf: '2026-09-25' } } });
 		await settled();
 
-		const fold = screen.getByText(/Out of season until Feb 1/u, { selector: 'summary' }).closest('details');
+		const fold = within(thresholdRow()).getByText(/Out of season until Feb 1/u, { selector: 'summary' }).closest('details');
 		expect(fold).not.toBeNull();
 		expect(fold?.open).toBe(false);
 		expect(fold?.querySelector('svg')).not.toBeNull();

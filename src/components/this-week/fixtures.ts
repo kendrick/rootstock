@@ -7,6 +7,7 @@ import {
 	narratedArtifact,
 	unnarratedArtifact,
 } from '@/artifact/fixtures';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedPlants, seedRules } from '@/seed';
 
 export { failingStatus, okStatus } from '@/artifact/fixtures';
@@ -134,14 +135,14 @@ const waterInAfterApplicationRule: Rule = {
 
 /**
  * Every Rule a Task, a Deferral, or an Annotation in {@link combinedNarratedArtifact}
- * names: the four seed Rules reused by id rather than retyped, plus the two
+ * names: three seed Rules reused by id rather than retyped, the soil Threshold Rule the approaching Task cites (the seed has none since #48), plus the two
  * authored above. `rulesById` below resolves every one of them—the
  * deliberately unresolved case lives only in {@link rulesByIdMissingDeepWaterFig}.
  */
 export const rules: Rule[] = [
 	findSeedRule('fall-pre-emergent'),
 	findSeedRule('last-nitrogen'),
-	findSeedRule('spring-pre-emergent'),
+	soilThresholdRule,
 	findSeedRule('rain-expected'),
 	deepWaterFigRule,
 	waterInAfterApplicationRule,
