@@ -199,6 +199,26 @@ export function findCoordinatePairs(json: string): string[] {
 	return json.match(COORDINATE_PAIR) ?? [];
 }
 
+/**
+ * The field names of an already-parsed value that read like a coordinate. Use
+ * this over {@link findCoordinateKeys} on anything that carries free prose: a
+ * quoted word before a colon in a sentence, like `"related":`, reads as a key
+ * to the text scan and matches `lat`. `src/generation/run.ts` walks the parsed
+ * Artifact for the same reason.
+ */
+export function findCoordinateFieldNames(value: unknown): string[] {
+	if (Array.isArray(value)) {
+		return value.flatMap(findCoordinateFieldNames);
+	}
+	if (value === null || typeof value !== 'object') {
+		return [];
+	}
+	return Object.entries(value).flatMap(([key, child]) => [
+		...(COORDINATE_KEY.test(key) ? [key] : []),
+		...findCoordinateFieldNames(child),
+	]);
+}
+
 /** Same reasoning as {@link findLongDecimals}, for a key name instead of a value. */
 export function findCoordinateKeys(json: string): string[] {
 	const keys: string[] = [];
