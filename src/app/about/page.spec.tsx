@@ -59,7 +59,7 @@ describe('about page', () => {
 		const steps = screen.getAllByRole('listitem').filter(item => /^0[1-6]/u.test(item.textContent));
 		expect(steps.map(step => step.querySelector('.font-mono')?.textContent)).toEqual([
 			'32 days, Aug 13 – Sep 13 / 30 observed, 2 forecast / soil temperature at 6 cm',
-			'9 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
+			'10 Rules held / 3 Tasks from 3 Rules, for 2 Plants',
 			'Water in after application: annotated 1 / Rain expected: deferred 1',
 			'Narrator wrote 2 of 3 Task sentences / 1 Advisory',
 			'Generated Fri Sep 11, 11:04 UTC',
@@ -89,7 +89,7 @@ describe('about page', () => {
 
 		expect(screen.getByText(/The current ticket has no Tasks/u)).toBeDefined();
 		expect(screen.queryByText(UNREADABLE)).toBeNull();
-		expect(screen.getByText('9 Rules held / No Tasks written')).toBeDefined();
+		expect(screen.getByText('10 Rules held / No Tasks written')).toBeDefined();
 	});
 
 	it('does not say a narrated ticket went out without the Narrator', () => {

@@ -85,7 +85,7 @@ function fixtureRule(): ThresholdRule {
 }
 
 /**
- * The shipped `spring-pre-emergent` reduced to the fields the evaluator reads:
+ * The soil Threshold Rule `spring-pre-emergent` was until #48, reduced to the fields the evaluator reads:
  * 55F at 6cm over three days, rising. Passing `direction: null` back gives
  * what a seed Rule that names no direction parses to, so the specs below can
  * vary that one field and hold the series still.

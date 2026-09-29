@@ -53,41 +53,22 @@
 	},
 	{
 		"id": "spring-pre-emergent",
-		"kind": "threshold",
+		"kind": "window",
 		"name": "Spring pre-emergent",
 		"region": {
 			"name": "Southwest Fort Worth, Texas",
 			"hardinessZone": "8b"
 		},
-		"variable": "soil-temperature",
-		"depthCm": 6,
-		"aggregate": "mean",
-		"comparison": "gte",
-		"value": 55,
-		"unit": "F",
-		"consecutiveDays": 3,
-		"direction": "rising",
-		"season": {
-			"start": "02-01",
-			"end": "04-30"
-		},
-		"published": {
-			"low": 50,
-			"high": 55,
-			"source": {
-				"kind": "extension",
-				"label": "Texas A&M AgriLife Extension",
-				"url": "https://www.dcmga.com/wp-content/uploads/docs/agrilife/grasses/al-herbicide-selection-warm-searson-turfgrass.pdf"
-			}
-		},
-		"tags": ["lawn", "herbicide", "chemical"],
+		"start": "02-01",
+		"end": "03-31",
+		"tags": ["lawn", "herbicide", "chemical", "before-germination"],
 		"productLabel": {
 			"url": "https://assets.greencastonline.com/pdf/labels/SCP%201139A-L10C%200121.pdf"
 		},
 		"source": {
 			"kind": "extension",
 			"label": "Texas A&M AgriLife Extension",
-			"url": "https://agrilifetoday.tamu.edu/2016/02/24/its-crabgrass-time-again/"
+			"url": "https://agrilifeextension.tamu.edu/wp-content/uploads/2023/08/ESC-042-bermudagrass-lawn-management-calendar.pdf"
 		},
 		"delegable": false,
 		"priority": 10,
@@ -293,6 +274,41 @@
 			"ruleTags": [
 				"chemical"
 			]
+		}
+	},
+	{
+		"id": "soil-at-germination",
+		"kind": "guard",
+		"name": "Soil warm enough for crabgrass",
+		"region": {
+			"name": "Southwest Fort Worth, Texas",
+			"hardinessZone": "8b"
+		},
+		"condition": {
+			"kind": "forecast-reaches",
+			"variable": "soil-temperature",
+			"depthCm": 6,
+			"aggregate": "mean",
+			"comparison": "gte",
+			"value": 55,
+			"unit": "F",
+			"consecutiveDays": 3
+		},
+		"effect": "annotate",
+		"text": "Soil at about 2 inches is forecast to hold 55°F for three days, which is when crabgrass starts to germinate. Get the pre-emergent down and watered in before then.",
+		"tags": ["weather"],
+		"productLabel": null,
+		"source": {
+			"kind": "extension",
+			"label": "Texas A&M AgriLife Extension",
+			"url": "https://agrilifetoday.tamu.edu/2016/02/24/its-crabgrass-time-again/"
+		},
+		"delegable": false,
+		"priority": -10,
+		"appliesTo": {
+			"plantIds": null,
+			"plantTags": null,
+			"ruleTags": ["before-germination"]
 		}
 	}
 ]

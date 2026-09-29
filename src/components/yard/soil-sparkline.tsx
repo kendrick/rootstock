@@ -165,10 +165,15 @@ function basisRuns(plotted: Plotted[]): BasisRun[] {
 	return runs;
 }
 
+/**
+ * The line a chart draws and the series it draws it over: a Threshold Rule's, or the condition of a `forecast-reaches` Guard, which carries no direction and no season.
+ */
+export type SeriesLine = Pick<ThresholdRule, 'name' | 'variable' | 'depthCm' | 'aggregate' | 'comparison' | 'value' | 'unit' | 'consecutiveDays' | 'direction' | 'season'>;
+
 export interface SoilSparklineProps {
 	/** `Plan.window` entire and unfiltered. The Rule decides which of those days belong on the chart, so handing this the whole window is correct. */
 	window: DailyAggregate[];
-	rule: ThresholdRule;
+	rule: SeriesLine;
 	/** The Citation off the Task this Rule produced, or null on a Rule that produced none. Names the day to mark; nothing else on the chart depends on it. */
 	citation: Citation | null;
 	/** `Plan.asOf`. Decides whether the Rule's season is open, which changes what the chart is allowed to look like it says. */

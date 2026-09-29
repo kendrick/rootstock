@@ -276,7 +276,7 @@ describe('soilSparkline', () => {
 	});
 
 	/*
-	 * ADR 0005 gave `spring-pre-emergent` a direction, so `thresholdRule` here is
+	 * `thresholdRule` here carries the direction ADR 0005 added, so it is
 	 * already the directed case. The desc and the sr-only table caption render
 	 * the same `description` string, so both are checked rather than trusting
 	 * that one following the other means they agree.

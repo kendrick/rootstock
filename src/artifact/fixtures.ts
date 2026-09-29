@@ -2,6 +2,7 @@ import type { Artifact, StatusRecord } from './artifact';
 import type { DailyAggregate } from '@/planner/plan';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { taskId } from '@/planner/task';
+import { soilThresholdRule } from '@/rules/fixtures';
 import { seedPlannedFrom } from './planned-from';
 
 /*
@@ -18,7 +19,7 @@ import { seedPlannedFrom } from './planned-from';
  *
  * The approaching case cannot join that Plan. Its Citation is a projection,
  * ADR 0003 makes the window the evidence behind a Citation, and the September
- * window already sits above the threshold `spring-pre-emergent` is waiting
+ * window already sits above the threshold `soilThresholdRule` is waiting
  * for. A threshold line drawn under every point in a window says the work has
  * fired, whatever the status field claims. So `approachingArtifact` is a
  * second Plan on a spring date with its own rising window, which is what
@@ -32,7 +33,8 @@ const SPRING_ASOF = '2026-03-02';
 /** Ids come from `taskId` rather than string literals: hand-written ones drift from the function the Planner and the store both key on. */
 export const firedTaskId = taskId('fall-pre-emergent', 'front-lawn');
 export const deferredTaskId = taskId('deep-water-fig', 'fig-1');
-export const approachingTaskId = taskId('spring-pre-emergent', 'front-lawn');
+// A projection only a Threshold Rule can author, so it cites `soilThresholdRule` under its own id. The seed's `spring-pre-emergent` has been a Window Rule since #48, and a projection under that id would pair a February window with a soil forecast the Planner could never have drawn.
+export const approachingTaskId = taskId(soilThresholdRule.id, 'front-lawn');
 /** Named for the flag rather than the Rule: what it is here to prove is that `delegable` is true on a Task that is otherwise the twin of {@link firedTaskId}. */
 export const delegableTaskId = taskId('last-nitrogen', 'front-lawn');
 
@@ -70,10 +72,11 @@ const windowFixture: DailyAggregate[] = [
 	soilTemperature(shiftDate(ASOF, 2), 64.1, 'forecast'),
 ];
 
-// The seed's `spring-pre-emergent` restated, because the window below has to be
-// built against the same two numbers the Planner would read off the Rule.
-const SPRING_THRESHOLD_F = 55;
-const SPRING_CONSECUTIVE_DAYS = 3;
+// Read off `soilThresholdRule`, the Rule the approaching Task cites, because the
+// window below has to be built against the same two numbers the Planner would
+// read off that Rule.
+const SPRING_THRESHOLD_F = soilThresholdRule.value;
+const SPRING_CONSECUTIVE_DAYS = soilThresholdRule.consecutiveDays;
 
 /*
  * The September window's mirror: same length, travelling the other way. Every
@@ -237,7 +240,7 @@ export const unnarratedArtifact: Artifact = {
 
 /**
  * The spring run, which is where {@link approachingTaskId} belongs.
- * `spring-pre-emergent` is in season on this date, the window climbs toward the
+ * `soilThresholdRule` is in season on this date, the window climbs toward the
  * threshold rather than away from it, and the projected day is a forecast day a
  * reader can find in that window.
  */
@@ -249,7 +252,7 @@ export const approachingArtifact: Artifact = {
 		tasks: [
 			{
 				id: approachingTaskId,
-				ruleId: 'spring-pre-emergent',
+				ruleId: soilThresholdRule.id,
 				plantId: 'front-lawn',
 				status: 'approaching',
 				citation: {

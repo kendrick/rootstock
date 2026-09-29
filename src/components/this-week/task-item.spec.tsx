@@ -3,6 +3,7 @@ import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { approachingTaskId } from '@/artifact/fixtures';
 import { taskId } from '@/planner/task';
 import { combinedNarratedArtifact, plantsById, rulesById, rulesByIdMissingDeepWaterFig } from './fixtures';
 import { NOT_SAVED, RECORD_DELAY_MS, TOO_LATE, UNDO_REFUSAL } from './permanence';
@@ -23,7 +24,7 @@ function fixtureTask(id: string): Task {
 
 const firedTask = fixtureTask('fall-pre-emergent@front-lawn');
 const deferredTask = fixtureTask('deep-water-fig@fig-1');
-const approachingTask = fixtureTask('spring-pre-emergent@front-lawn');
+const approachingTask = fixtureTask(approachingTaskId);
 const delegableTask = fixtureTask('last-nitrogen@front-lawn');
 
 /** Narration's line for the fired Task, read off the fixture for the same reason the Tasks are. */

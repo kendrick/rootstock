@@ -24,7 +24,7 @@ function task(ruleId: string, plantId: string | null, status: Task['status']): T
 const tasks: Task[] = [
 	task('fall-pre-emergent', 'front-lawn', 'deferred'),
 	task('last-nitrogen', 'front-lawn', 'fired'),
-	task('spring-pre-emergent', 'front-lawn', 'approaching'),
+	task('soil-threshold-pre-emergent', 'front-lawn', 'approaching'),
 	task('feed-containers', 'esperanza-1', 'fired'),
 	task('feed-containers', 'hibiscus-luna-white', 'deferred'),
 	task('feed-containers', 'fig-1', 'fired'),
@@ -45,6 +45,6 @@ describe('ticketLinesFor', () => {
 	});
 
 	it('links no approaching work, which the Fired band never holds', () => {
-		expect(ticketLinesFor('spring-pre-emergent', tasks)).toEqual([]);
+		expect(ticketLinesFor('soil-threshold-pre-emergent', tasks)).toEqual([]);
 	});
 });

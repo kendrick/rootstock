@@ -158,8 +158,8 @@ export const rules: Rule[] = parseWith(z.array(ruleSchema), 'planner fixtures: r
 	 * already happened. North Texas soil does not ease down to 70F either. It drops through on a
 	 * front, so a three-day run qualifies well past the number. The seed's `fall-pre-emergent` is a
 	 * Window Rule because a calendar window is the correct kind for prophylactic work, not because
-	 * nobody got around to keying it to soil yet. #48 carries the same reasoning applied to
-	 * `spring-pre-emergent`, which is a Threshold Rule doing prophylactic work today.
+	 * nobody got around to keying it to soil yet. #48 applied the same reasoning to
+	 * `spring-pre-emergent`, which is a Window Rule too now.
 	 */
 	{
 		id: 'fall-pre-emergent-soil',

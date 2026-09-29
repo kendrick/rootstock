@@ -148,6 +148,8 @@ export function StalenessBanner({
 			// urgent enough to earn that: the page is a gardening plan, and the news
 			// is that it is a few days behind. #16 runs axe over this.
 			role="status"
+			// The end-to-end specs find the banner by this, since ArtifactGate's planned-from notice shares role="status" and shows beside it between a seed change and the next daily run (ADR 0007).
+			data-staleness-banner
 			className={cn(
 				'flex items-start gap-3 rounded-md border',
 				prominent ? 'border-2 px-5 py-4 text-body' : 'px-4 py-3 text-note',

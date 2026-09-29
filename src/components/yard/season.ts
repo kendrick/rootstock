@@ -27,6 +27,6 @@ export function inSeason(asOf: string, season: ThresholdRule['season']): boolean
  * or null when the season is open or the Rule has none. The sheet folds an
  * out-of-season chart away behind this date.
  */
-export function outOfSeasonUntil(asOf: string, rule: ThresholdRule): string | null {
+export function outOfSeasonUntil(asOf: string, rule: Pick<ThresholdRule, 'season'>): string | null {
 	return rule.season === null || inSeason(asOf, rule.season) ? null : seasonDay(rule.season.start);
 }
