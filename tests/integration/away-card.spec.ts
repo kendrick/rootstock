@@ -133,10 +133,9 @@ test('names only its own generation date and says nothing about anyone being awa
 	await page.goto(`away/${slug}`);
 	await waitForHydration(page);
 
-	// Exactly one <time>: the card's own always-on generation line. #63 added
-	// it; StalenessBanner stays silent in the fresh band this spec pins, so it
-	// contributes none of its own.
-	const time = page.locator('time');
+	// Exactly one <time> outside the status regions: the card's own always-on generation line. #63 added it. The staleness banner stays silent in the fresh band this spec pins, and ArtifactGate's planned-from notice carries a <time> of its own between a seed change and the next daily run (ADR 0007), so the status regions are left out, as away-card-print.spec.ts does.
+	await expect(page.locator('[data-staleness-banner]')).toHaveCount(0);
+	const time = page.locator('time:not([role="status"] time)');
 	await expect(time).toHaveCount(1);
 	await expect(time).toHaveAttribute('datetime', artifact.generatedAt);
 

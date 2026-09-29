@@ -66,11 +66,18 @@ async function waitForHydration(page: Page): Promise<void> {
  * fires, and a clock that stopped the event loop would stop that too.
  */
 
+/**
+ * The staleness banner alone. ArtifactGate's planned-from notice is `role="status"` too and shows beside the banner from a seed change until the next daily run replans (ADR 0007), so a bare `getByRole('status')` counts both.
+ */
+function stalenessBanner(page: Page) {
+	return page.locator('[data-staleness-banner]');
+}
+
 test('the banner dates the Plan once the Artifact is stale', async ({ page }) => {
 	await page.clock.setFixedTime(STALE);
 	await page.goto('');
 
-	const banner = page.getByRole('status');
+	const banner = stalenessBanner(page);
 	await expect(banner).toBeVisible();
 	await expect(banner).toContainText('This plan is from');
 	// The machine-readable half, checked against the file rather than against a
@@ -83,7 +90,7 @@ test('the banner sends the reader outside once the Artifact expires', async ({ p
 	await page.clock.setFixedTime(EXPIRED);
 	await page.goto('');
 
-	const banner = page.getByRole('status');
+	const banner = stalenessBanner(page);
 	await expect(banner).toBeVisible();
 	await expect(banner).toContainText('more than a week ago');
 });
@@ -100,7 +107,7 @@ test('the banner stays silent while the Artifact is fresh', async ({ page }) => 
 	await page.goto('');
 	await waitForHydration(page);
 
-	await expect(page.getByRole('status')).toHaveCount(0);
+	await expect(stalenessBanner(page)).toHaveCount(0);
 });
 
 test('the expired banner has no accessibility violations', async ({ page }) => {
@@ -109,7 +116,7 @@ test('the expired banner has no accessibility violations', async ({ page }) => {
 	// only render on this route axe has not already seen.
 	await page.clock.setFixedTime(EXPIRED);
 	await page.goto('');
-	await expect(page.getByRole('status')).toBeVisible();
+	await expect(stalenessBanner(page)).toBeVisible();
 
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
@@ -122,7 +129,7 @@ test('the page that explains the age warning shows it too', async ({ page }) => 
 	await page.clock.setFixedTime(STALE);
 	await page.goto('about');
 
-	const banner = page.getByRole('status');
+	const banner = stalenessBanner(page);
 	await expect(banner).toBeVisible();
 	await expect(banner.locator('time')).toHaveAttribute('datetime', artifact.generatedAt);
 });
