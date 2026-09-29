@@ -151,15 +151,13 @@ describe('every ruleId and guardId the committed artifact names resolves against
 	// the daily run, so a Rule retirement PR can't regenerate the Artifact in
 	// CI to match. When plannedFrom no longer agrees with the build's own seed
 	// fingerprint, "every ruleId resolves" isn't a claim this committed Plan
-	// makes, and ArtifactGate shows its own notice for exactly that gap. This
-	// asserts the notice fires instead of failing the build over a window ADR
-	// 0007 already allows for.
-	it('resolves every Task ruleId, Deferral guardId, Annotation guardId, and guardChecks guardId, or ArtifactGate covers the drift (ADR 0007)', () => {
-		if (artifact.plannedFrom === seedPlannedFrom) {
+	// makes, and ArtifactGate shows its own notice for exactly that gap, so
+	// the check stands down rather than failing over a window ADR 0007 allows.
+	//
+	// A null plannedFrom predates ADR 0007, and ArtifactGate shows no notice for it. Nothing on the page would cover drift there, so every id has to resolve.
+	it('resolves every Task ruleId, Deferral guardId, Annotation guardId, and guardChecks guardId, unless ArtifactGate covers the drift (ADR 0007)', () => {
+		if (!showsPlannedFromNotice(artifact.plannedFrom, seedPlannedFrom)) {
 			expect(findUnresolvedRuleIds(artifact.plan, seedRules)).toEqual([]);
-		}
-		else {
-			expect(showsPlannedFromNotice(artifact.plannedFrom, seedPlannedFrom)).toBe(true);
 		}
 	});
 
