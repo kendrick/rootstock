@@ -3,7 +3,7 @@
 	"properties": {
 		"summary": {
 			"type": "string",
-			"description": "A few sentences about the week in the yard as a whole, read before any individual task."
+			"description": "A few sentences about the week in the yard as a whole, read before any individual task. Name every task whose status is deferred, and what would release it."
 		},
 		"tasks": {
 			"type": "array",
@@ -42,7 +42,7 @@
 				],
 				"additionalProperties": false
 			},
-			"description": "Observations the plan did not cover. An empty array is a normal answer."
+			"description": "Observations no rule in the plan produced. Never repeat a task's annotation here, because the reader already sees it on the task. An empty array is a normal answer."
 		}
 	},
 	"required": [
