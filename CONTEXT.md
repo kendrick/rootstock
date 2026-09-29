@@ -9,7 +9,7 @@ The pure function that turns an inventory, a rule set, observations and occurren
 _Avoid_: Engine, generator, solver, brain, AI
 
 **Plant**:
-The inventory record for one plant, container, bed, or the lawn: a stable ID, what it is, whether it is planted or only planned, the tags Rules target it by, and optionally where it sits on the yard photo. The lawn is a Plant carrying lawn-specific detail rather than a record of its own kind, because Rules address it through the same ID mechanism as everything else.
+The inventory record for one plant, container, bed, or the lawn: a stable ID, what it is and its species, whether it is planted or only planned, the tags Rules target it by, and optionally where it sits on the yard photo. The lawn is a Plant carrying lawn-specific detail rather than a record of its own kind, because Rules address it through the same ID mechanism as everything else.
 _Avoid_: Item, asset, entry, zone
 
 **Pin**:

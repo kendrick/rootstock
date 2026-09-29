@@ -33,6 +33,7 @@ describe('fake store: implementation-specific behavior', () => {
 				position: null,
 				site: 'north fence',
 				lawn: null,
+				species: null,
 				notes: null,
 			},
 		});

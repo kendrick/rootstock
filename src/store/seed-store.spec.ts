@@ -31,6 +31,7 @@ describe('seed store: writes', () => {
 				position: null,
 				site: 'north fence',
 				lawn: null,
+				species: null,
 				notes: null,
 			},
 		})).rejects.toThrow(/read-only.*\.$/s);

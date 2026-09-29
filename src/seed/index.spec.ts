@@ -37,6 +37,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
 		position: null,
 		site: null,
 		lawn: null,
+		species: null,
 		notes: null,
 		...overrides,
 	};
