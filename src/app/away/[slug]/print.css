@@ -3,7 +3,23 @@
  * rather than in away-card.tsx. Route-based code splitting keeps this rule out
  * of every bundle but this one, which is what makes it safe to leave unscoped:
  * only the Away Card ever loads it, so no other route's print output changes.
+ *
+ * Zero page margin leaves Chrome no margin box to draw its default header and
+ * footer in, and that footer is the page URL, which here is the slug. A reader
+ * who never unticks "Headers and footers" would otherwise print the one secret
+ * this route has onto paper that gets left on a fridge. The margin the sheet
+ * still needs moves onto the body.
  */
 @page {
-	margin: 0.75in;
+	margin: 0;
+}
+
+@media print {
+	body {
+		padding: 0.75in;
+
+		/* Repeats the padding on every sheet rather than only the first and last,
+			so a long week's second page doesn't print against the paper's edge. */
+		box-decoration-break: clone;
+	}
 }

@@ -4,18 +4,22 @@ import type { ReactElement } from 'react';
 import type { TicketGroup } from './ticket-anchor';
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import type { Occurrence } from '@/planner/occurrence';
+import type { DailyAggregate } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
 import type { Store } from '@/store/store';
 import type { Plant } from '@/yard/plant';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { staleness } from '@/artifact/staleness';
+import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { seedPlants, seedRules, seedYard } from '@/seed';
 import { listOccurrences, openBrowserStore } from '@/store/browser';
 import { recordOccurrence } from '@/store/occurrence';
 import { Advisories } from './advisories';
+import { closingSoon } from './closing-soon';
 import { DeferredSection } from './deferred-section';
+import { rainBefore } from './guard-evidence';
 import { CANCELLED, NOT_SAVED, pendingAnnouncement, permanenceNote, recordedAnnouncement, STORE_UNAVAILABLE, TOO_LATE, UNDO_REFUSAL } from './permanence';
 import { announceRecorded, recordedDates, weekCounts } from './recorded';
 import { TaskGroup } from './task-group';
@@ -69,6 +73,72 @@ function completionInstant(asOf: string): string {
 
 function byId<T extends { id: string }>(records: T[]): ReadonlyMap<string, T> {
 	return new Map(records.map(record => [record.id, record]));
+}
+
+const CLOSES_ON = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Window work about to lose its window, said once above everything else.
+ *
+ * The ticket sorts by the Planner's order within each group, and the groups
+ * themselves run ready, approaching, held. That order is right for working
+ * down the sheet and wrong for the one Task that matters most on a given
+ * morning: held work whose window closes in two days prints last, in its own
+ * section, under routine feedings. This line doesn't reorder anything. It
+ * names the collision and links to the row, where the evidence is.
+ *
+ * The close is printed as a date rather than "in 2 days". A count would be
+ * measured from the Plan's date, and on a stale morning it would be wrong in a
+ * way the reader couldn't see; a date stays true, and the staleness banner
+ * says how old the Plan is.
+ */
+function ClosingSoonLine({ tasks, rulesById, plantsById, window, asOf, completedIds }: {
+	tasks: readonly Task[];
+	rulesById: ReadonlyMap<string, Rule>;
+	plantsById: ReadonlyMap<string, Plant>;
+	window: readonly DailyAggregate[];
+	asOf: string;
+	completedIds: ReadonlySet<string>;
+}): ReactElement | null {
+	const closing = closingSoon(tasks, rulesById, asOf).filter(entry => !completedIds.has(entry.task.id));
+	if (closing.length === 0) {
+		return null;
+	}
+
+	const fired = tasks.filter(task => task.status === 'fired');
+	const held = tasks.filter(task => task.status === 'deferred');
+
+	return (
+		<aside aria-labelledby="closing-soon-heading" className="border-2 border-foreground px-4 py-3">
+			<h2 id="closing-soon-heading" className="font-display text-label font-extrabold tracking-widest text-foreground uppercase">Closing soon</h2>
+			<ul className="mt-1 space-y-1.5">
+				{closing.map(({ task, closes }) => {
+					const isHeld = task.status === 'deferred';
+					const anchor = isHeld
+						? ticketAnchor('Held back', held.indexOf(task) + 1)
+						: ticketAnchor('Ready now', fired.indexOf(task) + 1);
+					const rule = rulesById.get(task.ruleId);
+					// The raw id when the inventory no longer holds the Plant, as the row does,
+					// so two closing Tasks from one Rule never read the same.
+					const plant = task.plantId === null ? null : plantsById.get(task.plantId)?.name ?? task.plantId;
+					const name = `${rule?.name ?? task.ruleId}${plant === null ? '' : `, ${plant}`}`;
+					const guards = task.deferrals.map(deferral => rulesById.get(deferral.guardId));
+					const wet = guards.map(guard => rainBefore(guard, window, asOf, closes)).find(day => day !== null) ?? null;
+
+					return (
+						<li key={task.id} className="text-body text-foreground">
+							<a href={`#${anchor}`} className={cn('font-semibold underline underline-offset-4', FOCUS_RING)}>{name}</a>
+							{`: the window closes ${CLOSES_ON.format(Date.parse(`${closes}T00:00:00Z`))}.`}
+							{isHeld && ` Held back by ${task.deferrals.map(deferral => rulesById.get(deferral.guardId)?.name ?? deferral.guardId).join(' and ')}`}
+							{isHeld && (wet === null
+								? '.'
+								: `, and the forecast gives ${CLOSES_ON.format(Date.parse(`${wet.date}T00:00:00Z`))} a ${wet.chance}% chance of rain.`)}
+						</li>
+					);
+				})}
+			</ul>
+		</aside>
+	);
 }
 
 /**
@@ -264,7 +334,7 @@ export function ThisWeek({
 	const signOff = {
 		onComplete: handleComplete,
 		onUndoAttempt: handleUndoAttempt,
-		onRecordStart: (task: Task) => setAnnouncement(pendingAnnouncement(spokenText(task))),
+		onRecordStart: () => setAnnouncement(pendingAnnouncement()),
 		onRecordCancel: () => setAnnouncement(CANCELLED),
 		recordDelayMs,
 		signOffDisabled: storeFailed,
@@ -284,6 +354,7 @@ export function ThisWeek({
 			plantsById={plantsById}
 			narrationText={narrationById.get(task.id) ?? null}
 			window={artifact.plan.window}
+			asOf={artifact.plan.asOf}
 			checked={completedIds.has(task.id)}
 			recordedOn={recordedOn.get(task.id) ?? null}
 			citationOpen={task.id === openCitationId}
@@ -335,6 +406,15 @@ export function ThisWeek({
 				 * route's authored purpose copy because the two answer different
 				 * questions.
 				 */}
+				<ClosingSoonLine
+					tasks={tasks}
+					rulesById={rulesById}
+					plantsById={plantsById}
+					window={artifact.plan.window}
+					asOf={artifact.plan.asOf}
+					completedIds={completedIds}
+				/>
+
 				<WeekSummary summary={artifact.narration?.summary ?? null} />
 			</div>
 
@@ -379,6 +459,11 @@ export function ThisWeek({
 					completedIds={completedIds}
 					recordedOn={recordedOn}
 					note={permanenceNote(artifact.plan.asOf)}
+					// Only when Ready now drew the note. TaskGroup prints its description
+					// only over rows, so on a Plan holding nothing but held work the held
+					// list has to carry its own, or its live boxes go unwarned.
+					describedBy={tasks.some(task => task.status === 'fired') ? noteId : undefined}
+					asOf={artifact.plan.asOf}
 					openCitationId={openCitationId}
 					{...signOff}
 				/>

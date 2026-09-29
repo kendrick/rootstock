@@ -111,11 +111,27 @@ describe('ruleSummary', () => {
 		expect(screen.getByText('50 to 55°F')).toBeDefined();
 	});
 
-	// Two badges, because the sheet that printed the range is its own document.
-	it('gives the published range its own source badge', () => {
+	// The sheet that printed the range is its own document, so it keeps its own
+	// link. Its authority is the Rule's, which the badge by the name already
+	// prints, so the label isn't printed a second time.
+	it('links the published range\'s own sheet without repeating its authority', () => {
 		render(<RuleSummary rule={seedRule('spring-pre-emergent')} />);
 
+		expect(screen.getAllByText('· Texas A&M AgriLife Extension')).toHaveLength(1);
+		const link = screen.getByRole('link', { name: /^Source\s*for the published range \(opens in a new tab\)$/u });
+		expect(link.getAttribute('href')).toBe('https://www.dcmga.com/wp-content/uploads/docs/agrilife/grasses/al-herbicide-selection-warm-searson-turfgrass.pdf');
+	});
+
+	it('badges a published range from another authority in full', () => {
+		const rule = seedRule('spring-pre-emergent');
+		if (rule.kind !== 'threshold' || rule.published === null) {
+			throw new Error('spring-pre-emergent no longer carries a published range');
+		}
+		const elsewhere = { ...rule, published: { ...rule.published, source: { kind: 'extension' as const, label: 'Dallas County Master Gardeners', url: null } } };
+		render(<RuleSummary rule={elsewhere} />);
+
 		expect(screen.getAllByText('Extension')).toHaveLength(2);
+		expect(screen.getByText('· Dallas County Master Gardeners')).toBeDefined();
 	});
 
 	it('omits the published row when the Rule carries no published range', () => {
@@ -368,6 +384,67 @@ describe('ruleSummary', () => {
 		render(<RuleSummary rule={{ ...guard, appliesTo: { plantIds: ['esperanza-1'], plantTags: ['container'], ruleTags: ['chemical'] } }} />);
 
 		expect(screen.getByText('Reaches').nextElementSibling?.textContent).toBe('Work tagged chemical, for Esperanza or on Plants tagged container');
+	});
+
+	// Resolved through the Planner's `targets`, so the row names what the Planner
+	// would build Tasks for: planted Plants only, and no list for the whole yard.
+	describe('the For row', () => {
+		it('names the Plants a Rule reaches', () => {
+			render(<RuleSummary rule={seedRule('fall-pre-emergent')} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('Front lawn');
+		});
+
+		it('says "Every plant" for a whole-yard Rule', () => {
+			render(<RuleSummary rule={fixedInterval} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('Every plant');
+		});
+
+		it('names every planted Plant a tag reaches, and no planned one', () => {
+			const tagged = { ...fixedInterval, appliesTo: { plantIds: null, plantTags: ['hibiscus', 'planned'], ruleTags: null } };
+			render(<RuleSummary rule={tagged} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('Watermelon Ruffles hardy hibiscus, Starry Night hardy hibiscus, Luna White hardy hibiscus');
+		});
+
+		it('says so when a Rule reaches only Plants not yet in the ground', () => {
+			const planned = { ...fixedInterval, appliesTo: { plantIds: ['crossvine-1'], plantTags: null, ruleTags: null } };
+			render(<RuleSummary rule={planned} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant in the ground yet');
+		});
+
+		// The seed has three planned Plants tagged `native`, and none planted.
+		it('says "in the ground" when a tag reaches only planned Plants', () => {
+			const planned = { ...fixedInterval, appliesTo: { plantIds: null, plantTags: ['native'], ruleTags: null } };
+			render(<RuleSummary rule={planned} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant in the ground yet');
+		});
+
+		// No Plant in the inventory carries `orchid`, planted or planned, so
+		// "in the ground yet" would promise a Plant that isn't on the way.
+		it('says no Plant matches when the selectors reach nothing at all', () => {
+			const unmatched = { ...fixedInterval, appliesTo: { plantIds: ['orchid-1'], plantTags: ['orchid'], ruleTags: null } };
+			render(<RuleSummary rule={unmatched} showPlants />);
+
+			expect(screen.getByText('For').nextElementSibling?.textContent).toBe('No Plant matches yet');
+		});
+
+		// A Guard's "Reaches" row says which work it looks at.
+		it('leaves the row off a Guard', () => {
+			render(<RuleSummary rule={seedRule('rain-expected')} showPlants />);
+
+			expect(screen.queryByText('For')).toBeNull();
+		});
+
+		// This Week's Task and the Plant sheet already name the Plant.
+		it('is off unless the caller asks for it', () => {
+			render(<RuleSummary rule={seedRule('fall-pre-emergent')} />);
+
+			expect(screen.queryByText('For')).toBeNull();
+		});
 	});
 
 	it('puts a status it is handed under the name, ahead of the record', () => {

@@ -151,3 +151,34 @@ describe('stalenessBanner', () => {
 		expect(justNow.innerHTML).toBe('');
 	});
 });
+
+// The Away Card's reader can't go and look at the computer. The prominent
+// variant tells them what they can do, and every other route keeps the
+// owner's sentence word for word.
+describe('stalenessBanner, a failed run on the Away Card', () => {
+	it('tells the household to pass it on, not to check the machine', () => {
+		render(
+			<StalenessBanner prominent generatedAt={GENERATED_AT} status={failingStatus} now={hoursAfter(GENERATED_AT, 12)} />,
+		);
+
+		const text = screen.getByRole('status').textContent ?? '';
+		expect(text).toBe(`The last ${failingStatus.consecutiveFailures} updates to this card didn't go through, so it may be out of date. Let whoever gave it to you know.`);
+		expect(text).not.toContain('computer');
+	});
+
+	it('drops the plural at one', () => {
+		render(
+			<StalenessBanner prominent generatedAt={GENERATED_AT} status={{ ...failingStatus, consecutiveFailures: 1 }} now={hoursAfter(GENERATED_AT, 12)} />,
+		);
+
+		expect(screen.getByRole('status').textContent).toContain('The last update to this card didn\'t go through');
+	});
+
+	it('leaves the owner\'s sentence alone everywhere else', () => {
+		render(
+			<StalenessBanner generatedAt={GENERATED_AT} status={failingStatus} now={hoursAfter(GENERATED_AT, 12)} />,
+		);
+
+		expect(screen.getByRole('status').textContent).toBe(`The last ${failingStatus.consecutiveFailures} runs failed, so nothing newer has arrived. Worth a look at the computer that puts this together.`);
+	});
+});

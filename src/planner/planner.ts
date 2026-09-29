@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
-import { toDailyAggregates } from './aggregate';
+import { roundKeepingSide, toDailyAggregates } from './aggregate';
 import { evaluateCadenceRule } from './cadence-rule';
 import { daysBetween } from './dates';
 import { isDelegable } from './delegation';
@@ -473,6 +473,59 @@ function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableT
 	});
 }
 
+/** Which series a threshold reads, reduction included, since a mean and a max of one series are read against different lines. */
+function thresholdKey(variable: string, depthCm: number | null, aggregate: string): string {
+	return `${variable}|${depthCm ?? ''}|${aggregate}`;
+}
+
+/**
+ * Every value a Rule or Guard compares a series against, keyed by series. A
+ * Guard condition is read by shape, not by kind: anything carrying `variable`,
+ * `aggregate` and `value` is a reading compared against a line, so a new
+ * reading-based condition is covered here without anyone remembering to add it.
+ */
+function thresholdsBySeries(rules: readonly Rule[]): Map<string, number[]> {
+	const thresholds = new Map<string, number[]>();
+	const add = (key: string, value: number): void => {
+		thresholds.set(key, [...(thresholds.get(key) ?? []), value]);
+	};
+
+	for (const rule of rules) {
+		if (rule.kind === 'threshold') {
+			add(thresholdKey(rule.variable, rule.depthCm, rule.aggregate), rule.value);
+		}
+		else if (rule.kind === 'guard') {
+			const condition: Record<string, unknown> = rule.condition;
+			if (condition.kind === 'no-rain-within' && typeof condition.probabilityAtLeast === 'number') {
+				add(thresholdKey('precipitation-probability', null, 'max'), condition.probabilityAtLeast);
+			}
+			else if (typeof condition.variable === 'string' && typeof condition.aggregate === 'string' && typeof condition.value === 'number') {
+				add(thresholdKey(condition.variable, typeof condition.depthCm === 'number' ? condition.depthCm : null, condition.aggregate), condition.value);
+			}
+		}
+	}
+
+	return thresholds;
+}
+
+/**
+ * Rounds `window` for the Plan it ships in, keeping each value on its side of every line a Rule or Guard reads its series against.
+ *
+ * Only `plan()` calls this, and only on the copy it is about to return.
+ * `createTasks` and `applyGuards` both read `window` first, at full
+ * precision, because `evaluateThresholdRule` needs the exact reading a
+ * Rule's `value` will be compared against. See `AGGREGATE_DECIMAL_PLACES`'s
+ * own comment in aggregate.ts for what rounding first would have cost.
+ */
+function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]): DailyAggregate[] {
+	const thresholds = thresholdsBySeries(rules);
+
+	return window.map(day => ({
+		...day,
+		value: roundKeepingSide(day.value, thresholds.get(thresholdKey(day.variable, day.depthCm, day.aggregate)) ?? []),
+	}));
+}
+
 /**
  * Turns one day's inputs into the Plan for that date.
  *
@@ -505,6 +558,11 @@ function pairForOrdering(orderables: OrderableTask[], tasks: Task[]): OrderableT
  * that writes the Artifact—and a function re-parsing what it just built would
  * pay a boundary's price in the middle of the system. The specs prove the
  * returned Plan parses; the Planner does not pay for that proof on every call.
+ *
+ * `window` is rounded only in the returned object, never before. Every Rule
+ * and Guard above the `return` reads the same full-precision `window`
+ * `buildWindow` produced, which is what keeps a Threshold Rule's verdict
+ * independent of the digits the published Artifact carries.
  */
 export function plan(input: PlanInput): Plan {
 	const window = buildWindow(input, windowSpan(input.rules));
@@ -517,6 +575,6 @@ export function plan(input: PlanInput): Plan {
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window,
+		window: roundWindowForEmission(window, input.rules),
 	};
 }

@@ -27,7 +27,7 @@ interface CommittedTask {
 
 interface CommittedArtifact {
 	generatedAt: string;
-	plan: { tasks: CommittedTask[] };
+	plan: { asOf: string; tasks: CommittedTask[] };
 	narration: { tasks: { taskId: string; text: string }[] } | null;
 }
 
@@ -99,7 +99,12 @@ test('hands over the delegable work and withholds the rest', async ({ page }) =>
 	// actually happened is that the build never knew about this slug.
 	expect(response?.status()).toBe(200);
 
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Yard tasks this week');
+	// The week the heading names is the Plan's, whatever day the spec runs. The
+	// day of the month is read off `asOf` as a number, not formatted the way the
+	// card formats it.
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+		new RegExp(`^Yard tasks, week of [A-Z][a-z]{2} ${Number(artifact.plan.asOf.slice(8, 10))}$`),
+	);
 
 	// A Task reaches this card only when it is fired and the Planner stamped
 	// `delegable` on it; the view never string-matches a tag. An Artifact with
@@ -145,4 +150,20 @@ test('away card has no accessibility violations', async ({ page }) => {
 
 	const results = await new AxeBuilder({ page }).analyze();
 	expect(results.violations).toEqual([]);
+});
+
+/*
+ * SheetFrame drops the nav on this route so a household reader can't walk from
+ * the card into the routes that name the Withheld work. A footer link to
+ * /about would undo that, since About's nav reaches This Week. The paper version of
+ * the same rule is PRODUCT.md's: the card asks nobody to follow a link.
+ */
+test('the card links nowhere, footer included', async ({ page }) => {
+	await page.clock.setFixedTime(FRESH);
+	await page.goto(`away/${slug}`);
+	await waitForHydration(page);
+
+	await expect(page.locator('footer')).toBeVisible();
+	await expect(page.locator('footer a')).toHaveCount(0);
+	await expect(page.locator('a[href]')).toHaveCount(0);
 });

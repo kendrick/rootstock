@@ -1,3 +1,4 @@
+import type { Occurrence } from '@/planner/occurrence';
 import type { Plan } from '@/planner/plan';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -215,11 +216,114 @@ describe('ruleList', () => {
 		expect(screen.queryByText(/delegable/iu)).toBeNull();
 	});
 
+	// Once from the record's "Measured from" row and once from the status, and
+	// both have to land on the same row.
 	it('links a follow-up to the row of the Rule it is measured from', () => {
 		const { container } = render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
 
-		const link = screen.getByRole('link', { name: thresholdRule.name });
-		const target = container.querySelector(link.getAttribute('href') ?? '');
-		expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
+		const links = screen.getAllByRole('link', { name: thresholdRule.name });
+		expect(links).toHaveLength(2);
+		for (const link of links) {
+			const target = container.querySelector(link.getAttribute('href') ?? '');
+			expect(target?.querySelector('h3')?.textContent).toContain(thresholdRule.name);
+		}
+	});
+
+	it('says in a waiting follow-up\'s status which Rule it waits on', () => {
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Waits on ${thresholdRule.name}`);
+		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
+	});
+
+	// Once the first application is recorded, "Waits on" would call it
+	// outstanding. The follow-up is waiting out its interval instead.
+	it('gives a follow-up its interval and the recorded day once the Rule it follows is done', () => {
+		const recorded: Occurrence = {
+			id: 'spring-pre-emergent-2026',
+			ruleId: thresholdRule.id,
+			plantId: 'front-lawn',
+			completedAt: '2026-03-03T15:00:00Z',
+			recordedAt: '2026-03-03T15:00:00Z',
+			source: 'seed',
+		};
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} occurrences={[recorded]} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Due 42–56 days after ${thresholdRule.name}, recorded March 3, 2026`);
+		expect(status.textContent).not.toContain('Waits on');
+		expect(within(status).getByRole('link', { name: thresholdRule.name }).getAttribute('href')).toBe(`#rule-${thresholdRule.id}`);
+	});
+
+	// Each Plant counts from its own record, so the lawn's Mar 10 doesn't push
+	// back the fig's Mar 1. The line cites the one due first and says whose it is.
+	it('cites the record that comes due first when a follow-up reaches two Plants', () => {
+		if (cadenceRule.kind !== 'cadence') {
+			throw new Error('cadenceRule is not a Cadence Rule');
+		}
+		const twoPlants = { ...cadenceRule, appliesTo: { plantIds: ['front-lawn', 'fig-1'], plantTags: null, ruleTags: null } };
+		const records: Occurrence[] = [
+			{ id: 'lawn', ruleId: thresholdRule.id, plantId: 'front-lawn', completedAt: '2026-03-10T15:00:00Z', recordedAt: '2026-03-10T15:00:00Z', source: 'seed' },
+			{ id: 'fig', ruleId: thresholdRule.id, plantId: 'fig-1', completedAt: '2026-03-01T15:00:00Z', recordedAt: '2026-03-01T15:00:00Z', source: 'seed' },
+		];
+		render(<RuleList rules={[thresholdRule, twoPlants]} plan={emptyPlan} occurrences={records} />);
+
+		const row = screen.getByRole('heading', { level: 3, name: new RegExp(`^${cadenceRule.name},`, 'u') }).closest('li') as HTMLElement;
+		const status = row.querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain(`Due 42–56 days after ${thresholdRule.name}, recorded March 1, 2026 for Brown Turkey fig`);
+	});
+
+	// An Occurrence for another Rule or another Plant is not the anchor.
+	it('keeps "Waits on" when nothing on record is the follow-up\'s anchor', () => {
+		const elsewhere: Occurrence[] = [
+			{ id: 'other-rule', ruleId: windowRule.id, plantId: 'front-lawn', completedAt: '2026-03-03T15:00:00Z', recordedAt: '2026-03-03T15:00:00Z', source: 'seed' },
+			{ id: 'other-plant', ruleId: thresholdRule.id, plantId: 'fig-1', completedAt: '2026-03-03T15:00:00Z', recordedAt: '2026-03-03T15:00:00Z', source: 'seed' },
+		];
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} occurrences={elsewhere} />);
+
+		expect(screen.getByText(/Waits on/u)).toBeDefined();
+		expect(screen.queryByText(/^Due /u)).toBeNull();
+	});
+
+	it('gives no other Rule a "Waits on" line', () => {
+		render(<RuleList rules={allFixtureRules.filter(rule => rule !== cadenceRule)} plan={emptyPlan} />);
+
+		expect(screen.queryByText(/Waits on/u)).toBeNull();
+	});
+
+	// This Week numbers Ready now and Held back apart, so the window Rule's
+	// fired Task is Ready now 01 and the Guard's held one is Held back 01.
+	it('links a fired Rule to its line on This Week', () => {
+		render(<RuleList rules={allFixtureRules} plan={planWithTasks} />);
+
+		const fired = screen.getByRole('region', { name: 'Fired this week' });
+		const link = within(fired).getByRole('link', { name: 'Ready now 01' });
+		expect(link.getAttribute('href')).toBe('/rootstock/#ready-now-01');
+		expect(link.closest('[data-rule-status]')).not.toBeNull();
+	});
+
+	it('names each Plant when a fired Rule has lines for several', () => {
+		const task = planWithTasks.tasks[0]!;
+		const plan: Plan = {
+			...planWithTasks,
+			tasks: [
+				{ ...task, id: taskId(windowRule.id, 'front-lawn'), plantId: 'front-lawn' },
+				{ ...task, id: taskId(windowRule.id, 'fig-1'), plantId: 'fig-1', status: 'deferred' },
+			],
+		};
+		render(<RuleList rules={[windowRule]} plan={plan} />);
+
+		const status = screen.getByRole('region', { name: 'Fired this week' }).querySelector('[data-rule-status]') as HTMLElement;
+		expect(status.textContent).toContain('On this week\'s ticket: Ready now 01 for Front lawn, Held back 01 for Brown Turkey fig');
+	});
+
+	it('names the Plants each Rule reaches, and none for a Guard', () => {
+		render(<RuleList rules={allFixtureRules} plan={emptyPlan} />);
+
+		const terms = screen.getAllByText('For', { selector: 'dt' });
+		expect(terms).toHaveLength(allFixtureRules.filter(rule => rule.kind !== 'guard').length);
 	});
 });

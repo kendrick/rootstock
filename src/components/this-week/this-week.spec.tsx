@@ -730,3 +730,71 @@ describe('thisWeek', () => {
 		});
 	});
 });
+
+// Fall pre-emergent's seed window closes Sep 30. Planned two days before, held
+// by Rain expected with Sep 30 forecast wet: the collision the band exists for.
+describe('closing soon', () => {
+	const rain = (date: string, value: number): Artifact['plan']['window'][number] =>
+		({ date, variable: 'precipitation-probability', depthCm: null, aggregate: 'max', value, unit: 'percent', basis: 'forecast', provenance: 'modeled', source: 'open-meteo' });
+
+	const [template] = combinedNarratedArtifact.plan.tasks;
+	if (template === undefined) {
+		throw new Error('combinedNarratedArtifact has no Task to reshape');
+	}
+
+	const held: Artifact = {
+		...combinedNarratedArtifact,
+		narration: null,
+		narrated: false,
+		plan: {
+			asOf: '2026-09-28',
+			window: [rain('2026-09-28', 8), rain('2026-09-29', 2), rain('2026-09-30', 78)],
+			tasks: [{
+				...template,
+				id: 'fall-pre-emergent@front-lawn',
+				ruleId: 'fall-pre-emergent',
+				plantId: 'front-lawn',
+				status: 'deferred',
+				citation: { kind: 'window', date: '2026-09-28' },
+				deferrals: [{ guardId: 'rain-expected', releaseWhen: 'Once no day in the next two days carries a 50% or greater chance of rain.' }],
+				annotations: [],
+				title: 'Fall pre-emergent (Front lawn)',
+			}],
+		},
+	};
+
+	it('names held work about to lose its window, and the wet day that beats the close', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
+
+		const band = screen.getByRole('complementary', { name: 'Closing soon' });
+		expect(band.textContent).toContain('Fall pre-emergent, Front lawn: the window closes Wed, Sep 30.');
+		expect(band.textContent).toContain('Held back by Rain expected, and the forecast gives Wed, Sep 30 a 78% chance of rain.');
+		expect(within(band).getByRole('link').getAttribute('href')).toBe('#held-back-01');
+	});
+
+	it('still warns that signing off is permanent when held work is all there is', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
+
+		const note = screen.getByText(permanenceNote('2026-09-28'));
+		const box = screen.getByRole('checkbox');
+		expect(box.getAttribute('aria-describedby')).toBe(note.id);
+	});
+
+	it('prints the days the Guard read under its Deferral', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
+
+		expect(screen.getByText('Rain chance Sep 28 8% / Sep 29 2% / Sep 30 78%')).toBeDefined();
+	});
+
+	it('names a Plant the inventory has since dropped by its id, as the row does', async () => {
+		await mount(<ThisWeek artifact={held} status={okStatus} rules={seedRules} plants={seedPlants.filter(plant => plant.id !== 'front-lawn')} store={fakeStore()} />);
+
+		expect(screen.getByRole('complementary', { name: 'Closing soon' }).textContent).toContain('Fall pre-emergent, front-lawn:');
+	});
+
+	it('draws no band while every window is weeks from closing', async () => {
+		await mount(<ThisWeek artifact={{ ...held, plan: { ...held.plan, asOf: '2026-09-11' } }} status={okStatus} rules={seedRules} plants={seedPlants} store={fakeStore()} />);
+
+		expect(screen.queryByRole('complementary', { name: 'Closing soon' })).toBeNull();
+	});
+});

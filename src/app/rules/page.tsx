@@ -3,7 +3,10 @@
 import type { ReactElement } from 'react';
 import { loadArtifact } from '@/artifact/load';
 import { ArtifactGate } from '@/components/artifact-gate';
+import { BandIndex } from '@/components/rules/band-index';
+import { drawnBands } from '@/components/rules/bands';
 import { RuleList } from '@/components/rules/rule-list';
+import { rankRules } from '@/components/rules/waiting';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { seedRules } from '@/seed';
 
@@ -24,6 +27,12 @@ export default function RulesPage(): ReactElement {
 			{validated => (
 				<div className="space-y-6">
 					<h1 className="font-display text-display leading-none font-extrabold tracking-tight text-foreground uppercase">Rules</h1>
+
+					<p className="max-w-prose text-body text-foreground">
+						Every Rule the yard holds is here, sorted into bands in the order you&apos;d ask about them: what fired this week, what&apos;s forecast to, what&apos;s waiting, and last the Guards, which create no work. Each Rule&apos;s status line adds only what its band doesn&apos;t say, like the day its window closes.
+					</p>
+
+					<BandIndex bands={drawnBands(rankRules(seedRules, validated.artifact.plan))} />
 
 					<StalenessBanner
 						generatedAt={validated.artifact.generatedAt}

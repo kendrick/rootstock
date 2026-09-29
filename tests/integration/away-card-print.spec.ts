@@ -35,7 +35,13 @@ test('prints its heading in ink, hides the nav, and carries a date and a box to 
 	await expect(page.locator('nav[aria-label="Main"]')).toBeHidden();
 	await expect(page.getByRole('button', { name: /print/i })).toBeHidden();
 
-	const time = page.locator('time');
+	// The card's own date, found by structure rather than wording. The
+	// StalenessBanner and the planned-from notice both carry a <time> too, and
+	// both are role="status", so excluding those leaves the card's. A bare `time`
+	// locator matched all three, and strict mode failed it on any day the
+	// Artifact was over a day old; keying on the line's copy broke the moment
+	// the copy changed.
+	const time = page.locator('time:not([role="status"] time)');
 	await expect(time).toBeVisible();
 	await expect(time).toHaveCSS('color', 'rgb(0, 0, 0)');
 
@@ -46,7 +52,7 @@ test('prints its heading in ink, hides the nav, and carries a date and a box to 
 	expect(await boxes.count()).toBeGreaterThan(0);
 	await expect(boxes.first()).toHaveCSS('border-color', 'rgb(0, 0, 0)');
 
-	await expect(page.getByText('The yard needs more this week than this page shows.')).toBeVisible();
+	await expect(page.getByText(/^This card isn't the whole week\./)).toBeVisible();
 
 	const pdf = await page.pdf({ format: 'Letter' });
 	// A blank or truncated page would still satisfy a bare "did not throw", so
@@ -80,4 +86,22 @@ test('prints the same type whether the reader\'s system is light or dark', async
 	const light = await printed('light');
 	expect(light.length).toBeGreaterThan(0);
 	expect(await printed('dark')).toEqual(light);
+});
+
+/*
+ * The stub has to come off the printer as one sheet for a normal week, or the
+ * second page lands on the floor. Counted in the PDF's own page objects, the
+ * unit a printer reads, rather than inferred from a scroll height. `/Pages` is
+ * the page tree, not a page, hence the `[^s]`.
+ */
+test('prints on one Letter page', async ({ page, browserName }) => {
+	test.skip(browserName !== 'chromium', 'page.pdf() is only implemented in headless Chromium');
+
+	await page.goto(`away/${slug}`);
+	await page.emulateMedia({ media: 'print' });
+
+	const pdf = await page.pdf({ format: 'Letter', preferCSSPageSize: true });
+	const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
+
+	expect(pages).toHaveLength(1);
 });

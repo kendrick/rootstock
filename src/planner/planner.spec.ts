@@ -960,3 +960,115 @@ describe('plan under a forecast-reaches guard', () => {
 		expect(window).toEqual([]);
 	});
 });
+
+/*
+ * #59: `plan()` rounds `Plan.window` to `AGGREGATE_DECIMAL_PLACES` in the
+ * object it returns, after every Rule and Guard has already read the window
+ * at full precision. These pin that split at the one place it can go wrong:
+ * a raw daily mean close enough to a whole-number `value` that rounding
+ * would move it across a Threshold Rule's line.
+ */
+describe('rounding the window plan() returns', () => {
+	const boundaryAsOf = '2026-01-10';
+
+	function steadyReading(date: string, hour: number, value: number): Observation {
+		return observationSchema.parse({
+			observedAt: `${date}T${String(hour).padStart(2, '0')}:00:00Z`,
+			variable: 'soil-temperature',
+			depthCm: 6,
+			value,
+			unit: 'F',
+			basis: 'observed',
+			provenance: 'modeled',
+			source: 'open-meteo',
+			station: null,
+		});
+	}
+
+	// One value held steady across `days` full days, so the raw daily mean
+	// is that same value on every one of them—UTC keeps each block of 24
+	// hours on the one local date it was written for.
+	function steadyDays(lastDate: string, days: number, value: number): Observation[] {
+		return Array.from({ length: days }, (_unused, index) => shiftDate(lastDate, -(days - 1 - index)))
+			.flatMap(date => Array.from({ length: 24 }, (_unused, hour) => steadyReading(date, hour, value)));
+	}
+
+	function boundaryInput(rule: ThresholdRule, observations: Observation[]): PlanInput {
+		return planInputSchema.parse({
+			asOf: boundaryAsOf,
+			timeZone: 'UTC',
+			plants: [],
+			rules: [rule],
+			observations,
+			occurrences: [],
+			tagPolicy,
+		});
+	}
+
+	it('rounds a repeating-decimal mean in the window it returns', () => {
+		const rule = thresholdRule({ id: 'repeating-mean', name: 'Repeating mean', consecutiveDays: 1 });
+		const readings = [70, 71, 73].map((value, hour) => steadyReading(boundaryAsOf, hour, value));
+
+		// (70 + 71 + 73) / 3 = 71.3333..., worked out by hand: a repeating
+		// decimal, which is exactly the shape #59 wants stopped before it
+		// reaches the committed Artifact.
+		expect(plan(boundaryInput(rule, readings)).window.map(day => day.value)).toEqual([71.3]);
+	});
+
+	it('does not fire a gte Rule on a raw mean that rounds up to its value', () => {
+		const rule = thresholdRule({
+			id: 'rising-boundary',
+			name: 'Rising boundary',
+			comparison: 'gte',
+			value: 55,
+			consecutiveDays: 3,
+		});
+
+		// Every hour reads 54.96, so the raw daily mean is 54.96 too, by
+		// hand: under 55F on every one of the three deciding days. One decimal
+		// would print 55.0 beside a Rule that didn't fire, so the window keeps
+		// the second decimal that leaves each day under the line.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 54.96)));
+
+		expect(result.tasks.some(task => task.ruleId === 'rising-boundary')).toBe(false);
+		expect(result.window.map(day => day.value)).toEqual([54.96, 54.96, 54.96]);
+	});
+
+	it('does not fire an lte Rule on a raw mean that rounds down to its value', () => {
+		const rule = thresholdRule({
+			id: 'falling-boundary',
+			name: 'Falling boundary',
+			comparison: 'lte',
+			value: 70,
+			consecutiveDays: 3,
+		});
+
+		// Every hour reads 70.04, so the raw daily mean is 70.04 too, by
+		// hand: over 70F on every one of the three deciding days, and kept at
+		// 70.04 rather than printed as 70.0 on the line.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 70.04)));
+
+		expect(result.tasks.some(task => task.ruleId === 'falling-boundary')).toBe(false);
+		expect(result.window.map(day => day.value)).toEqual([70.04, 70.04, 70.04]);
+	});
+
+	it('still rounds a value no line is near', () => {
+		const rule = thresholdRule({ id: 'far-line', name: 'Far line', comparison: 'gte', value: 55, consecutiveDays: 3 });
+
+		// 60.04 rounds to 60.0 and sits nowhere near 55, so one decimal is enough.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 60.04)));
+
+		expect(result.window.map(day => day.value)).toEqual([60, 60, 60]);
+	});
+
+	it('keeps extra places only as far as the line needs', () => {
+		const rule = thresholdRule({ id: 'tight-line', name: 'Tight line', comparison: 'gte', value: 55, consecutiveDays: 3 });
+
+		// 54.996 rounds to 55.0 at one place and 55.00 at two; three places
+		// is the first that stays under the line.
+		const result = plan(boundaryInput(rule, steadyDays(boundaryAsOf, 3, 54.996)));
+
+		expect(result.tasks.some(task => task.ruleId === 'tight-line')).toBe(false);
+		expect(result.window.map(day => day.value)).toEqual([54.996, 54.996, 54.996]);
+	});
+});

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
+import type { RunReadout } from './run-readout';
 import type { Artifact, StatusRecord } from '@/artifact/artifact';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
@@ -7,6 +8,7 @@ import { ChevronRight, CirclePause, Info } from 'lucide-react';
 import Link from 'next/link';
 import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
 import { loadArtifact } from '@/artifact/load';
+import { seedPlannedFrom } from '@/artifact/planned-from';
 import { WORDMARK } from '@/components/shell/name';
 import { StalenessBanner } from '@/components/staleness-banner';
 import { citationLine, dayOfMonth } from '@/components/this-week/citation-line';
@@ -15,6 +17,7 @@ import { mechanicalRemainder, taskText } from '@/components/this-week/task-text'
 import { NARRATOR_BRIEF } from '@/generation/narrator-brief';
 import { FOCUS_RING } from '@/lib/focus';
 import { seedPlants, seedRules, seedYard } from '@/seed';
+import { runReadout } from './run-readout';
 
 /**
  * A server component, unlike the other routes, so it can name itself in the tab.
@@ -260,20 +263,22 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 								{row.ruleName}
 								<Marker n={at.rule} />
 							</span>
-							{row.plantName !== null && (
-								<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
-									{row.plantName}
-									{at.plant !== null && <Marker n={at.plant} />}
-								</span>
-							)}
-							{!task.delegable && (
-								<span className="whitespace-nowrap">
-									<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
-										Not delegable
+							<span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+								{row.plantName !== null && (
+									<span className="font-display font-semibold text-label tracking-widest text-muted uppercase">
+										{row.plantName}
+										{at.plant !== null && <Marker n={at.plant} />}
 									</span>
-									{at.delegable !== null && <Marker n={at.delegable} />}
-								</span>
-							)}
+								)}
+								{!task.delegable && (
+									<span className="whitespace-nowrap">
+										<span className="border border-foreground px-1 font-display text-label font-extrabold tracking-widest text-foreground uppercase">
+											Owner only
+										</span>
+										{at.delegable !== null && <Marker n={at.delegable} />}
+									</span>
+								)}
+							</span>
 						</span>
 						{row.instruction !== null && at.instruction !== null && (
 							<span className="min-w-0">
@@ -305,8 +310,8 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 										</span>
 									)}
 									<span aria-hidden="true" className="size-8 border-2 border-foreground" />
-									<span className="font-display font-semibold text-label tracking-widest text-foreground uppercase">
-										Sign off
+									<span className="text-center font-display font-semibold text-label tracking-widest text-foreground uppercase">
+										{task.delegable ? 'Sign off' : 'Owner signs off'}
 										<Marker n={at.signOff} />
 									</span>
 								</span>
@@ -355,7 +360,6 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 					<ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground" />
 					<span className="min-w-0 flex-1">
 						<span className="font-medium text-foreground">Rule and evidence</span>
-						<span className="text-muted-foreground">{` · ${row.ruleName}`}</span>
 						<Marker n={at.drawer} />
 					</span>
 				</div>
@@ -373,8 +377,8 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
 					</Note>
 				)}
 				{at.delegable !== null && (
-					<Note n={at.delegable} part="Not delegable">
-						The rest of the household may not do this work, so it stays off the Away Card. The Rule decides that when it&apos;s written, and the yard&apos;s tag policy can only narrow it. A Rule tagged chemical is never delegable, whatever it says.
+					<Note n={at.delegable} part="Owner only">
+						The rest of the household may not do this work, so it stays off the Away Card, and the box on This Week reads &ldquo;Owner signs off&rdquo;. The Rule decides that when it&apos;s written, and the yard&apos;s tag policy can only narrow it. A Rule tagged chemical is never delegable, whatever it says.
 					</Note>
 				)}
 				{at.instruction !== null && (
@@ -422,29 +426,35 @@ function Specimen({ row, artifact }: { row: Rendered; artifact: Artifact }): Rea
  * reads only what the one before it produced, and a reader checking a claim
  * needs to know which step could have made it.
  */
-const DAY: readonly { step: string; body: ReactNode }[] = [
+const DAY: readonly { step: string; body: ReactNode; readout: keyof RunReadout }[] = [
 	{
 		step: 'Read the weather',
+		readout: 'weather',
 		body: 'At 06:00 a scheduled job on the owner\'s computer fetches the yard\'s recent and forecast weather and soil readings from Open-Meteo. The yard\'s exact location lives on that computer and goes out only in that request. It never enters the code or this site.',
 	},
 	{
 		step: 'Plan the week',
+		readout: 'plan',
 		body: 'The Planner checks every Rule against those readings, the list of Plants, and the record of work the owner keeps in the repository. For each Rule that applies, it writes one Task per Plant the Rule reaches, and it sets the order they appear in. It\'s ordinary code with no language model in it, and nothing else in the system can create a Task.',
 	},
 	{
 		step: 'Apply the Guards',
+		readout: 'guards',
 		body: 'A Guard is a Rule that creates no work. It looks over the Tasks the Planner wrote and can hold one back, saying what would release it, or add a note to it. No Guard can delete a Task, so held-back work stays on the ticket, marked.',
 	},
 	{
 		step: 'Write it up',
+		readout: 'narration',
 		body: 'The Narrator, a language model, gets the finished Plan and writes a short summary of the week and a plain sentence for each Task. If it fails, or answers about a Task that isn\'t in the Plan, the ticket goes out in the Planner\'s own shorter wording instead.',
 	},
 	{
 		step: 'Publish',
+		readout: 'publish',
 		body: 'The run saves the result as one file, the Artifact, commits it to the project\'s repository, and pushes. Pushing is what deploys it, because GitHub Pages rebuilds this site from the repository. The site is static pages, so nothing runs on a server and your browser never calls a model.',
 	},
 	{
 		step: 'Show its age',
+		readout: 'age',
 		body: 'Every page that shows the ticket, this one included, works out how old the Artifact is when you open it. It warns you once the Artifact is more than 36 hours old. If a run fails, the last good ticket stays up and the page says the run failed.',
 	},
 ];
@@ -497,6 +507,9 @@ export default function AboutPage(): ReactElement {
 	const specimen = readable === null ? undefined : specimenTask(readable.plan.tasks);
 	const row = readable === null || specimen === undefined ? null : rendered(specimen, readable);
 	const compared = readable === null || specimen === undefined ? null : comparisonTask(readable.plan.tasks, readable, specimen);
+	// Gated on `readable`, like the specimen: figures from a run whose status
+	// won't parse would vouch for a run the page can't describe.
+	const readout = readable === null || status === null ? null : runReadout(readable, status, { rules: seedRules, seedFingerprint: seedPlannedFrom });
 
 	return (
 		<div className="space-y-10">
@@ -554,8 +567,14 @@ export default function AboutPage(): ReactElement {
 			<section aria-labelledby="day" className="space-y-4 border-t-2 border-rule pt-6">
 				<h2 id="day" className={H2}>How a day runs</h2>
 
+				{readout !== null && (
+					<p className="max-w-prose text-note text-muted">
+						The lines under steps 1 to 5 are what each step did on the run that made the current ticket. The line under step 6 is the latest attempt, which is that same run unless a later one failed.
+					</p>
+				)}
+
 				<ol className="border-2 border-rule">
-					{DAY.map(({ step, body }, index) => (
+					{DAY.map(({ step, body, readout: key }, index) => (
 						<li
 							key={step}
 							className="grid grid-cols-[2.5rem_minmax(0,1fr)] border-t-2 border-rule first:border-t-0 sm:grid-cols-[3.25rem_minmax(0,1fr)]"
@@ -566,6 +585,9 @@ export default function AboutPage(): ReactElement {
 							<span className="flex min-w-0 flex-col gap-1 px-2 py-3 sm:px-3">
 								<span className="font-display text-heading font-extrabold tracking-wider uppercase">{step}</span>
 								<span className="max-w-prose text-note text-foreground">{body}</span>
+								{readout !== null && (
+									<span className="font-mono text-evidence tracking-tight wrap-break-word text-foreground uppercase">{readout[key]}</span>
+								)}
 							</span>
 						</li>
 					))}

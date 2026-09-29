@@ -2,6 +2,7 @@ import type { GuardVerdict } from '@/planner/guard-conditions';
 import type { DailyAggregate, Plan } from '@/planner/plan';
 import type { Task } from '@/planner/task';
 import type { Rule } from '@/rules/rule';
+import { roundKeepingSide } from '@/planner/aggregate';
 import { MONTHS } from '@/planner/dates';
 import { FORECAST_UNAVAILABLE_TEXT } from '@/planner/guards';
 
@@ -65,10 +66,11 @@ function formatMonthDay(monthDay: string): string {
 	return name === undefined || day === undefined ? monthDay : `${name} ${Number(day)}`;
 }
 
-// One decimal, because the Artifact carries a daily mean at float precision
-// (#59) and "88.79583333333335°F" reads as a machine dump beside a 55°F line.
-function formatReading(value: number, unit: 'F' | 'mm' | 'percent'): string {
-	const shown = Number(value.toFixed(1));
+// One decimal where that leaves a reading on its side of `lines`, because an
+// Artifact committed before #59 carries a daily mean at float precision and
+// "88.79583333333335°F" reads as a machine dump beside a 55°F line.
+function formatReading(value: number, unit: 'F' | 'mm' | 'percent', lines: readonly number[] = []): string {
+	const shown = roundKeepingSide(value, lines);
 
 	if (unit === 'F') {
 		return `${shown}°F`;
@@ -200,7 +202,7 @@ function listOf(items: string[]): string {
 	return items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
 
-function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
+export function intervalText(rule: Extract<Rule, { kind: 'cadence' }>): string {
 	const { min, max } = rule.everyDays;
 
 	return min === max ? `${min} days` : `${min}–${max} days`;
@@ -276,7 +278,7 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 				// 0003), so a Rule with nothing in it was evaluated against readings
 				// this page was not given rather than against nothing at all.
 				? `No reading in the Artifact's window; needs ${wants}`
-				: `Last read ${formatReading(observed.value, rule.unit)}; needs ${wants}`,
+				: `Last read ${formatReading(observed.value, rule.unit, [rule.value])}; needs ${wants}`,
 			checks: [],
 			daysAway: null,
 		};
@@ -290,8 +292,12 @@ export function standingFor(rule: Rule, plan: Plan): RuleStanding {
 		band: 'waiting',
 		inCurrentPlan: false,
 		// The Plan is evaluated for one day, so a Rule with no Task is known not
-		// due on that day only. It may fire tomorrow.
-		waitingOn: `Every ${intervalText(rule)}; not due as of ${formatMonthDay(plan.asOf.slice(5))}`,
+		// due on that day only. It may fire tomorrow. A follow-up counts from the
+		// Rule it follows rather than every so many days, so "Every" would be
+		// wrong for it; the row names that Rule on a line of its own.
+		waitingOn: rule.after === null
+			? `Every ${intervalText(rule)}; not due as of ${formatMonthDay(plan.asOf.slice(5))}`
+			: `Not due as of ${formatMonthDay(plan.asOf.slice(5))}`,
 		checks: [],
 		daysAway: null,
 	};

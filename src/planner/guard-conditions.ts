@@ -45,8 +45,12 @@ type RainCondition = Extract<GuardCondition, { kind: 'no-rain-within' }>;
  * dated before the planned date is left over from an earlier fetch, and
  * letting one vote would settle today's Guard on a storm that already came and
  * went.
+ *
+ * Exported so This Week prints the days the Guard actually read under its
+ * Deferral. A view picking its own rain rows would show evidence the verdict
+ * never saw.
  */
-function rainChanceDays(
+export function rainChanceDays(
 	condition: RainCondition,
 	window: DailyAggregate[],
 	asOf: string,
