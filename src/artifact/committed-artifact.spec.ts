@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseStatusRecord, safeParseArtifact } from '@/artifact/artifact';
 import { seedPlannedFrom } from '@/artifact/planned-from';
-import { findCoordinateKeys, findCoordinatePairs, seedRules } from '@/seed';
+import { findCoordinateFieldNames, findCoordinatePairs, seedRules } from '@/seed';
 import { findUnresolvedNarratedTaskIds, findUnresolvedRuleIds, showsPlannedFromNotice } from './committed-artifact';
 import { narratedArtifact } from './fixtures';
 
@@ -262,11 +262,22 @@ describe('the committed artifact obeys ADR 0004', () => {
 	// `Plan.window` carries reduced daily means. An hourly average that lands
 	// on 94.75416666666666 is routine, not a leaked coordinate, and applying
 	// the same detector the seed specs use would fire on every single run.
-	// findCoordinateKeys and findCoordinatePairs below carry no such false
+	// findCoordinateFieldNames and findCoordinatePairs below carry no such false
 	// positive, so ADR 0004 is still enforced on the value the schema walk in
 	// no-coordinates.spec.ts cannot see.
-	it('data/artifact.json carries no key that reads like a coordinate', () => {
-		expect(findCoordinateKeys(artifactText)).toEqual([]);
+	// Field names come off the parsed value, never the text. The Narration is
+	// free prose, and a quoted word before a colon in a sentence (`"related":`)
+	// reads as a key to a text scan and matches `lat`, which would fail CI over
+	// an Artifact the generation run already passed. run.ts walks the parsed
+	// Artifact for the same reason.
+	it('data/artifact.json carries no field named like a coordinate', () => {
+		expect(findCoordinateFieldNames(JSON.parse(artifactText))).toEqual([]);
+	});
+
+	it('reads field names, not a quoted word in the Narration\'s prose', () => {
+		const prose = { narration: { summary: 'The "related": section of the label covers watering in.' } };
+		expect(findCoordinateFieldNames(prose)).toEqual([]);
+		expect(findCoordinateFieldNames({ plan: { tasks: [{ latitude: 1 }] } })).toEqual(['latitude']);
 	});
 
 	it('data/artifact.json carries no coordinate pair inside a string', () => {
