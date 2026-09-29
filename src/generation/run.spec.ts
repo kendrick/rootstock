@@ -5,6 +5,7 @@ import type { Narration } from '@/artifact/narration';
 import type { Rule } from '@/rules/rule';
 import type { Observation } from '@/weather/observation';
 import { describe, expect, it } from 'vitest';
+import { AGGREGATE_DECIMAL_PLACES } from '@/planner/aggregate';
 import { PLAN_WINDOW_DAYS } from '@/planner/plan';
 import { fakeObservations } from '@/weather/fake-adapter';
 import {
@@ -238,19 +239,29 @@ describe('run', () => {
 		expect('artifact' in result).toBe(false);
 	});
 
-	it('publishes a window whose daily means carry long decimals', async () => {
-		// The check the walk deliberately does not run. A DailyAggregate is a mean
-		// of a day's hourly readings, so a value with ten decimal places is
-		// ordinary here, however suspicious the same number would be in a
-		// hand-authored seed file. Gating the Artifact on that shape would fail
-		// every real run.
+	// Nothing in this fixture sits within a rounding step of a Rule's line, so
+	// every value ships at the named precision. Near a line `plan()` keeps a
+	// few more places on purpose (planner.spec.ts covers that case).
+	it('publishes a window whose daily means carry the named precision away from any line', async () => {
+		// The check the walk deliberately does not run: `findLongDecimals` in
+		// run.ts stays off the Artifact's own numbers because a raw
+		// DailyAggregate mean of a day's hourly readings is ordinarily long,
+		// however suspicious the same shape would be in a hand-authored seed
+		// file. What that comment doesn't need to defend against is `plan()`
+		// publishing that raw mean at all—it rounds `Plan.window` to
+		// `AGGREGATE_DECIMAL_PLACES` before returning it (#59)—so the uneven
+		// grouping below, built to be exactly the kind of division that would
+		// otherwise leave a value like 56.234166666, still ships short.
 		const uneven: Observation[] = fixtureObservations
 			.filter((_, index) => index % 4 !== 3)
 			.map((observation, index) => index % 3 === 0 ? { ...observation, value: 72 } : observation);
 
 		const artifact = artifactOf(await run(options({ fetchObservations: fakeObservations(uneven) })));
 
-		expect(JSON.stringify(artifact.plan.window)).toMatch(/\d\.\d{3,}/);
+		for (const day of artifact.plan.window) {
+			const decimals = day.value.toString().split('.')[1]?.length ?? 0;
+			expect(decimals).toBeLessThanOrEqual(AGGREGATE_DECIMAL_PLACES);
+		}
 	});
 
 	it('writes a status record naming the artifact it just published', async () => {

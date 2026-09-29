@@ -10,6 +10,7 @@ import { useId } from 'react';
 import { VARIABLE_TEXT } from '@/components/series-text';
 import { FOCUS_RING } from '@/lib/focus';
 import { cn } from '@/lib/utils';
+import { roundKeepingSide } from '@/planner/aggregate';
 import { meetsThreshold } from '@/planner/threshold-rule';
 import { inSeason, seasonDay } from './season';
 
@@ -78,9 +79,9 @@ function dayLabel(date: string): string {
 	return DAY_FORMAT.format(Date.parse(`${date}T00:00:00Z`));
 }
 
-/** Trailing `.0` on a whole number reads like a template that got away from someone, so 55 stays 55 and 56.9 keeps its tenth. */
-function amount(value: number, unit: Unit): string {
-	return `${Number.isInteger(value) ? value : value.toFixed(1)}${UNIT_SUFFIX[unit]}`;
+/** Trailing `.0` on a whole number reads like a template that got away from someone, so 55 stays 55 and 56.9 keeps its tenth. A reading beside `lines` keeps the decimals that hold it on its side of them. */
+function amount(value: number, unit: Unit, lines: readonly number[] = []): string {
+	return `${roundKeepingSide(value, lines)}${UNIT_SUFFIX[unit]}`;
 }
 
 function round(value: number): number {
@@ -297,7 +298,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null,
 
 	const description = [
 		outOfSeason ? caption : null,
-		`${observedCount} observed ${observedCount === 1 ? 'day' : 'days'} and ${forecastCount} forecast, running from ${amount(Math.min(...values), rule.unit)} to ${amount(Math.max(...values), rule.unit)}.`,
+		`${observedCount} observed ${observedCount === 1 ? 'day' : 'days'} and ${forecastCount} forecast, running from ${amount(Math.min(...values), rule.unit, [rule.value])} to ${amount(Math.max(...values), rule.unit, [rule.value])}.`,
 		thresholdSentence,
 		marked === null ? null : `${dayLabel(marked.day.date)} is marked, the day this task's citation names.`,
 	].filter(sentence => sentence !== null).join(' ');
@@ -452,7 +453,7 @@ export function SoilSparkline({ window: planWindow, rule, citation, asOf = null,
 							{days.map(day => (
 								<tr key={day.date} className="border-b border-border/60">
 									<th scope="row" className="py-1 pr-3 font-normal">{dayLabel(day.date)}</th>
-									<td className="py-1 pr-3">{amount(day.value, day.unit)}</td>
+									<td className="py-1 pr-3">{amount(day.value, day.unit, [rule.value])}</td>
 									<td className="py-1 pr-3">{BASIS_LABEL[day.basis]}</td>
 									<td className="py-1">{PROVENANCE_LABEL[day.provenance]}</td>
 								</tr>

@@ -7,6 +7,7 @@ import { ruleSchema, tagPolicySchema } from '@/rules/rule';
 import { parseWith } from '@/validation/parse';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
+import { AGGREGATE_DECIMAL_PLACES } from './aggregate';
 import { occurrenceSchema } from './occurrence';
 import { PLAN_WINDOW_DAYS } from './plan';
 
@@ -421,8 +422,11 @@ function utcInstant(localDate: string, localHour: number): string {
 	return `${instant.toISOString().slice(0, 19)}Z`;
 }
 
+// Same precision `toDailyAggregates` rounds its own output to (#59), so a
+// fixture's hand-authored readings and the Planner's own rounding never
+// land on different grids.
 function round(value: number): number {
-	return Number(value.toFixed(1));
+	return Number(value.toFixed(AGGREGATE_DECIMAL_PLACES));
 }
 
 /*
