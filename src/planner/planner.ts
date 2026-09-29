@@ -207,7 +207,7 @@ function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 }
 
 /**
- * The series a `forecast-reaches` Guard reads, grouped the same way as `seriesByAggregate`. `buildWindow` reduces their forecast days from modeled Observations alone.
+ * The series a `forecast-reaches` Guard reads, grouped the same way as `seriesByAggregate`. The Guard pass reads their forecast days from modeled Observations alone.
  */
 function forecastGuardSeries(rules: Rule[]): Map<Aggregate, Set<string>> {
 	const wanted = new Map<Aggregate, Set<string>>();
@@ -221,6 +221,19 @@ function forecastGuardSeries(rules: Rule[]): Map<Aggregate, Set<string>> {
 	}
 
 	return wanted;
+}
+
+/** `series` minus every series a Threshold Rule reads with the same reduction. */
+function withoutThresholdSeries(series: Map<Aggregate, Set<string>>, rules: Rule[]): Map<Aggregate, Set<string>> {
+	const remaining = new Map([...series].map(([aggregate, keys]) => [aggregate, new Set(keys)]));
+
+	for (const rule of rules) {
+		if (rule.kind === 'threshold') {
+			remaining.get(rule.aggregate)?.delete(seriesKey(rule.variable, rule.depthCm));
+		}
+	}
+
+	return remaining;
 }
 
 function compareDepth(left: number | null, right: number | null): number {
@@ -256,14 +269,13 @@ function compareDepth(left: number | null, right: number | null): number {
  * date order, and the order a Plan's window lands in shows up as a diff in the
  * committed Artifact every time somebody reorders the Rule set.
  */
-function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
+function buildWindow(input: PlanInput, span: number, forecastRead: Map<Aggregate, Set<string>>): DailyAggregate[] {
 	const window: DailyAggregate[] = [];
-	const forecastRead = forecastGuardSeries(input.rules);
 	const modeledObservations = input.observations.filter(observation => observation.provenance === 'modeled');
 
 	for (const [aggregate, keys] of seriesByAggregate(input.rules)) {
 		/*
-		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series a `forecast-reaches` Guard reads gets its forecast days from modeled Observations alone, and its observed days as usual.
+		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series in `forecastRead` gets its forecast days from modeled Observations alone, and its observed days as usual.
 		 *
 		 * Modeled, not forecast-basis. The adapter marks every elapsed hour observed, so a forecast-basis filter on a 06:00 run drops the model's 05:00 low, and a frost limit reads only the warm afternoon.
 		 *
@@ -565,16 +577,25 @@ function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]
  * independent of the digits the published Artifact carries.
  */
 export function plan(input: PlanInput): Plan {
-	const window = buildWindow(input, windowSpan(input.rules));
-	const orderables = createTasks(input, window);
+	/*
+	 * One view per reader, because a Guard creates no work (ADR 0002). A Threshold Rule reads measured-first days, as it did before any Guard read ahead, and only the Guard pass sees a series' forecast days rebuilt from the model. Sharing one view let a heat Guard on a Threshold Rule's series swap a measured 75°F for a modeled 95°F and author a Task.
+	 *
+	 * The Artifact carries the Threshold Rule's view wherever the two share a series, since that's the reading a Task's Citation points into. A series only a Guard reads carries the Guard's view.
+	 */
+	const span = windowSpan(input.rules);
+	const guardSeries = forecastGuardSeries(input.rules);
+	const ruleWindow = buildWindow(input, span, new Map());
+	const guardWindow = buildWindow(input, span, guardSeries);
+	const emittedWindow = buildWindow(input, span, withoutThresholdSeries(guardSeries, input.rules));
+	const orderables = createTasks(input, ruleWindow);
 
 	const authored = orderables.map(entry => entry.task);
-	const guarded = applyGuards(authored, input.rules, input.plants, window, input.asOf);
+	const guarded = applyGuards(authored, input.rules, input.plants, guardWindow, input.asOf);
 	const tasks = stampDelegability(guarded, input.rules, input.tagPolicy);
 
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window: roundWindowForEmission(window, input.rules),
+		window: roundWindowForEmission(emittedWindow, input.rules),
 	};
 }

@@ -818,6 +818,17 @@ describe('plan under a forecast-reaches guard', () => {
 
 	const hotMay = [airForecast('2026-05-20T12:00:00Z', 72), airForecast('2026-05-20T21:00:00Z', 95)];
 	const mildAugust = [airForecast('2026-08-14T12:00:00Z', 70), airForecast('2026-08-14T21:00:00Z', 78)];
+	const morningProbe = observationSchema.parse({
+		observedAt: '2026-05-20T14:00:00Z',
+		variable: 'air-temperature',
+		depthCm: null,
+		value: 75,
+		unit: 'F',
+		basis: 'observed',
+		provenance: 'measured',
+		source: 'manual',
+		station: 'backyard-thermometer',
+	});
 
 	it('defers the work on a 95°F day in May, keeping its rule and citation and naming the guard', () => {
 		const unguarded = plan(inputWith({ asOf: '2026-05-20', rules: [work], observations: hotMay }));
@@ -833,17 +844,6 @@ describe('plan under a forecast-reaches guard', () => {
 
 	// A probe reading beats a modeled one inside `toDailyAggregates`, which is right for a day that happened and wrong for one that hasn't. A 9am reading of 75°F says nothing about a 4pm forecast of 95°F.
 	it('defers on the modeled forecast high when a cooler manual reading sits on the same day', () => {
-		const morningProbe = observationSchema.parse({
-			observedAt: '2026-05-20T14:00:00Z',
-			variable: 'air-temperature',
-			depthCm: null,
-			value: 75,
-			unit: 'F',
-			basis: 'observed',
-			provenance: 'measured',
-			source: 'manual',
-			station: 'backyard-thermometer',
-		});
 		const guarded = plan(inputWith({ asOf: '2026-05-20', rules: [work, heatGuard], observations: [...hotMay, morningProbe] }));
 		const held = guarded.tasks.find(task => task.ruleId === 'broadcast-herbicide');
 
@@ -859,6 +859,18 @@ describe('plan under a forecast-reaches guard', () => {
 			provenance: 'modeled',
 			source: 'open-meteo',
 		}]);
+	});
+
+	// ADR 0002: a Guard creates no work. A Threshold Rule on the Guard's own series has to read the day it read before the Guard existed, or adding the Guard could author a Task by changing that Rule's evidence.
+	it('leaves a Threshold Rule on the same series reading the measured day, and authoring what it authored alone', () => {
+		const hotDay = thresholdRule({ id: 'hot-day', name: 'Hot day', variable: 'air-temperature', depthCm: null, aggregate: 'max', comparison: 'gte', value: 90, consecutiveDays: 1 });
+		const day = { asOf: '2026-05-20', observations: [...hotMay, morningProbe] };
+		const alone = plan(inputWith({ ...day, rules: [hotDay] }));
+		const withGuard = plan(inputWith({ ...day, rules: [hotDay, heatGuard] }));
+
+		expect(alone.tasks).toEqual([]);
+		expect(withGuard.tasks).toEqual(alone.tasks);
+		expect(withGuard.window).toEqual(alone.window);
 	});
 
 	// The adapter marks an hour observed once it has passed, whatever its provenance, so on a 06:00 run the modeled 05:00 low is already an observed hour. It's still the model's reading of the day, and a frost limit that skipped it would read only the warm afternoon. November is Central standard time, so 11:00Z is 5am and 20:00Z is 2pm.
