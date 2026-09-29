@@ -30,6 +30,7 @@ describe('variableSchema', () => {
 		expect(variableSchema.parse('soil-temperature')).toBe('soil-temperature');
 		expect(variableSchema.parse('precipitation')).toBe('precipitation');
 		expect(variableSchema.parse('precipitation-probability')).toBe('precipitation-probability');
+		expect(variableSchema.parse('air-temperature')).toBe('air-temperature');
 	});
 
 	it('rejects an unknown series', () => {
@@ -66,6 +67,11 @@ describe('observationSchema', () => {
 	it('parses a measured soil reading with a depth and a station', () => {
 		const parsed = observationSchema.parse(soilReading);
 		expect(parsed).toEqual(soilReading);
+	});
+
+	it('parses a modeled air temperature reading with no depth', () => {
+		const airReading = { ...precipitationReading, variable: 'air-temperature', value: 94.1, unit: 'F' };
+		expect(observationSchema.parse(airReading)).toEqual(airReading);
 	});
 
 	it('parses a modeled precipitation reading with depth and station absent as null', () => {

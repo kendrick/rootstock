@@ -3,7 +3,7 @@ import type { Rule, TagPolicy } from '@/rules/rule';
 import type { Plant, Yard } from '@/yard/plant';
 import { z } from 'zod';
 import { occurrenceSchema } from '@/planner/occurrence';
-import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
+import { ruleSetSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { parseWith } from '@/validation/parse';
 import { plantSchema, yardSchema } from '@/yard/plant';
 import occurrencesJson from './occurrences.json';
@@ -28,7 +28,7 @@ import yardJson from './yard.json';
  */
 export const seedYard: Yard = parseWith(yardSchema, 'yard.json')(yardJson);
 export const seedPlants: Plant[] = parseWith(z.array(plantSchema), 'plants.json')(plantsJson);
-export const seedRules: Rule[] = parseWith(z.array(ruleSchema), 'rules.json')(rulesJson);
+export const seedRules: Rule[] = parseWith(ruleSetSchema, 'rules.json')(rulesJson);
 export const seedOccurrences: Occurrence[] = parseWith(z.array(occurrenceSchema), 'occurrences.json')(occurrencesJson);
 export const seedTagPolicy: TagPolicy = parseWith(tagPolicySchema, 'tag-policy.json')(tagPolicyJson);
 

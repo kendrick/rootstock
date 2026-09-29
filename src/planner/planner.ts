@@ -5,7 +5,7 @@ import type { CadenceRule, GuardCondition, Rule, TagPolicy, ThresholdRule, Windo
 import type { Aggregate, Variable } from '@/weather/observation';
 import type { Plant } from '@/yard/plant';
 import { z } from 'zod';
-import { ruleSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
+import { ruleSetSchema, tagPolicySchema, thresholdLookbackDays } from '@/rules/rule';
 import { observationSchema } from '@/weather/observation';
 import { plantSchema } from '@/yard/plant';
 import { roundKeepingSide, toDailyAggregates } from './aggregate';
@@ -64,7 +64,7 @@ export const planInputSchema = z.strictObject({
 	asOf: z.iso.date(),
 	timeZone: timeZoneSchema,
 	plants: z.array(plantSchema),
-	rules: z.array(ruleSchema),
+	rules: ruleSetSchema,
 	observations: z.array(observationSchema),
 	occurrences: z.array(occurrenceSchema),
 	tagPolicy: tagPolicySchema,
@@ -179,6 +179,8 @@ function seriesKey(variable: Variable, depthCm: number | null): string {
  * collecting the mean would hand the Guard a series it may not read, which
  * lands on the same verdict as collecting nothing at all and is harder to spot
  * from a window that looks full.
+ *
+ * A `forecast-reaches` Guard names its series in full, the way a Threshold Rule does, so it's collected exactly as written.
  */
 function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 	const wanted = new Map<Aggregate, Set<string>>();
@@ -195,6 +197,26 @@ function seriesByAggregate(rules: Rule[]): Map<Aggregate, Set<string>> {
 		}
 		else if (rainForecastGuard(rule) !== null) {
 			want('max', seriesKey('precipitation-probability', null));
+		}
+		else if (rule.kind === 'guard' && rule.condition.kind === 'forecast-reaches') {
+			want(rule.condition.aggregate, seriesKey(rule.condition.variable, rule.condition.depthCm));
+		}
+	}
+
+	return wanted;
+}
+
+/**
+ * The series a `forecast-reaches` Guard reads, grouped the same way as `seriesByAggregate`. The Guard pass reads their forecast days from modeled Observations alone.
+ */
+function forecastGuardSeries(rules: Rule[]): Map<Aggregate, Set<string>> {
+	const wanted = new Map<Aggregate, Set<string>>();
+
+	for (const rule of rules) {
+		if (rule.kind === 'guard' && rule.condition.kind === 'forecast-reaches') {
+			const keys = wanted.get(rule.condition.aggregate) ?? new Set<string>();
+			keys.add(seriesKey(rule.condition.variable, rule.condition.depthCm));
+			wanted.set(rule.condition.aggregate, keys);
 		}
 	}
 
@@ -234,11 +256,29 @@ function compareDepth(left: number | null, right: number | null): number {
  * date order, and the order a Plan's window lands in shows up as a diff in the
  * committed Artifact every time somebody reorders the Rule set.
  */
-function buildWindow(input: PlanInput, span: number): DailyAggregate[] {
+function buildWindow(input: PlanInput, span: number, forecastRead: Map<Aggregate, Set<string>>): DailyAggregate[] {
 	const window: DailyAggregate[] = [];
+	const modeledObservations = input.observations.filter(observation => observation.provenance === 'modeled');
 
 	for (const [aggregate, keys] of seriesByAggregate(input.rules)) {
-		for (const day of toDailyAggregates(input.observations, input.timeZone, aggregate)) {
+		/*
+		 * `toDailyAggregates` lets a measured reading outrank the modeled ones for its whole day. On a forecast day that swaps a 9am thermometer reading of 75°F in for a 4pm forecast of 95°F, and the heat Guard lets the work through. So a series in `forecastRead` gets its forecast days from modeled Observations alone, and its observed days as usual.
+		 *
+		 * Modeled, not forecast-basis. The adapter marks every elapsed hour observed, so a forecast-basis filter on a 06:00 run drops the model's 05:00 low, and a frost limit reads only the warm afternoon.
+		 *
+		 * The planned date is swapped whatever its basis. A missed run that catches up after 23:00 local finds every hour of `asOf` already observed, and dropping that day would leave the Guard 'unavailable' with the model's whole day on hand. Later days carry forecast hours anyway. The modeled pass yields a row for every date it takes over, since every forecast hour is modeled, so the swap leaves no gap and no duplicate.
+		 */
+		const readAhead = forecastRead.get(aggregate) ?? new Set<string>();
+		const guardDay = (day: DailyAggregate): boolean =>
+			readAhead.has(seriesKey(day.variable, day.depthCm)) && (day.basis === 'forecast' || day.date === input.asOf);
+		const days = [
+			...toDailyAggregates(input.observations, input.timeZone, aggregate).filter(day => !guardDay(day)),
+			...(readAhead.size === 0
+				? []
+				: toDailyAggregates(modeledObservations, input.timeZone, aggregate).filter(guardDay)),
+		];
+
+		for (const day of days) {
 			if (!keys.has(seriesKey(day.variable, day.depthCm))) {
 				continue;
 			}
@@ -524,16 +564,24 @@ function roundWindowForEmission(window: DailyAggregate[], rules: readonly Rule[]
  * independent of the digits the published Artifact carries.
  */
 export function plan(input: PlanInput): Plan {
-	const window = buildWindow(input, windowSpan(input.rules));
-	const orderables = createTasks(input, window);
+	/*
+	 * Two views, because a Guard creates no work (ADR 0002). A Threshold Rule reads measured-first days, as it did before any Guard read ahead, and only the Guard pass sees a series' forecast days rebuilt from the model. Sharing one view let a heat Guard on a Threshold Rule's series swap a measured 75°F for a modeled 95°F and author a Task.
+	 *
+	 * The Artifact carries the Guard's view. `ruleSetSchema` rejects a Rule set where a `forecast-reaches` Guard and a Threshold Rule share a series, so the two views differ only on series no Threshold Rule reads, and the window holds the reading behind every verdict.
+	 */
+	const span = windowSpan(input.rules);
+	const guardSeries = forecastGuardSeries(input.rules);
+	const ruleWindow = buildWindow(input, span, new Map());
+	const guardWindow = buildWindow(input, span, guardSeries);
+	const orderables = createTasks(input, ruleWindow);
 
 	const authored = orderables.map(entry => entry.task);
-	const guarded = applyGuards(authored, input.rules, input.plants, window, input.asOf);
+	const guarded = applyGuards(authored, input.rules, input.plants, guardWindow, input.asOf);
 	const tasks = stampDelegability(guarded, input.rules, input.tagPolicy);
 
 	return {
 		asOf: input.asOf,
 		tasks: orderTasks(pairForOrdering(orderables, tasks), input.tagPolicy),
-		window: roundWindowForEmission(window, input.rules),
+		window: roundWindowForEmission(guardWindow, input.rules),
 	};
 }

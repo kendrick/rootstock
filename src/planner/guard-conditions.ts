@@ -69,6 +69,39 @@ export function rainChanceDays(
 	});
 }
 
+type ForecastCondition = Extract<GuardCondition, { kind: 'forecast-reaches' }>;
+
+/**
+ * The forecast days a `forecast-reaches` Guard reads: the planned date and the `consecutiveDays - 1` after it, in the series, reduction and unit the condition names. Every one of them has to reach `value` for the condition to be met.
+ *
+ * Forecast only, bar the planned date's modeled row, and bounded behind `asOf`, for the reasons `rainChanceDays` gives. The planned date is inside the horizon because a heat limit is about the day the work would happen. `buildWindow` reduces these rows from modeled Observations alone, so today's row covers the whole local day as the model sees it, hours already past included, and a measured reading can't stand in for the forecast.
+ *
+ * `unit` is matched as well as the series. A row in another unit would compare as a plausible number and still be the wrong one.
+ */
+export function forecastDays(
+	condition: ForecastCondition,
+	window: DailyAggregate[],
+	asOf: string,
+): DailyAggregate[] {
+	return window.filter((day) => {
+		if (day.variable !== condition.variable || day.depthCm !== condition.depthCm) {
+			return false;
+		}
+
+		if (day.aggregate !== condition.aggregate || day.unit !== condition.unit) {
+			return false;
+		}
+
+		// A run that catches up late at night has marked every hour of `asOf` observed. The model's own day still answers the question, and `buildWindow` hands this Guard the modeled row for `asOf`.
+		if (day.basis !== 'forecast' && !(day.date === asOf && day.provenance === 'modeled')) {
+			return false;
+		}
+
+		const ahead = daysBetween(asOf, day.date);
+		return ahead >= 0 && ahead < condition.consecutiveDays;
+	});
+}
+
 /**
  * Decides whether one Guard's condition holds on the planned date, reading
  * nothing but its arguments.
@@ -90,6 +123,8 @@ export function rainChanceDays(
  * clear. The verdict stays 'unavailable' after the collection widens, too,
  * because the forecast can still run out before the Guard's horizon does, and
  * nothing downstream should have to guess which of the two happened.
+ *
+ * `forecast-reaches` is 'unavailable' on an empty horizon for the same reason.
  *
  * `always` and `within-window` never reach for the window and so can never
  * come back 'unavailable'. A house rule and a calendar range are both settled
@@ -130,6 +165,21 @@ export function evaluateGuardCondition(
 			}
 
 			return days.some(day => day.value >= condition.probabilityAtLeast) ? 'met' : 'unmet';
+		}
+
+		case 'forecast-reaches': {
+			/*
+			 * One day short of `value` settles 'unmet' even with other days missing, because the run can't hold through it. A run that holds on every day on hand is 'met' only when every day is on hand; short of that, the missing day could still break it.
+			 */
+			const days = forecastDays(condition, window, asOf);
+			const reaches = (day: DailyAggregate): boolean =>
+				condition.comparison === 'gte' ? day.value >= condition.value : day.value <= condition.value;
+
+			if (!days.every(reaches)) {
+				return 'unmet';
+			}
+
+			return days.length === condition.consecutiveDays ? 'met' : 'unavailable';
 		}
 	}
 }

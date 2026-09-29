@@ -6,6 +6,7 @@ import {
 	guardRuleSchema,
 	productLabelSchema,
 	ruleSchema,
+	ruleSetSchema,
 	sourceSchema,
 	tagPolicySchema,
 	thresholdRuleSchema,
@@ -196,6 +197,36 @@ describe('guardConditionSchema', () => {
 	it('rejects an unknown condition kind', () => {
 		expect(() => guardConditionSchema.parse({ kind: 'wind-below', speed: 10 })).toThrow();
 	});
+
+	const heatLimit = {
+		kind: 'forecast-reaches',
+		variable: 'air-temperature',
+		depthCm: null,
+		aggregate: 'max',
+		comparison: 'gte',
+		value: 90,
+		unit: 'F',
+		consecutiveDays: 1,
+	};
+
+	it('parses a forecast-reaches condition carrying all seven reading fields', () => {
+		expect(guardConditionSchema.parse(heatLimit)).toEqual(heatLimit);
+	});
+
+	// Open-Meteo is asked for 7 forecast days, the planned date included, so a run of 7 is the longest one the forecast can settle.
+	it('accepts a forecast-reaches run of 7 days and rejects one of 8', () => {
+		expect(guardConditionSchema.parse({ ...heatLimit, consecutiveDays: 7 })).toEqual({ ...heatLimit, consecutiveDays: 7 });
+		expect(() => guardConditionSchema.parse({ ...heatLimit, consecutiveDays: 8 })).toThrow(/forecast/);
+	});
+
+	// Written out rather than read off `Object.keys(heatLimit)`, so the list under test can't shrink along with the fixture.
+	it.each(['variable', 'depthCm', 'aggregate', 'comparison', 'value', 'unit', 'consecutiveDays'])(
+		'rejects a forecast-reaches condition missing %s',
+		(field) => {
+			const { [field]: _dropped, ...missing } = heatLimit as Record<string, unknown>;
+			expect(() => guardConditionSchema.parse(missing)).toThrow();
+		},
+	);
 });
 
 describe('ruleSchema seed rules', () => {
@@ -448,5 +479,26 @@ describe('authoring mistakes in hand-written JSON', () => {
 
 	it('rejects a label url that is not a url', () => {
 		expect(() => windowRuleSchema.parse({ ...fallPreEmergent, productLabel: { url: 'see the bag' } })).toThrow();
+	});
+});
+
+// A `forecast-reaches` Guard reads its series' forecast days from the model alone, and a Threshold Rule reads the same days measured-first. The Artifact's window holds one row per series and day, so it can't carry the reading behind both verdicts.
+describe('ruleSetSchema', () => {
+	const soilForecast = (aggregate: string) => ({
+		...figNoFertilizerUntilSpring,
+		id: 'soil-forecast-limit',
+		condition: { kind: 'forecast-reaches', variable: 'soil-temperature', depthCm: 6, aggregate, comparison: 'gte', value: 80, unit: 'F', consecutiveDays: 1 },
+	});
+
+	it('rejects a forecast-reaches Guard reading a Threshold Rule\'s series and reduction, naming both', () => {
+		const result = ruleSetSchema.safeParse([springPreEmergent, soilForecast('mean')]);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.message).toContain('soil-forecast-limit');
+		expect(result.error?.issues[0]?.message).toContain('spring-pre-emergent');
+	});
+
+	it('accepts the same series under another reduction', () => {
+		expect(ruleSetSchema.safeParse([springPreEmergent, soilForecast('max')]).success).toBe(true);
 	});
 });
