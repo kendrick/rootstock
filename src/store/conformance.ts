@@ -40,6 +40,7 @@ const frontLawn: Plant = {
 		soil: 'clay',
 		irrigation: { schedule: 'Twice weekly before sunrise', source: 'asserted' },
 	},
+	species: null,
 	notes: null,
 };
 
@@ -52,6 +53,7 @@ const fig: Plant = {
 	position: null,
 	site: 'northwest corner',
 	lawn: null,
+	species: null,
 	notes: null,
 };
 
@@ -64,6 +66,7 @@ const esperanza: Plant = {
 	position: null,
 	site: 'back patio',
 	lawn: null,
+	species: null,
 	notes: null,
 };
 
@@ -218,6 +221,7 @@ const INTRUDER: StoredRecord<Plant> = {
 		position: null,
 		site: null,
 		lawn: null,
+		species: null,
 		notes: null,
 	},
 };
@@ -329,6 +333,7 @@ export function describeStoreConformance(options: StoreConformanceOptions): void
 					position: null,
 					site: 'north fence',
 					lawn: null,
+					species: null,
 					notes: null,
 				},
 			};

@@ -2,6 +2,7 @@
 	{
 		"id": "front-lawn",
 		"name": "Front lawn",
+		"species": "Cynodon dactylon × C. transvaalensis",
 		"kind": "lawn",
 		"status": "planted",
 		"tags": ["lawn", "turf"],
@@ -21,6 +22,7 @@
 	{
 		"id": "fig-1",
 		"name": "Brown Turkey fig",
+		"species": "Ficus carica",
 		"kind": "plant",
 		"status": "planted",
 		"tags": ["fig", "fruit", "tree"],
@@ -32,6 +34,7 @@
 	{
 		"id": "esperanza-1",
 		"name": "Esperanza",
+		"species": "Tecoma stans",
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "perennial"],
@@ -43,6 +46,7 @@
 	{
 		"id": "hibiscus-watermelon-ruffles",
 		"name": "Watermelon Ruffles hardy hibiscus",
+		"species": "Hibiscus moscheutos hybrid",
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
@@ -54,6 +58,7 @@
 	{
 		"id": "hibiscus-starry-night",
 		"name": "Starry Night hardy hibiscus",
+		"species": "Hibiscus moscheutos hybrid",
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
@@ -65,6 +70,7 @@
 	{
 		"id": "hibiscus-luna-white",
 		"name": "Luna White hardy hibiscus",
+		"species": "Hibiscus moscheutos hybrid",
 		"kind": "container",
 		"status": "planted",
 		"tags": ["container", "flowering", "hibiscus"],
@@ -76,6 +82,7 @@
 	{
 		"id": "crossvine-1",
 		"name": "Crossvine, porch trellis (west)",
+		"species": "Bignonia capreolata",
 		"kind": "plant",
 		"status": "planned",
 		"tags": ["vine", "native", "planned"],
@@ -87,6 +94,7 @@
 	{
 		"id": "crossvine-2",
 		"name": "Crossvine, porch trellis (east)",
+		"species": "Bignonia capreolata",
 		"kind": "plant",
 		"status": "planned",
 		"tags": ["vine", "native", "planned"],
@@ -98,6 +106,7 @@
 	{
 		"id": "fig-understory-bed",
 		"name": "Native understory bed around the fig",
+		"species": null,
 		"kind": "bed",
 		"status": "planned",
 		"tags": ["bed", "native", "planned"],

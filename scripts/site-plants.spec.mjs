@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { positionSchema } from '../src/yard/plant';
-import { applySitings } from './site-plants';
+import { applySitings, onlyArg, sitingPage, sitingPlan } from './site-plants';
 
 const PLANTS = path.resolve(import.meta.dirname, '../src/seed/plants.json');
 
@@ -66,5 +66,37 @@ describe('applySitings', () => {
 		const updated = applySitings(source, [{ id: 'front-lawn', position: { x: 0.1, y: 0.2 } }]);
 
 		expect(() => JSON.parse(updated)).not.toThrow();
+	});
+});
+
+describe('onlyArg', () => {
+	it('names the one Plant to site, or none', () => {
+		expect(onlyArg(['--only', 'fig-1'])).toBe('fig-1');
+		expect(onlyArg([])).toBeNull();
+		expect(onlyArg(['--only'])).toBeNull();
+	});
+});
+
+describe('sitingPlan', () => {
+	const plants = [
+		{ id: 'fig-1', name: 'Fig', position: { x: 0.9, y: 0.6 } },
+		{ id: 'esperanza-1', name: 'Esperanza', position: { x: 0.7, y: 0.1 } },
+		{ id: 'turks-cap', name: 'Turk\'s cap', position: null },
+	];
+
+	// `pnpm plant add` hands a new Plant, which has no Pin yet, to `--only`. The photo it's placed on still has to show the Pins around it.
+	it('asks about the one Plant and still draws every other Pin on the photo', () => {
+		const { onPage, toSite } = sitingPlan(plants, 'turks-cap');
+
+		expect(toSite.map(plant => plant.id)).toEqual(['turks-cap']);
+		expect(sitingPage('data:,', onPage).match(/<i data-id=/g)).toHaveLength(2);
+	});
+
+	it('asks about every Plant without --only', () => {
+		expect(sitingPlan(plants, null).toSite).toHaveLength(3);
+	});
+
+	it('refuses an id the inventory does not carry', () => {
+		expect(() => sitingPlan(plants, 'no-such-plant')).toThrow(/no Plant with id 'no-such-plant'/);
 	});
 });

@@ -255,3 +255,45 @@ describe('yard', () => {
 		});
 	});
 });
+
+// #53 grows the inventory to 20-40 Plants. The list is the keyboard and screen-reader path to every one of them, so the checks that matter are made at that count rather than at the seed's nine.
+describe('a forty-Plant yard', () => {
+	const sites = ['Back patio', 'Front flower bed', null, 'Porch trellis'];
+	const plants = Array.from({ length: 40 }, (_, index) => ({
+		...figPlant,
+		id: `plant-${index}`,
+		name: `Plant ${index}`,
+		site: sites[index % sites.length]!,
+		position: index % 10 === 9 ? null : { x: 0.05 + (index % 20) * 0.045, y: 0.1 + Math.floor(index / 20) * 0.6 },
+	}));
+	const renderForty = () => {
+		window.history.replaceState(null, '', '/?view=all');
+		return render(<Yard yard={yardFixture} plants={plants} rules={ruleFixtures} artifact={yardArtifact} store={createYardStore()} />);
+	};
+
+	it('reaches every Plant from the keyboard exactly once, through the list', () => {
+		renderForty();
+
+		const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex]')].filter(element => element.tabIndex >= 0 && element.closest('[aria-hidden="true"]') === null);
+		const plantButtons = reachable.filter(element => element.closest('ul[aria-label="Plants"]') !== null);
+
+		expect(plantButtons).toHaveLength(40);
+		for (const plant of plants) {
+			expect(plantButtons.filter(button => button.textContent?.includes(`${plant.name}, number`))).toHaveLength(1);
+		}
+		expect(reachable.filter(element => element.hasAttribute('data-plant'))).toEqual([]);
+	});
+
+	it('gives each pin the same number as its row, numbered site by site', () => {
+		renderForty();
+
+		const rowNumber = (name: string) => Number(listRowFor(name).textContent?.match(/number (\d+)/u)?.[1]);
+		for (const plant of plants.filter(each => each.position !== null)) {
+			expect(Number(pinFor(plant.id).textContent)).toBe(rowNumber(`${plant.name},`));
+		}
+		// Sites in the order they first appear, so the patio holds 1-10 and the front bed 11-20.
+		expect(rowNumber('Plant 0,')).toBe(1);
+		expect(rowNumber('Plant 4,')).toBe(2);
+		expect(rowNumber('Plant 1,')).toBe(11);
+	});
+});

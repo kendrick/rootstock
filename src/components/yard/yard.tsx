@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { coverage } from './applicable-rules';
+import { bySite } from './by-site';
 import { calloutFace } from './callout-style';
 import { PlantList } from './plant-list';
 import { PlantSheet } from './plant-sheet';
@@ -69,11 +70,11 @@ export interface YardProps {
  */
 export function Yard({ yard, plants, rules, artifact, store }: YardProps): ReactElement {
 	// One number per Plant, shared by its callout on the plate and its row in the
-	// list below. The list's own order is the numbering, so a reader reads the
-	// number off the photograph and finds the same number in the parts list
-	// without a legend in between.
+	// list below. The inventory list's own order is the numbering, so a reader
+	// reads the number off the photograph and finds the same number in the parts
+	// list without a legend in between.
 	const ordinals = useMemo(
-		() => new Map(plants.map((plant, index) => [plant.id, index + 1])),
+		() => new Map(bySite(plants).flatMap(group => group.members).map((plant, index) => [plant.id, index + 1])),
 		[plants],
 	);
 

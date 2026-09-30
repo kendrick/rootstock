@@ -59,7 +59,11 @@ pnpm lint         # ESLint over the repo
 pnpm lint:css     # Stylelint over the stylesheets
 pnpm typecheck    # tsc --noEmit
 pnpm generate     # one generation run: fetch, plan, narrate, write the Artifact
+pnpm plant add    # add a Plant to the inventory, showing which Rules reach it
+pnpm plant check  # list every Plant's Rules and flag what needs a Pin or a tag fix
 ```
+
+[Adding a Plant](docs/operations/adding-a-plant.md) walks through `pnpm plant` and placing a Pin with `pnpm site-plants`.
 
 `pnpm generate` is the daily job without the git work around it. It reaches the network and the narrator, so it needs the location variables below and a working codex credential. Everything else runs from a clean checkout with nothing configured, `pnpm dev` included, though the dev server throws on the Away Card route until the slug is set.
 

@@ -15,6 +15,7 @@
 		"lint:css": "stylelint \"**/*.css\" --allow-empty-input",
 		"lint:css:fix": "stylelint \"**/*.css\" --fix --allow-empty-input",
 		"lint:fix": "eslint . --fix",
+		"plant": "tsx scripts/plant.ts",
 		"prepare": "husky",
 		"pretest:e2e": "next build",
 		"preview": "rm -rf .preview && mkdir -p .preview && cp -R out .preview/rootstock && serve .preview --listen ${E2E_PORT:-3000} --no-clipboard",

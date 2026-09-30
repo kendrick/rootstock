@@ -131,7 +131,28 @@ describe('plantList', () => {
 		});
 	});
 
-	// The inventory has no group heads, so the gap has to be on the row itself.
+	describe('the inventory view', () => {
+		const patio = (id: string, site: string | null) => ({ ...figPlant, id, name: id, site });
+		const plants = [patio('a', 'Back patio'), patio('b', null), patio('c', 'Front bed'), patio('d', 'Back patio'), patio('e', null)];
+
+		// The heads are hidden from a screen reader, like the week view's, because each row already says its site.
+		it('prints each site as a hidden head over its Plants', () => {
+			render(<PlantList plants={plants} ordinals={ordinalsFor(plants)} hovered={null} onHoverChange={() => {}} onSelect={() => {}} />);
+
+			const printed = [...screen.getByRole('list', { name: 'Plants' }).children].map(item => item.getAttribute('aria-hidden') === 'true' ? `head:${item.textContent}` : item.textContent?.match(/^\d+([a-e])/u)?.[1]);
+
+			expect(printed).toEqual(['head:Back patio', 'a', 'd', 'head:No site given', 'b', 'e', 'head:Front bed', 'c']);
+			expect(screen.getAllByRole('listitem')).toHaveLength(plants.length);
+		});
+
+		it('prints no head when every Plant shares one site', () => {
+			render(<PlantList plants={[patio('a', 'Back patio'), patio('d', 'Back patio')]} ordinals={ordinalsFor(plants)} hovered={null} onHoverChange={() => {}} onSelect={() => {}} />);
+
+			expect([...screen.getByRole('list', { name: 'Plants' }).children].some(item => item.getAttribute('aria-hidden') === 'true')).toBe(false);
+		});
+	});
+
+	// The inventory's heads name sites rather than standing, so the gap has to be on the row itself.
 	it('names an unreached Plant on its row in the inventory view', () => {
 		render(<PlantList plants={[unplacedPlantedPlant]} ordinals={ordinalsFor([unplacedPlantedPlant])} hovered={null} onHoverChange={() => {}} onSelect={() => {}} view="all" standings={new Map([[unplacedPlantedPlant.id, 'unreached' as const]])} />);
 

@@ -52,6 +52,8 @@ export type LawnDetail = z.infer<typeof lawnDetailSchema>;
  * how guards and rules elsewhere in the system select plants without
  * knowing their ids, so it stays a free-form array rather than an enum.
  *
+ * `species` is the botanical name, down to the species or hybrid group ('Ficus carica', 'Hibiscus moscheutos hybrid'), with any cultivar left in `name`. Tags say what Rules select on, but a Rule's guidance is researched by species, and a common name is too loose to search a land-grant source with. Null for a bed of mixed planting, or where nobody has said yet.
+ *
  * The `lawn` field is required exactly when `kind` is `'lawn'`: a lawn entry
  * missing its detail, or a fig carrying lawn detail by copy-paste error, is
  * an authoring mistake worth catching at parse time rather than downstream.
@@ -59,6 +61,7 @@ export type LawnDetail = z.infer<typeof lawnDetailSchema>;
 export const plantSchema = z.strictObject({
 	id: kebabIdSchema,
 	name: z.string(),
+	species: z.string().nullable().default(null),
 	kind: z.enum(['plant', 'container', 'bed', 'lawn']),
 	status: z.enum(['planned', 'planted']),
 	tags: z.array(z.string()),
