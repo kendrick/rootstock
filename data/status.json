@@ -1,9 +1,9 @@
 {
-	"attemptedAt": "2026-10-02T11:00:10.896Z",
-	"ok": true,
-	"error": null,
+	"attemptedAt": "2026-10-03T11:23:36.854Z",
+	"ok": false,
+	"error": "generation failed at the weather stage: fetch failed",
 	"artifactGeneratedAt": "2026-10-02T11:00:10.896Z",
-	"consecutiveFailures": 0,
+	"consecutiveFailures": 1,
 	"narration": {
 		"outcome": "ran",
 		"error": null
