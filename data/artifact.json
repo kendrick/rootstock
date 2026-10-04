@@ -1,8 +1,8 @@
 {
 	"version": 1,
-	"generatedAt": "2026-10-02T11:00:10.896Z",
+	"generatedAt": "2026-10-04T11:49:12.031Z",
 	"plan": {
-		"asOf": "2026-10-02",
+		"asOf": "2026-10-04",
 		"tasks": [
 			{
 				"id": "esperanza-feeding@esperanza-1",
@@ -26,50 +26,6 @@
 			}
 		],
 		"window": [
-			{
-				"date": "2026-09-03",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 12,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-09-03",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 89.1,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-09-04",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 14,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-09-04",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 90.1,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
 			{
 				"date": "2026-09-05",
 				"variable": "precipitation-probability",
@@ -671,7 +627,7 @@
 				"aggregate": "max",
 				"value": 53,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -680,9 +636,9 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 76.1,
+				"value": 76.2,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -691,9 +647,9 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 40,
+				"value": 67,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -702,9 +658,9 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 73.3,
+				"value": 73.9,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -713,7 +669,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 26,
+				"value": 48,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -724,7 +680,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 72.9,
+				"value": 73.9,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -735,7 +691,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 2,
+				"value": 4,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -746,7 +702,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 73.6,
+				"value": 74.2,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -768,28 +724,6 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 72.6,
-				"unit": "F",
-				"basis": "forecast",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-07",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 1,
-				"unit": "percent",
-				"basis": "forecast",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-07",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
 				"value": 72.9,
 				"unit": "F",
 				"basis": "forecast",
@@ -797,7 +731,7 @@
 				"source": "open-meteo"
 			},
 			{
-				"date": "2026-10-08",
+				"date": "2026-10-07",
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
@@ -808,11 +742,77 @@
 				"source": "open-meteo"
 			},
 			{
+				"date": "2026-10-07",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 72.2,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-10-08",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 3,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
 				"date": "2026-10-08",
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 73.2,
+				"value": 72.7,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-10-09",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 13,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-10-09",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 71.5,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-10-10",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 10,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-10-10",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 70.3,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -821,11 +821,11 @@
 		]
 	},
 	"narration": {
-		"summary": "It is a light week in the yard, with one feeding task for the Esperanza.",
+		"summary": "A light week: feed the Esperanza.",
 		"tasks": [
 			{
 				"taskId": "esperanza-feeding@esperanza-1",
-				"text": "Feed the Esperanza with fertilizer this week."
+				"text": "Feed the Esperanza with fertilizer."
 			}
 		],
 		"advisories": []
