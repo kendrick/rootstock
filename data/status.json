@@ -1,11 +1,11 @@
 {
-	"attemptedAt": "2026-10-05T11:38:51.237Z",
+	"attemptedAt": "2026-10-07T11:00:13.707Z",
 	"ok": true,
 	"error": null,
-	"artifactGeneratedAt": "2026-10-05T11:38:51.237Z",
+	"artifactGeneratedAt": "2026-10-07T11:00:13.707Z",
 	"consecutiveFailures": 0,
 	"narration": {
-		"outcome": "ran",
-		"error": null
+		"outcome": "failed",
+		"error": "The Narrator ran into a problem."
 	}
 }
