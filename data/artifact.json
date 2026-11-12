@@ -1,32 +1,10 @@
 {
 	"version": 1,
-	"generatedAt": "2026-11-11T12:03:04.120Z",
+	"generatedAt": "2026-11-12T12:00:11.251Z",
 	"plan": {
-		"asOf": "2026-11-11",
+		"asOf": "2026-11-12",
 		"tasks": [],
 		"window": [
-			{
-				"date": "2026-10-13",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 7,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-13",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 82.7,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
 			{
 				"date": "2026-10-14",
 				"variable": "precipitation-probability",
@@ -650,7 +628,7 @@
 				"aggregate": "max",
 				"value": 1,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -661,7 +639,7 @@
 				"aggregate": "mean",
 				"value": 68,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -681,7 +659,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 65.8,
+				"value": 66.1,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -692,7 +670,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 0,
+				"value": 1,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -703,7 +681,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 62.9,
+				"value": 62.4,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -714,7 +692,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 20,
+				"value": 27,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -725,7 +703,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 61.9,
+				"value": 56.6,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -736,7 +714,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 57,
+				"value": 78,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -747,7 +725,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 57.9,
+				"value": 52,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -758,7 +736,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 29,
+				"value": 19,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -769,7 +747,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 54.5,
+				"value": 51.8,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -791,7 +769,29 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 55.8,
+				"value": 54.7,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-18",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 11,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-18",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 58.8,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -800,9 +800,13 @@
 		]
 	},
 	"narration": {
-		"summary": "There are no yard tasks for this week.",
+		"summary": "It is a quiet week in the yard, with no planned tasks or deferred work.",
 		"tasks": [],
-		"advisories": []
+		"advisories": [
+			{
+				"text": "A strong chance of rain is forecast for Sunday, so let the ground dry before doing any optional digging or planting."
+			}
+		]
 	},
 	"narrated": true,
 	"plannedFrom": "9972ca7e1788740c"
