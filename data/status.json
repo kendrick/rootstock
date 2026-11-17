@@ -1,9 +1,9 @@
 {
-	"attemptedAt": "2026-11-16T12:03:52.345Z",
-	"ok": true,
-	"error": null,
+	"attemptedAt": "2026-11-17T12:00:10.315Z",
+	"ok": false,
+	"error": "generation failed at the weather stage: Unexpected token 'U', \"Unexpected\"... is not valid JSON",
 	"artifactGeneratedAt": "2026-11-16T12:03:52.345Z",
-	"consecutiveFailures": 0,
+	"consecutiveFailures": 1,
 	"narration": {
 		"outcome": "ran",
 		"error": null
