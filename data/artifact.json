@@ -1,54 +1,10 @@
 {
 	"version": 1,
-	"generatedAt": "2026-11-16T12:03:52.345Z",
+	"generatedAt": "2026-11-18T12:02:49.338Z",
 	"plan": {
-		"asOf": "2026-11-16",
+		"asOf": "2026-11-18",
 		"tasks": [],
 		"window": [
-			{
-				"date": "2026-10-18",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 0,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-18",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 61.5,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-19",
-				"variable": "precipitation-probability",
-				"depthCm": null,
-				"aggregate": "max",
-				"value": 1,
-				"unit": "percent",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
-			{
-				"date": "2026-10-19",
-				"variable": "soil-temperature",
-				"depthCm": 6,
-				"aggregate": "mean",
-				"value": 63.1,
-				"unit": "F",
-				"basis": "observed",
-				"provenance": "modeled",
-				"source": "open-meteo"
-			},
 			{
 				"date": "2026-10-20",
 				"variable": "precipitation-probability",
@@ -650,7 +606,7 @@
 				"aggregate": "max",
 				"value": 66,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -659,9 +615,9 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 53.4,
+				"value": 53.9,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -672,7 +628,7 @@
 				"aggregate": "max",
 				"value": 0,
 				"unit": "percent",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -681,9 +637,9 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 51.8,
+				"value": 51.5,
 				"unit": "F",
-				"basis": "forecast",
+				"basis": "observed",
 				"provenance": "modeled",
 				"source": "open-meteo"
 			},
@@ -703,7 +659,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 53.4,
+				"value": 53.8,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -714,7 +670,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 3,
+				"value": 1,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -725,7 +681,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 57.9,
+				"value": 57.3,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -736,7 +692,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 2,
+				"value": 0,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -747,7 +703,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 60.8,
+				"value": 59.2,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -758,7 +714,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 19,
+				"value": 8,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -769,7 +725,7 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 64.2,
+				"value": 62.2,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -780,7 +736,7 @@
 				"variable": "precipitation-probability",
 				"depthCm": null,
 				"aggregate": "max",
-				"value": 23,
+				"value": 8,
 				"unit": "percent",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -791,7 +747,51 @@
 				"variable": "soil-temperature",
 				"depthCm": 6,
 				"aggregate": "mean",
-				"value": 63.2,
+				"value": 58.8,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-23",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 5,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-23",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 52.2,
+				"unit": "F",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-24",
+				"variable": "precipitation-probability",
+				"depthCm": null,
+				"aggregate": "max",
+				"value": 26,
+				"unit": "percent",
+				"basis": "forecast",
+				"provenance": "modeled",
+				"source": "open-meteo"
+			},
+			{
+				"date": "2026-11-24",
+				"variable": "soil-temperature",
+				"depthCm": 6,
+				"aggregate": "mean",
+				"value": 50.1,
 				"unit": "F",
 				"basis": "forecast",
 				"provenance": "modeled",
@@ -800,9 +800,13 @@
 		]
 	},
 	"narration": {
-		"summary": "No yard tasks are scheduled this week.",
+		"summary": "The week is quiet, with no yard tasks scheduled.",
 		"tasks": [],
-		"advisories": []
+		"advisories": [
+			{
+				"text": "The forecast is mostly dry, while soil temperatures rise into the low 60s before cooling again early next week."
+			}
+		]
 	},
 	"narrated": true,
 	"plannedFrom": "9972ca7e1788740c"
